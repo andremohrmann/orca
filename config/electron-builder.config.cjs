@@ -22,8 +22,7 @@ const { verifySkillsCliRuntime } = require('./scripts/verify-skills-cli-runtime.
 const isMacHourly = process.env.ORCA_MAC_HOURLY === '1'
 const isMacDaily = process.env.ORCA_MAC_DAILY === '1'
 const isMacAdhoc = process.env.ORCA_MAC_ADHOC === '1'
-const isMacRelease =
-  process.env.ORCA_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
+const isMacRelease = process.env.ORCA_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
 const isLinuxArm64Release = process.env.ORCA_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion = isMacRelease ? undefined : process.env.ORCA_LOCAL_BUILD_VERSION
 const devChannelBuildVersion = isMacHourly
@@ -46,6 +45,8 @@ const devChannelRepo = isMacHourly
     : isMacAdhoc
       ? 'orca-adhoc'
       : null
+const updateFeedOwner = process.env.ORCA_UPDATE_OWNER || 'stablyai'
+const updateFeedRepo = process.env.ORCA_UPDATE_REPO || devChannelRepo || 'orca'
 const appId = 'com.stablyai.orca'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
@@ -506,8 +507,8 @@ module.exports = {
   npmRebuild: true,
   publish: {
     provider: 'github',
-    owner: 'stablyai',
-    repo: devChannelRepo ?? 'orca',
+    owner: updateFeedOwner,
+    repo: updateFeedRepo,
     releaseType: devChannelRepo ? 'prerelease' : 'release'
   }
 }

@@ -29,6 +29,34 @@ describe('electron-builder config', () => {
     )
   })
 
+  it('allows custom GitHub update feed coordinates', () => {
+    const configPath = require.resolve('../electron-builder.config.cjs')
+    const originalOwner = process.env.ORCA_UPDATE_OWNER
+    const originalRepo = process.env.ORCA_UPDATE_REPO
+    try {
+      delete require.cache[configPath]
+      process.env.ORCA_UPDATE_OWNER = 'andre'
+      process.env.ORCA_UPDATE_REPO = 'orca-custom'
+      expect(require('../electron-builder.config.cjs').publish).toMatchObject({
+        owner: 'andre',
+        repo: 'orca-custom'
+      })
+    } finally {
+      if (originalOwner === undefined) {
+        delete process.env.ORCA_UPDATE_OWNER
+      } else {
+        process.env.ORCA_UPDATE_OWNER = originalOwner
+      }
+      if (originalRepo === undefined) {
+        delete process.env.ORCA_UPDATE_REPO
+      } else {
+        process.env.ORCA_UPDATE_REPO = originalRepo
+      }
+      delete require.cache[configPath]
+      require('../electron-builder.config.cjs')
+    }
+  })
+
   it('excludes repo-only source trees from app.asar', () => {
     expect(electronBuilderConfig.files).toEqual(
       expect.arrayContaining([

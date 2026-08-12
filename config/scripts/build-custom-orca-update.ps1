@@ -2,6 +2,9 @@ param(
   [string]$Branch = 'custom/orca-dashboard-live-view',
   [string]$Upstream = 'origin/main',
   [string]$OutputDir = (Join-Path $env:TEMP 'orca-installer-build-custom-latest'),
+  [string]$UpdateOwner = '',
+  [string]$UpdateRepo = '',
+  [switch]$StampCustomVersion,
   [switch]$SkipValidation,
   [switch]$SkipBuild
 )
@@ -61,7 +64,8 @@ function Rebase-CustomBranch {
     [string]$BranchName,
     [string]$UpstreamRef
   )
-  Invoke-Native 'Fetch official Orca updates' git @('fetch', 'origin')
+  $remoteName = if ($UpstreamRef.Contains('/')) { $UpstreamRef.Split('/')[0] } else { 'origin' }
+  Invoke-Native "Fetch $remoteName updates" git @('fetch', $remoteName)
   $currentBranch = Invoke-NativeOutput git @('branch', '--show-current')
   if ($currentBranch -ne $BranchName) {
     Invoke-Native "Switch to $BranchName" git @('switch', $BranchName)
@@ -81,6 +85,19 @@ function Rebase-CustomBranch {
     Write-Error "Rebase stopped. Resolve conflicts, run 'git rebase --continue', then rerun this script."
     exit $LASTEXITCODE
   }
+}
+
+function Set-CustomBuildVersion {
+  $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+  $match = [regex]::Match($package.version, '^(\d+)\.(\d+)\.(\d+)')
+  if (!$match.Success) {
+    throw "package.json version '$($package.version)' is not a supported semver base."
+  }
+  $patch = [int]$match.Groups[3].Value + 1
+  $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmss')
+  $version = "$($match.Groups[1].Value).$($match.Groups[2].Value).$patch-custom.$stamp"
+  $env:ORCA_LOCAL_BUILD_VERSION = $version
+  Write-Host "`n==> Custom update version $version"
 }
 
 function Build-Installer {
@@ -119,6 +136,16 @@ Set-Location -LiteralPath $repoRoot
 Enable-Node24IfAvailable
 Assert-CleanWorktree
 Rebase-CustomBranch -BranchName $Branch -UpstreamRef $Upstream
+
+if ($StampCustomVersion) {
+  Set-CustomBuildVersion
+}
+if ($UpdateOwner.Length -gt 0) {
+  $env:ORCA_UPDATE_OWNER = $UpdateOwner
+}
+if ($UpdateRepo.Length -gt 0) {
+  $env:ORCA_UPDATE_REPO = $UpdateRepo
+}
 
 if (!$SkipValidation) {
   Invoke-Native 'Validate web types' pnpm @('run', 'typecheck:web')
