@@ -45,6 +45,25 @@ export function mergeLiveOrder(
   return [...retained, ...cards.filter((card) => !retainedKeys.has(card.paneKey))]
 }
 
+export function moveLiveCardBefore(
+  cards: DashboardCard[],
+  sourcePaneKey: string,
+  targetPaneKey: string
+): DashboardCard[] {
+  if (sourcePaneKey === targetPaneKey) {
+    return cards
+  }
+  const sourceIndex = cards.findIndex((card) => card.paneKey === sourcePaneKey)
+  const targetIndex = cards.findIndex((card) => card.paneKey === targetPaneKey)
+  if (sourceIndex === -1 || targetIndex === -1) {
+    return cards
+  }
+  const next = [...cards]
+  const [source] = next.splice(sourceIndex, 1)
+  next.splice(targetIndex, 0, source)
+  return next
+}
+
 export function orderedPaneKeys(cards: DashboardCard[]): string[] {
   return cards.map((card) => card.paneKey)
 }

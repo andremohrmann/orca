@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { formatAgentTypeLabel } from '@/lib/agent-status'
 import type { DashboardCard, DashboardFilterOption } from '../../../../shared/dashboard-snapshot'
 import type { WorkspaceStatus } from '../../../../shared/types'
@@ -6,7 +6,12 @@ import { AgentTerminalPreview } from './AgentTerminalPreview'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import { getAgentLiveGridColumns } from './agent-live-grid-layout'
-import { mergeLiveOrder, orderedPaneKeys, sortedLiveCards } from './agent-live-grid-order'
+import {
+  mergeLiveOrder,
+  moveLiveCardBefore,
+  orderedPaneKeys,
+  sortedLiveCards
+} from './agent-live-grid-order'
 import type { AgentRevealArgs } from './AgentTerminalDialog'
 import { useAgentLiveGridLayout } from './useAgentLiveGridLayout'
 import type { AgentDashboardLiveSort } from '../../../../shared/agent-dashboard-live-layout'
@@ -23,6 +28,8 @@ type AgentLiveGridProps = {
 }
 
 type LiveDashboardCard = DashboardCard & { ptyId: string }
+
+const LIVE_GRID_PANE_MIME = 'application/x-orca-live-pane-key'
 
 function getInitialContainerSize(): { width: number; height: number } {
   if (typeof window === 'undefined') {
@@ -108,19 +115,16 @@ export function AgentLiveGrid({
       sort: 'manual'
     }))
   }
-  const moveCard = (targetPaneKey: string): void => {
-    const sourcePaneKey = draggedPaneKeyRef.current
+  const moveCard = (targetPaneKey: string, event?: DragEvent): void => {
+    const transferredPaneKey = event?.dataTransfer.getData(LIVE_GRID_PANE_MIME)
+    const sourcePaneKey = transferredPaneKey || draggedPaneKeyRef.current
     if (!sourcePaneKey || sourcePaneKey === targetPaneKey) {
       return
     }
-    const next = [...orderedCards]
-    const sourceIndex = next.findIndex((card) => card.paneKey === sourcePaneKey)
-    const targetIndex = next.findIndex((card) => card.paneKey === targetPaneKey)
-    if (sourceIndex < 0 || targetIndex < 0) {
+    const next = moveLiveCardBefore(orderedCards, sourcePaneKey, targetPaneKey)
+    if (next === orderedCards) {
       return
     }
-    const [source] = next.splice(sourceIndex, 1)
-    next.splice(targetIndex, 0, source)
     draggedPaneKeyRef.current = null
     persistOrder(next)
   }
@@ -255,8 +259,19 @@ export function AgentLiveGrid({
               )}
               onPointerDown={() => setFocusedPaneKey(card.paneKey)}
               onFocus={() => setFocusedPaneKey(card.paneKey)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => moveCard(card.paneKey)}
+              onDragOver={(event) => {
+                const isLiveGridDrag =
+                  draggedPaneKeyRef.current ||
+                  event.dataTransfer.types.includes(LIVE_GRID_PANE_MIME)
+                if (isLiveGridDrag) {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                }
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                moveCard(card.paneKey, event)
+              }}
             >
               {card.bucket === 'attention' ? (
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-amber-500/70" />
@@ -271,8 +286,10 @@ export function AgentLiveGrid({
                 beginRename={beginRename}
                 finishRename={finishRename}
                 cancelRenameRef={cancelRenameRef}
-                onDragStart={() => {
+                onDragStart={(event) => {
                   draggedPaneKeyRef.current = card.paneKey
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData(LIVE_GRID_PANE_MIME, card.paneKey)
                 }}
                 onDragEnd={() => {
                   draggedPaneKeyRef.current = null

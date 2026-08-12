@@ -1,4 +1,5 @@
 import { GripVertical, Maximize2, Minus, Pencil, SquareArrowOutUpRight, X } from 'lucide-react'
+import type { DragEvent } from 'react'
 import { AgentStateDot } from '@/components/AgentStateDot'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +26,7 @@ type AgentLiveGridHeaderProps = {
   beginRename: (card: DashboardCard) => void
   finishRename: () => void
   cancelRenameRef: React.MutableRefObject<boolean>
-  onDragStart: () => void
+  onDragStart: (event: DragEvent<HTMLElement>) => void
   onDragEnd: () => void
   onOpenTerminal: (card: DashboardCard) => void
   onRevealAgent: (args: AgentRevealArgs) => void

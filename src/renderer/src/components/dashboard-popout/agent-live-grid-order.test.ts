@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
-import { mergeLiveOrder, sortedLiveCards } from './agent-live-grid-order'
+import { mergeLiveOrder, moveLiveCardBefore, sortedLiveCards } from './agent-live-grid-order'
 
 function card(paneKey: string, overrides: Partial<DashboardCard> = {}): DashboardCard {
   return {
@@ -40,5 +40,11 @@ describe('agent live grid order', () => {
         'attention'
       ).map((item) => item.paneKey)
     ).toEqual(['attention', 'done'])
+  })
+
+  it('moves a dragged live card before the drop target', () => {
+    expect(
+      moveLiveCardBefore([card('a'), card('b'), card('c')], 'c', 'a').map((item) => item.paneKey)
+    ).toEqual(['c', 'a', 'b'])
   })
 })
