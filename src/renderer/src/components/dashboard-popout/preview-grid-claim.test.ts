@@ -27,10 +27,12 @@ describe('createPreviewGridClaim', () => {
     dimension(box, 'clientHeight', 480)
     dimension(screen, 'offsetWidth', 0)
     dimension(screen, 'offsetHeight', 0)
+    const onFitApplied = vi.fn()
     const claim = createPreviewGridClaim({
       ptyId: 'pty-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 }) as never,
+      onFitApplied
     })
 
     claim.schedule()
@@ -43,6 +45,7 @@ describe('createPreviewGridClaim', () => {
     claim.schedule()
     await vi.advanceTimersByTimeAsync(200)
     expect(fit).toHaveBeenCalledWith('pty-1', 90, 30)
+    expect(onFitApplied).toHaveBeenCalledOnce()
     claim.dispose()
   })
 

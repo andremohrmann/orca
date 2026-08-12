@@ -4334,8 +4334,8 @@
           "19e32d0e5f": "Abrir el selector de carpetas para agregar un proyecto",
           "abc62b6328": "Agregar proyecto",
           "87d0064026": "El tablero de espacios de trabajo se movió a la barra inferior",
-          "a30e34eb5c": "Cerrar tablero de espacios de trabajo",
-          "49f62c5665": "Tablero de espacios de trabajo"
+          "a30e34eb5c": "Cerrar todos los worktrees",
+          "49f62c5665": "Todos los worktrees"
         },
         "SidebarWorkspaceFilterSection": {
           "c3fa13dc2e": "Ocultar rama predeterminada",
@@ -4415,9 +4415,9 @@
         },
         "WorkspaceKanbanDrawerHeader": {
           "f369f5c5a3": "Cerrar",
-          "e1a34450fc": "Organiza espacios de trabajo por estado y abre tarjetas de espacios de trabajo.",
+          "e1a34450fc": "Consulta todos los worktrees visibles en un solo lugar, organízalos por estado y abre sus tarjetas.",
           "81870af08f": "seleccionado",
-          "c6a77ab0f4": "Tablero de espacios de trabajo"
+          "c6a77ab0f4": "Todos los worktrees"
         },
         "WorkspaceKanbanPinDropTarget": {
           "c30151c5ee": "Suelta aquí para fijar sin cambiar el estado.",

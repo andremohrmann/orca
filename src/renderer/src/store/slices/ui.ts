@@ -29,7 +29,8 @@ import type {
   WorkspaceHostOrder,
   WorkspaceHostScope,
   VisibleWorkspaceHostIds,
-  TopLevelView
+  TopLevelView,
+  AgentDashboardView
 } from '../../../../shared/types'
 import {
   applyManualRepoOrder,
@@ -906,7 +907,8 @@ export type UISlice = {
   setSyncTaskStatusFromWorkspaceBoard: (enabled: boolean) => void
   /** Transient: the in-window Agent Dashboard companion drawer is open. Not persisted. */
   agentDashboardDrawerOpen: boolean
-  setAgentDashboardDrawerOpen: (open: boolean) => void
+  agentDashboardDrawerInitialView: AgentDashboardView | null
+  setAgentDashboardDrawerOpen: (open: boolean, initialView?: AgentDashboardView) => void
   statusBarItems: StatusBarItem[]
   toggleStatusBarItem: (item: StatusBarItem) => void
   statusBarVisible: boolean
@@ -2189,7 +2191,12 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
     }),
 
   agentDashboardDrawerOpen: false,
-  setAgentDashboardDrawerOpen: (open) => set({ agentDashboardDrawerOpen: open }),
+  agentDashboardDrawerInitialView: null,
+  setAgentDashboardDrawerOpen: (open, initialView) =>
+    set({
+      agentDashboardDrawerOpen: open,
+      agentDashboardDrawerInitialView: open ? (initialView ?? null) : null
+    }),
   statusBarVisible: true,
   setStatusBarVisible: (v) => {
     window.api.ui.set({ statusBarVisible: v }).catch(console.error)

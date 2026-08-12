@@ -18,11 +18,13 @@ import type { NativeFileDropPayload } from '../shared/native-file-drop'
 import type { ComputerAwakeStatus } from '../shared/computer-awake-mode'
 import type { BrowserFindSource } from '../shared/browser-find-source'
 import type {
+  DashboardAssignWorkspaceStatusArgs,
   DashboardRevealAgentArgs,
   DashboardSleepWorkspaceArgs,
   DashboardSnapshot,
   DashboardSpawnAgentArgs
 } from '../shared/dashboard-snapshot'
+import type { AgentDashboardView } from '../shared/agent-dashboard-view'
 import type {
   TerminalPreviewConnectResult,
   TerminalPreviewDataPayload
@@ -2495,7 +2497,7 @@ export type PreloadApi = {
     ) => Promise<OnboardingState>
   }
   dashboard: {
-    openPopout: (view?: 'board' | 'map') => Promise<void>
+    openPopout: (view?: AgentDashboardView) => Promise<void>
     publishSnapshot: (snapshot: DashboardSnapshot) => Promise<void>
     getPopoutOpen: () => Promise<boolean>
     onPopoutOpenChanged: (callback: (open: boolean) => void) => () => void
@@ -2504,13 +2506,17 @@ export type PreloadApi = {
     onAckAgent: (callback: (paneKey: string) => void) => () => void
     onSpawnAgent: (callback: (args: DashboardSpawnAgentArgs) => void) => () => void
     onSleepWorkspace: (callback: (args: DashboardSleepWorkspaceArgs) => void) => () => void
+    onAssignWorkspaceStatus: (
+      callback: (args: DashboardAssignWorkspaceStatusArgs) => void
+    ) => () => void
     requestSnapshot: () => Promise<void>
     onSnapshot: (callback: (snapshot: DashboardSnapshot) => void) => () => void
-    onViewRequested: (callback: (view: 'board' | 'map') => void) => () => void
+    onViewRequested: (callback: (view: AgentDashboardView) => void) => () => void
     revealAgent: (args: DashboardRevealAgentArgs) => Promise<void>
     ackAgent: (paneKey: string) => Promise<void>
     spawnAgent: (args: DashboardSpawnAgentArgs) => Promise<void>
     sleepWorkspace: (args: DashboardSleepWorkspaceArgs) => Promise<void>
+    assignWorkspaceStatus: (args: DashboardAssignWorkspaceStatusArgs) => Promise<void>
   }
   terminalPreview: {
     connect: (

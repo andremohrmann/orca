@@ -1,18 +1,18 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Columns3, Orbit, XIcon } from 'lucide-react'
+import { Columns3, Grid2X2, Orbit, XIcon } from 'lucide-react'
 import {
   DASHBOARD_BUCKET_ORDER,
-  type DashboardBucket,
   type DashboardCard,
+  type DashboardAssignWorkspaceStatusArgs,
   type DashboardSleepWorkspaceArgs,
   type DashboardSnapshot,
   type DashboardSpawnAgentArgs
 } from '../../../../shared/dashboard-snapshot'
-import type { RepoIcon } from '../../../../shared/repo-icon'
+import type { AgentDashboardView } from '../../../../shared/agent-dashboard-view'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
-import { AgentKanbanCard } from './AgentKanbanCard'
+import { AgentKanbanColumn, groupByDashboardBucket } from './AgentKanbanColumn'
 import { AgentDashboardToolbar } from './AgentDashboardToolbar'
 import { AgentTerminalDialog, type AgentRevealArgs } from './AgentTerminalDialog'
 import {
@@ -24,8 +24,9 @@ import './agent-board-transitions.css'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
 import { lazyWithRetry } from '@/lib/lazy-with-retry'
-
-export type AgentDashboardView = 'map' | 'board'
+import { AgentLiveGrid } from './AgentLiveGrid'
+import { DashboardUsageBar } from './DashboardUsageBar'
+import type { WorkspaceStatus } from '../../../../shared/types'
 
 const AgentDashboardMapView = lazyWithRetry(
   () =>
@@ -59,81 +60,8 @@ function sleepWorkspaceViaPopoutRelay(args: DashboardSleepWorkspaceArgs): void {
   void window.api.dashboard.sleepWorkspace?.(args)
 }
 
-function bucketLabel(bucket: DashboardBucket): string {
-  switch (bucket) {
-    case 'attention':
-      return translate('dashboardPopout.bucket.attention', 'Needs You')
-    case 'working':
-      return translate('dashboardPopout.bucket.working', 'Working')
-    case 'done':
-      return translate('dashboardPopout.bucket.done', 'Done')
-    case 'idle':
-      return translate('dashboardPopout.bucket.idle', 'Idle')
-  }
-}
-
-function groupByBucket(cards: DashboardCard[]): Record<DashboardBucket, DashboardCard[]> {
-  const grouped: Record<DashboardBucket, DashboardCard[]> = {
-    attention: [],
-    working: [],
-    done: [],
-    idle: []
-  }
-  for (const card of cards) {
-    grouped[card.bucket].push(card)
-  }
-  // Most-recently-moved first: a card entering a column lands at the top,
-  // matching the view-transition motion the user just watched.
-  for (const bucket of DASHBOARD_BUCKET_ORDER) {
-    grouped[bucket].sort((a, b) => b.stateChangedAt - a.stateChangedAt)
-  }
-  return grouped
-}
-
-function KanbanColumn({
-  bucket,
-  cards,
-  repoIconsByRepoId,
-  now,
-  onOpenTerminal
-}: {
-  bucket: DashboardBucket
-  cards: DashboardCard[]
-  repoIconsByRepoId: Record<string, RepoIcon | null> | undefined
-  now: number
-  onOpenTerminal: (card: DashboardCard) => void
-}): React.JSX.Element {
-  return (
-    // Why: attention no longer tints the whole column — the cards inside carry
-    // their own state color, so a column border would double-signal it.
-    <section className="flex min-w-[264px] flex-1 flex-col rounded-xl border border-border/60 bg-muted/30">
-      <header className="flex items-center gap-2 px-3 py-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-          {bucketLabel(bucket)}
-        </span>
-        <span className="ml-auto rounded-full bg-background px-1.5 text-[11px] tabular-nums text-muted-foreground">
-          {cards.length}
-        </span>
-      </header>
-      <div className="scrollbar-sleek flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-        {cards.length === 0 ? (
-          <p className="px-1 py-2 text-[11px] text-muted-foreground">
-            {translate('dashboardPopout.bucket.empty', 'None')}
-          </p>
-        ) : (
-          cards.map((card) => (
-            <AgentKanbanCard
-              key={card.paneKey}
-              card={card}
-              repoIcon={repoIconsByRepoId?.[card.repoId] ?? null}
-              now={now}
-              onOpenTerminal={onOpenTerminal}
-            />
-          ))
-        )}
-      </div>
-    </section>
-  )
+function assignWorkspaceStatusViaPopoutRelay(args: DashboardAssignWorkspaceStatusArgs): void {
+  void window.api.dashboard.assignWorkspaceStatus?.(args)
 }
 
 type AgentKanbanBoardProps = {
@@ -154,6 +82,7 @@ type AgentKanbanBoardProps = {
   /** Puts a workspace to sleep. Defaults to the pop-out IPC relay; the in-window
    *  host already offers the full sidebar menu, so it opts out. */
   onSleepWorkspace?: (args: DashboardSleepWorkspaceArgs) => void
+  onAssignWorkspaceStatus?: (args: DashboardAssignWorkspaceStatusArgs) => void
   /** When provided, renders a close control in the header (in-window mode). The
    *  pop-out relies on its native window controls, so it omits this. */
   onClose?: () => void
@@ -183,7 +112,8 @@ export function AgentKanbanBoard({
   headerActions,
   onOpenMap,
   workspaceContextMenusEnabled = false,
-  onWorkspaceContextMenuOpenChange
+  onWorkspaceContextMenuOpenChange,
+  onAssignWorkspaceStatus = assignWorkspaceStatusViaPopoutRelay
 }: AgentKanbanBoardProps): React.JSX.Element {
   const [view, setView] = useState(initialView)
   const visibleBuckets = useMemo(
@@ -195,7 +125,7 @@ export function AgentKanbanBoard({
     () => snapshot.cards.filter((card) => visibleBuckets.includes(card.bucket)),
     [snapshot.cards, visibleBuckets]
   )
-  const availableCards = view === 'map' ? snapshot.cards : visibleCards
+  const availableCards = view === 'map' || view === 'live' ? snapshot.cards : visibleCards
   const [query, setQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [filters, setFilters] = useState<DashboardFilters>(EMPTY_DASHBOARD_FILTERS)
@@ -203,7 +133,7 @@ export function AgentKanbanBoard({
     () => filterDashboardCards(availableCards, query, filters),
     [availableCards, filters, query]
   )
-  const grouped = useMemo(() => groupByBucket(filteredCards), [filteredCards])
+  const grouped = useMemo(() => groupByDashboardBucket(filteredCards), [filteredCards])
   const hasRelativeTimestamps = useMemo(
     () => snapshot.cards.some((card) => (card.finishedAt ?? card.startedAt) > 0),
     [snapshot.cards]
@@ -288,6 +218,12 @@ export function AgentKanbanBoard({
     },
     [onAckAgent]
   )
+  const handleAssignWorkspaceStatus = useCallback(
+    (worktreeId: string, status: WorkspaceStatus) => {
+      onAssignWorkspaceStatus({ worktreeId, status })
+    },
+    [onAssignWorkspaceStatus]
+  )
   // Watching the open dialog counts as seeing state changes as they happen —
   // without this, an agent finishing while you watch would re-flag its card.
   useEffect(() => {
@@ -333,6 +269,17 @@ export function AgentKanbanBoard({
               type="button"
               variant="ghost"
               size="xs"
+              aria-pressed={view === 'live'}
+              className={cn('h-6 gap-1 px-2', view === 'live' && 'bg-accent')}
+              onClick={() => handleViewChange('live')}
+            >
+              <Grid2X2 className="size-3" />
+              {translate('dashboardPopout.view.live', 'Live view')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
               aria-pressed={view === 'map'}
               className={cn('h-6 gap-1 px-2', view === 'map' && 'bg-accent')}
               onClick={() => handleViewChange('map')}
@@ -357,7 +304,7 @@ export function AgentKanbanBoard({
             </div>
           ) : null}
         </div>
-        {view !== 'board' ? (
+        {view === 'map' ? (
           <Suspense fallback={null}>
             <AgentDashboardMapView
               snapshot={snapshot}
@@ -378,7 +325,7 @@ export function AgentKanbanBoard({
               onWorkspaceContextMenuOpenChange={onWorkspaceContextMenuOpenChange}
             />
           </Suspense>
-        ) : (
+        ) : view === 'board' ? (
           <>
             <AgentDashboardToolbar
               cards={visibleCards}
@@ -394,26 +341,49 @@ export function AgentKanbanBoard({
               {/* Auto margins center the capped board and collapse during horizontal overflow. */}
               <div className="mx-auto flex w-full max-w-[1280px] gap-3">
                 {visibleBuckets.map((bucket) => (
-                  <KanbanColumn
+                  <AgentKanbanColumn
                     key={bucket}
                     bucket={bucket}
                     cards={grouped[bucket]}
                     repoIconsByRepoId={snapshot.repoIconsByRepoId}
                     now={now}
                     onOpenTerminal={handleOpenTerminal}
+                    onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
+                    statusOptions={snapshot.filterOptions?.workspaceStatuses}
                   />
                 ))}
               </div>
             </div>
           </>
+        ) : (
+          <>
+            <AgentDashboardToolbar
+              cards={snapshot.cards}
+              filterOptions={snapshot.filterOptions}
+              filteredCount={filteredCards.length}
+              query={query}
+              onQueryChange={setQuery}
+              filters={filters}
+              onFiltersChange={setFilters}
+              searchInputRef={searchInputRef}
+            />
+            <AgentLiveGrid
+              cards={filteredCards}
+              onOpenTerminal={handleOpenTerminal}
+              onRevealAgent={onRevealAgent}
+              onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
+              statusOptions={snapshot.filterOptions?.workspaceStatuses}
+            />
+          </>
         )}
-        {view === 'board' ? (
+        {view !== 'map' ? (
           <AgentTerminalDialog
             card={dialogCard}
             onOpenChange={handleDialogOpenChange}
             onReveal={onRevealAgent}
           />
         ) : null}
+        <DashboardUsageBar usage={snapshot.usage} />
       </div>
     </TooltipProvider>
   )

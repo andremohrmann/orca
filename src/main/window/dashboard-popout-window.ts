@@ -13,12 +13,15 @@ import {
   type KeybindingInput,
   type KeybindingOverrides
 } from '../../shared/keybindings'
+import {
+  normalizeAgentDashboardView,
+  type AgentDashboardView
+} from '../../shared/agent-dashboard-view'
 
 const MIN_WIDTH = 480
 const MIN_HEIGHT = 360
 const DEFAULT_WIDTH = 960
 const DEFAULT_HEIGHT = 720
-const DEFAULT_VIEW = 'board'
 const DASHBOARD_POPOUT_PARTITION = 'orca-dashboard-popout'
 
 // Why: singleton — the dashboard is a companion surface, so a second "Pop Out"
@@ -109,6 +112,19 @@ function loadDashboardPopout(window: BrowserWindow, view: string): void {
   }
 }
 
+function showAndMaximizeDashboardPopout(window: BrowserWindow): void {
+  if (window.isDestroyed()) {
+    return
+  }
+  window.show()
+  window.maximize()
+  setTimeout(() => {
+    if (!window.isDestroyed() && !window.isMaximized()) {
+      window.maximize()
+    }
+  }, 0)
+}
+
 function resolveRestoredBounds(store: Store | null): {
   x: number
   y: number
@@ -138,13 +154,14 @@ function resolveRestoredBounds(store: Store | null): {
  */
 export function createOrFocusDashboardPopout(
   store: Store | null,
-  view?: string,
+  view?: AgentDashboardView,
   options: { getKeybindings?: () => KeybindingOverrides | undefined } = {}
 ): BrowserWindow {
   if (dashboardPopoutWindow && !dashboardPopoutWindow.isDestroyed()) {
     if (dashboardPopoutWindow.isMinimized()) {
       dashboardPopoutWindow.restore()
     }
+    dashboardPopoutWindow.maximize()
     dashboardPopoutWindow.focus()
     if (view) {
       dashboardPopoutWindow.webContents.send('dashboard:viewRequested', view)
@@ -152,7 +169,8 @@ export function createOrFocusDashboardPopout(
     return dashboardPopoutWindow
   }
 
-  const initialView = view ?? DEFAULT_VIEW
+  const initialView =
+    view ?? normalizeAgentDashboardView(store?.getSettings().experimentalAgentDashboardDefaultView)
 
   const savedBounds = resolveRestoredBounds(store)
 
@@ -240,9 +258,7 @@ export function createOrFocusDashboardPopout(
   })
 
   window.once('ready-to-show', () => {
-    if (!window.isDestroyed()) {
-      window.show()
-    }
+    showAndMaximizeDashboardPopout(window)
   })
 
   // Bounds persistence — mirrors the main window's debounced/frozen approach so
@@ -256,18 +272,30 @@ export function createOrFocusDashboardPopout(
     }
     boundsTimer = setTimeout(() => {
       boundsTimer = null
-      if (windowClosing || window.isDestroyed() || window.isMinimized() || window.isFullScreen()) {
+      if (
+        windowClosing ||
+        window.isDestroyed() ||
+        window.isMinimized() ||
+        window.isFullScreen() ||
+        window.isMaximized()
+      ) {
         return
       }
       const bounds = window.getBounds()
       if (bounds.width < MIN_WIDTH || bounds.height < MIN_HEIGHT) {
         return
       }
-      store?.updateUI({ dashboardPopoutBounds: bounds })
+      store?.updateUI({ dashboardPopoutBounds: bounds, dashboardPopoutMaximized: false })
     }, 500)
   }
   window.on('resize', saveBounds)
   window.on('move', saveBounds)
+  window.on('maximize', () => {
+    store?.updateUI({ dashboardPopoutMaximized: true })
+  })
+  window.on('unmaximize', () => {
+    store?.updateUI({ dashboardPopoutMaximized: false })
+  })
 
   const freezeBounds = (): void => {
     windowClosing = true

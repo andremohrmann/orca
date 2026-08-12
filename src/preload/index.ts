@@ -6,11 +6,13 @@ import { glApi } from './gitlab'
 import type { AppIdentity } from '../shared/app-identity'
 import type { ComputerAwakeStatus } from '../shared/computer-awake-mode'
 import type {
+  DashboardAssignWorkspaceStatusArgs,
   DashboardRevealAgentArgs,
   DashboardSleepWorkspaceArgs,
   DashboardSnapshot,
   DashboardSpawnAgentArgs
 } from '../shared/dashboard-snapshot'
+import type { AgentDashboardView } from '../shared/agent-dashboard-view'
 import type {
   TerminalPreviewConnectResult,
   TerminalPreviewDataPayload
@@ -2350,7 +2352,7 @@ const api = {
 
   dashboard: {
     // Open the pop-out dashboard window, or focus it if already open.
-    openPopout: (view?: 'board' | 'map'): Promise<void> =>
+    openPopout: (view?: AgentDashboardView): Promise<void> =>
       ipcRenderer.invoke('dashboardPopout:open', view),
 
     // ── Producer side (main window) ──────────────────────────────────────
@@ -2393,6 +2395,16 @@ const api = {
       ipcRenderer.on('ui:sleepDashboardWorkspace', listener)
       return () => ipcRenderer.removeListener('ui:sleepDashboardWorkspace', listener)
     },
+    onAssignWorkspaceStatus: (
+      callback: (args: DashboardAssignWorkspaceStatusArgs) => void
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        args: DashboardAssignWorkspaceStatusArgs
+      ): void => callback(args)
+      ipcRenderer.on('ui:assignDashboardWorkspaceStatus', listener)
+      return () => ipcRenderer.removeListener('ui:assignDashboardWorkspaceStatus', listener)
+    },
 
     // ── Consumer side (pop-out window) ───────────────────────────────────
     requestSnapshot: (): Promise<void> => ipcRenderer.invoke('dashboard:requestSnapshot'),
@@ -2402,8 +2414,8 @@ const api = {
       ipcRenderer.on('dashboard:snapshot', listener)
       return () => ipcRenderer.removeListener('dashboard:snapshot', listener)
     },
-    onViewRequested: (callback: (view: 'board' | 'map') => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, view: 'board' | 'map'): void =>
+    onViewRequested: (callback: (view: AgentDashboardView) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, view: AgentDashboardView): void =>
         callback(view)
       ipcRenderer.on('dashboard:viewRequested', listener)
       return () => ipcRenderer.removeListener('dashboard:viewRequested', listener)
@@ -2415,7 +2427,9 @@ const api = {
     spawnAgent: (args: DashboardSpawnAgentArgs): Promise<void> =>
       ipcRenderer.invoke('dashboardPopout:spawnAgent', args),
     sleepWorkspace: (args: DashboardSleepWorkspaceArgs): Promise<void> =>
-      ipcRenderer.invoke('dashboardPopout:sleepWorkspace', args)
+      ipcRenderer.invoke('dashboardPopout:sleepWorkspace', args),
+    assignWorkspaceStatus: (args: DashboardAssignWorkspaceStatusArgs): Promise<void> =>
+      ipcRenderer.invoke('dashboardPopout:assignWorkspaceStatus', args)
   },
 
   terminalPreview: {

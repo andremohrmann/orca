@@ -175,6 +175,19 @@ describe('ExperimentalPane', () => {
     expect(markup).not.toContain('Show idle agents')
   })
 
+  it('renders agent dashboard default view and startup controls when enabled', () => {
+    const markup = renderToStaticMarkup(
+      <ExperimentalPane
+        settings={{ ...getDefaultSettings('/tmp'), experimentalAgentDashboardPopout: true }}
+        updateSettings={vi.fn()}
+      />
+    )
+
+    expect(markup).toContain('Default view')
+    expect(markup).toContain('Live view')
+    expect(markup).toContain('Open Live view on startup')
+  })
+
   it('renders Cloud VM as an off-by-default experimental subsection', () => {
     const settings = getDefaultSettings('/tmp')
     const markup = renderToStaticMarkup(

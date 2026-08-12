@@ -397,6 +397,32 @@ const FloatingTerminalPanel = lazy(() =>
 // Why: lazy so the WebP asset + overlay module aren't fetched unless the experimental flag is on.
 const PetOverlay = lazy(() => import('./components/pet/PetOverlay'))
 const DashboardPopoutBridge = lazy(() => import('./components/dashboard/DashboardPopoutBridge'))
+
+function AgentDashboardStartupGate(): null {
+  const handledRef = useRef(false)
+  const settings = useAppStore((s) => s.settings)
+  const setAgentDashboardDrawerOpen = useAppStore((s) => s.setAgentDashboardDrawerOpen)
+
+  useEffect(() => {
+    if (handledRef.current || !settings) {
+      return
+    }
+    handledRef.current = true
+    if (
+      settings.experimentalAgentDashboardPopout !== true ||
+      settings.experimentalAgentDashboardOpenLiveOnStartup !== true
+    ) {
+      return
+    }
+    if (settings.experimentalAgentDashboardMode === 'popout') {
+      void window.api.dashboard.openPopout?.('live')
+      return
+    }
+    setAgentDashboardDrawerOpen(true, 'live')
+  }, [settings, setAgentDashboardDrawerOpen])
+
+  return null
+}
 // Why: lazy so onboarding's step modules + assets aren't fetched for users past first-launch.
 const OnboardingFlow = lazy(() => import('./components/onboarding/OnboardingFlow'))
 
@@ -2251,6 +2277,7 @@ function App(): React.JSX.Element {
                 <DashboardPopoutBridge />
               </Suspense>
             ) : null}
+            <AgentDashboardStartupGate />
             <AgentHibernationGate />
             {/* Why: workspace activation is a hot path; activeWorktreeId in reset keys would remount whole surfaces during wake. */}
             <RecoverableRenderErrorBoundary

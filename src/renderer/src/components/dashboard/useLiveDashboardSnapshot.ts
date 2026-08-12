@@ -55,6 +55,10 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
   const detectedAgentIds = useAppStore((s) => s.detectedAgentIds)
   const remoteDetectedAgentIds = useAppStore((s) => s.remoteDetectedAgentIds)
   const runtimeDetectedAgentIds = useAppStore((s) => s.runtimeDetectedAgentIds)
+  const rateLimits = useAppStore((s) => s.rateLimits)
+  const statusBarItems = useAppStore((s) => s.statusBarItems)
+  const usagePercentageDisplay = useAppStore((s) => s.usagePercentageDisplay)
+  const statusBarUsageMode = useAppStore((s) => s.statusBarUsageMode)
   // Why: freshness can flip a bucket without any backing map changing; the epoch
   // ticks on the freshness boundary so the memo re-derives stale-decayed cards.
   const agentStatusEpoch = useAppStore((s) => s.agentStatusEpoch)
@@ -95,6 +99,10 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
           detectedAgentIds,
           remoteDetectedAgentIds,
           runtimeDetectedAgentIds,
+          rateLimits,
+          statusBarItems,
+          usagePercentageDisplay,
+          statusBarUsageMode,
           // Why: read non-reactively — resolveWindowsShiftEnterEncoding takes
           // launch identity but never routes on it, so subscribing would only
           // rebuild the board. Matches the bridge's republish gate.
@@ -134,6 +142,10 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
       detectedAgentIds,
       remoteDetectedAgentIds,
       runtimeDetectedAgentIds,
+      rateLimits,
+      statusBarItems,
+      usagePercentageDisplay,
+      statusBarUsageMode,
       agentStatusEpoch
     ]
   )

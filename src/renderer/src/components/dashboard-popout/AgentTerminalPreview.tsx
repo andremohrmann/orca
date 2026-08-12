@@ -1,93 +1,58 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Terminal } from '@xterm/xterm'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { subscribeToTerminalUserInput } from '@/components/terminal-pane/terminal-user-input-signal'
-import { composeActiveTerminalTheme } from '@/components/terminal-pane/terminal-appearance'
-import { useSystemPrefersDark } from '@/components/terminal-pane/use-system-prefers-dark'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
 import { replayPreviewConnectionSnapshot } from './preview-terminal-snapshot-replay'
-import { useEffectiveMacOptionAsAlt } from '@/lib/keyboard-layout/use-effective-mac-option-as-alt'
-import {
-  buildPreviewAppearanceOptions,
-  buildPreviewTerminalOptions
-} from './preview-terminal-options'
+import { buildPreviewAppearanceOptions } from './preview-terminal-options'
 import { syncPreviewTerminalLigatures } from './preview-terminal-ligatures'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import { installPreviewImeBridge, type PreviewImeBridge } from './preview-terminal-ime-bridge'
 import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
-import { translate } from '@/i18n/i18n'
-import { getBuiltinTheme, resolveEffectiveTerminalAppearance } from '@/lib/terminal-theme'
-import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { createPreviewGridClaim } from './preview-grid-claim'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
+import {
+  PREVIEW_SCROLLBACK_ROWS,
+  clearPreviewTerminalTimer,
+  ensurePreviewTerminal
+} from './preview-terminal-session'
+import { usePreviewTerminalTheme } from './usePreviewTerminalTheme'
+import { AgentTerminalPreviewFrame } from './AgentTerminalPreviewFrame'
 
-const PREVIEW_SCROLLBACK_ROWS = 24
-// Why: main only ever serializes PREVIEW_SCROLLBACK_ROWS of history into this
-// terminal, so the pane's user-configured scrollback would only cost memory.
-const PREVIEW_SCROLLBACK_BUFFER_ROWS = 1000
-const FALLBACK_COLS = 80
-const FALLBACK_ROWS = 24
 const RESYNC_RETRY_DELAY_MS = 150
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
-}
-
-/**
- * Live interactive view of an agent's terminal, streaming from the main
- * process's per-PTY headless emulator. On open it claims the PTY grid for the
- * dialog's own box (see createPreviewGridClaim), so the terminal renders
- * properly sized rather than scaled. The terminal itself is always created at
- * the PTY's REAL cols/rows — serialized ANSI replayed into different
- * dimensions rewraps into garbage — and when someone else owns the grid (a
- * phone, a host reclaim) the oversized frame is scaled down to fit and
- * anchored so the cursor stays visible. Keystrokes pass through to the PTY;
- * DOM renderer so it never grabs a WebGL context.
- */
 export function AgentTerminalPreview({
   ptyId,
   terminalInput = null,
+  claimGrid = true,
+  scaleToFit = true,
+  autoFocus = true,
   className
 }: {
   ptyId: string
   /** Host-input facts relayed with the card; null routes bytes by client OS. */
   terminalInput?: DashboardCardTerminalInput | null
+  /** Compact observers must not resize the real PTY to their tile geometry. */
+  claimGrid?: boolean
+  /** Terminal walls clip full-size text instead of shrinking it below readability. */
+  scaleToFit?: boolean
+  /** Mosaic panes focus only when clicked; background resyncs must not steal input. */
+  autoFocus?: boolean
   className?: string
 }): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
-  const settings = useAppStore((state) => state.settings)
-  const systemPrefersDark = useSystemPrefersDark()
-  const macOptionAsAlt = useEffectiveMacOptionAsAlt(settings?.terminalMacOptionAsAlt)
-  // Why: keys and appearance must read live values without remounting the
-  // terminal (a remount reconnects the pty and repaints from a new snapshot).
+  const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
   const settingsRef = useRef(settings)
   const macOptionAsAltRef = useRef(macOptionAsAlt)
   const terminalInputRef = useRef(terminalInput)
-  const { terminalTheme, terminalMode } = useMemo(() => {
-    if (!settings) {
-      return { terminalTheme: null, terminalMode: 'dark' as const }
-    }
-    const appearance = resolveEffectiveTerminalAppearance(settings, systemPrefersDark)
-    const theme = composeActiveTerminalTheme(
-      appearance.theme ?? getBuiltinTheme(appearance.themeName),
-      settings
-    )
-    return { terminalTheme: theme, terminalMode: appearance.mode }
-  }, [settings, systemPrefersDark])
-  // A null snapshot means no serializer knows this pty (it died or was never
-  // spawned this session) — say so instead of painting a silent blank terminal.
   const [ptyGone, setPtyGone] = useState(false)
 
-  // Why: refs are seeded at first render and refreshed on commit — assigning
-  // during render trips react-compiler. Layout, not passive: xterm's keydown is
-  // a native listener, so React would not flush a passive effect before the
-  // next keystroke and a just-relayed profile could miss it.
   useLayoutEffect(() => {
     settingsRef.current = settings
     macOptionAsAltRef.current = macOptionAsAlt
@@ -107,12 +72,14 @@ export function AgentTerminalPreview({
     let imeBridge: PreviewImeBridge | null = null
     let disposeKeyHandler: (() => void) | null = null
     let disposeTerminalCompatibility: (() => void) | null = null
-    // Why: mirrors the pane's tracker — the policy needs the flags the TUI
-    // negotiated, and this preview parses the same output stream the pane does.
     const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker()
     let refreshInFlight = false
     let refreshAgain = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
+    let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
+    let gridRefreshTimer: ReturnType<typeof setTimeout> | null = null
+    let requestInputRefresh = (): void => undefined
+    let requestGridRefresh = (): void => undefined
     const pendingLivePayloads: Extract<TerminalPreviewDataPayload, { type: 'data' }>[] = []
 
     const fitToBox = (): void => {
@@ -121,19 +88,14 @@ export function AgentTerminalPreview({
       if (!screen || !box || !terminal) {
         return
       }
-      const scale = Math.min(1, box.clientWidth / Math.max(1, screen.offsetWidth))
+      const scale = scaleToFit ? Math.min(1, box.clientWidth / Math.max(1, screen.offsetWidth)) : 1
       container.style.transform = scale < 1 ? `scale(${scale})` : ''
-      // Anchor whichever end keeps the CURSOR row in view when the terminal is
-      // taller than the box: a fresh shell prompts at the TOP of its screen
-      // (blind bottom-anchoring clipped it away), while a busy TUI keeps its
-      // action at the bottom.
       const cellHeight = screen.offsetHeight / Math.max(1, terminal.rows)
       const cursorBottom = (terminal.buffer.active.cursorY + 1) * cellHeight * scale
       const anchorTop = cursorBottom <= box.clientHeight
       box.style.alignItems = anchorTop ? 'flex-start' : 'flex-end'
       container.style.transformOrigin = anchorTop ? 'top left' : 'bottom left'
     }
-    // Re-fit after every parsed write (cursor may move ends); rAF coalesces.
     let fitScheduled = false
     const scheduleFit = (): void => {
       if (fitScheduled) {
@@ -146,11 +108,14 @@ export function AgentTerminalPreview({
       })
     }
 
-    const gridClaim = createPreviewGridClaim({
-      ptyId,
-      container,
-      getTerminal: () => terminal
-    })
+    const gridClaim = claimGrid
+      ? createPreviewGridClaim({
+          ptyId,
+          container,
+          getTerminal: () => terminal,
+          onFitApplied: () => requestGridRefresh()
+        })
+      : { requestNow: () => undefined, schedule: () => undefined, dispose: () => undefined }
     // Box growth/shrink (window resize) changes the reachable grid.
     const boxResizeObserver =
       typeof ResizeObserver === 'undefined'
@@ -182,6 +147,10 @@ export function AgentTerminalPreview({
     }
 
     const writeLive = (payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>): void => {
+      // A live echo means the preview is healthy; keep its existing xterm
+      // frame instead of replacing it with a snapshot after every keystroke.
+      clearPreviewTerminalTimer(inputRefreshTimer)
+      inputRefreshTimer = null
       if (!terminal) {
         pendingLivePayloads.push(payload)
         return
@@ -268,8 +237,29 @@ export function AgentTerminalPreview({
           return
         }
         void window.api.terminalPreview.input(ptyId, data)
+        requestInputRefresh()
       })
     }
+
+    const reportTerminalFocus = (focused: boolean): void => {
+      if (!terminal?.modes.sendFocusMode) {
+        return
+      }
+      void window.api.terminalPreview.input(ptyId, focused ? '\x1b[I' : '\x1b[O')
+      requestInputRefresh()
+    }
+    const handleFocusIn = (event: FocusEvent): void => {
+      if (event.target instanceof Element && event.target.closest('.xterm')) {
+        reportTerminalFocus(true)
+      }
+    }
+    const handleFocusOut = (event: FocusEvent): void => {
+      if (!container.contains(event.relatedTarget as Node | null)) {
+        reportTerminalFocus(false)
+      }
+    }
+    container.addEventListener('focusin', handleFocusIn)
+    container.addEventListener('focusout', handleFocusOut)
 
     const replayConnection = (
       connection: Awaited<ReturnType<typeof window.api.terminalPreview.connect>>,
@@ -277,38 +267,27 @@ export function AgentTerminalPreview({
       requestRefresh: () => void
     ): void => {
       const snap = connection.snapshot!
+      const resolved = ensurePreviewTerminal({
+        terminal,
+        container,
+        snap,
+        replaceExisting,
+        settings: settingsRef.current,
+        terminalInput: terminalInputRef.current,
+        macOptionIsMeta: macOptionAsAltRef.current === 'true',
+        theme: terminalTheme,
+        themeMode: terminalMode
+      })
+      terminal = resolved.terminal
       if (!terminal) {
-        terminal = new Terminal(
-          buildPreviewTerminalOptions({
-            settings: settingsRef.current,
-            terminalInput: terminalInputRef.current,
-            macOptionIsMeta: macOptionAsAltRef.current === 'true',
-            theme: terminalTheme,
-            themeMode: terminalMode,
-            cols: clamp(snap.cols ?? FALLBACK_COLS, 2, 500),
-            rows: clamp(snap.rows ?? FALLBACK_ROWS, 2, 200),
-            scrollback: PREVIEW_SCROLLBACK_BUFFER_ROWS
-          })
-        )
-        try {
-          terminal.open(container)
-        } catch {
-          terminal.dispose()
-          terminal = null
-          return
-        }
+        return
+      }
+      if (resolved.created) {
         terminalRef.current = terminal
         installTerminalCompatibility()
         installInputRouting()
         installImeNativeTextBridge()
         installKeyHandler()
-      } else if (replaceExisting) {
-        // Why: keep the old frame visible during capture, then atomically replace it once the authoritative snapshot arrives.
-        terminal.resize(
-          clamp(snap.cols ?? FALLBACK_COLS, 2, 500),
-          clamp(snap.rows ?? FALLBACK_ROWS, 2, 200)
-        )
-        terminal.reset()
       }
       replayPreviewConnectionSnapshot({
         snapshot: snap,
@@ -337,8 +316,11 @@ export function AgentTerminalPreview({
         writeReplayed('', requestRefresh)
       }
       scheduleFit()
+      gridClaim.requestNow()
       gridClaim.schedule()
-      terminal.focus()
+      if (autoFocus) {
+        terminal.focus()
+      }
     }
 
     const setup = async (replaceExisting = false): Promise<void> => {
@@ -380,6 +362,21 @@ export function AgentTerminalPreview({
       replayConnection(connection, replaceExisting, () => void setup(true))
     }
 
+    requestInputRefresh = (): void => {
+      clearPreviewTerminalTimer(inputRefreshTimer)
+      inputRefreshTimer = setTimeout(() => {
+        inputRefreshTimer = null
+        void setup(true)
+      }, 180)
+    }
+    requestGridRefresh = (): void => {
+      clearPreviewTerminalTimer(gridRefreshTimer)
+      gridRefreshTimer = setTimeout(() => {
+        gridRefreshTimer = null
+        void setup(true)
+      }, 80)
+    }
+
     const disposeAppMenuClipboard = installPreviewTerminalAppMenuClipboard({
       container,
       getTerminal: () => terminal,
@@ -391,6 +388,8 @@ export function AgentTerminalPreview({
         return
       }
       if (payload.type === 'resync') {
+        clearPreviewTerminalTimer(gridRefreshTimer)
+        gridRefreshTimer = null
         void setup(true)
         return
       }
@@ -398,12 +397,11 @@ export function AgentTerminalPreview({
     })
 
     void setup()
-
     return () => {
       disposed = true
-      if (retryTimer) {
-        clearTimeout(retryTimer)
-      }
+      clearPreviewTerminalTimer(retryTimer)
+      clearPreviewTerminalTimer(inputRefreshTimer)
+      clearPreviewTerminalTimer(gridRefreshTimer)
       gridClaim.dispose()
       boxResizeObserver?.disconnect()
       disposeAppMenuClipboard()
@@ -412,11 +410,13 @@ export function AgentTerminalPreview({
       disposeImeNativeTextBridge()
       disposeTerminalCompatibility?.()
       disposeKeyHandler?.()
+      container.removeEventListener('focusin', handleFocusIn)
+      container.removeEventListener('focusout', handleFocusOut)
       void window.api.terminalPreview.unsubscribe(ptyId)
       terminal?.dispose()
       terminalRef.current = null
     }
-  }, [ptyId, terminalTheme, terminalMode])
+  }, [autoFocus, claimGrid, ptyId, scaleToFit, terminalTheme, terminalMode])
 
   // Why: appearance settings must land on the open terminal, and the OS input
   // source can flip Option-as-Alt with no settings change at all. A remount
@@ -434,31 +434,12 @@ export function AgentTerminalPreview({
   }, [settings, macOptionAsAlt])
 
   return (
-    // Why: a size FIXED by the viewport (not shrink-to-fit) + overflow-hidden
-    // keeps the dialog stable no matter how wide/tall the pane's serialized
-    // buffer is. The terminal keeps the pane's true dimensions and is scaled/
-    // clipped to fit; fitToBox anchors whichever end keeps the cursor in view.
-    <div
-      className={cn(
-        'relative h-[calc(100vh-140px)] w-full overflow-hidden bg-background p-1.5',
-        className
-      )}
-      style={terminalTheme?.background ? { backgroundColor: terminalTheme.background } : undefined}
-    >
-      {ptyGone ? (
-        <div className="absolute inset-0 flex items-center justify-center px-2.5 py-8 text-center text-[11px] text-muted-foreground">
-          {translate(
-            'dashboardPopout.terminal.closed',
-            "No live terminal — this agent's pane has closed."
-          )}
-        </div>
-      ) : null}
-      <div
-        aria-hidden={ptyGone || undefined}
-        className={cn('flex h-full w-full items-end overflow-hidden', ptyGone && 'invisible')}
-      >
-        <div ref={containerRef} className="origin-bottom-left" />
-      </div>
-    </div>
+    <AgentTerminalPreviewFrame
+      className={className}
+      containerRef={containerRef}
+      terminalRef={terminalRef}
+      ptyGone={ptyGone}
+      terminalTheme={terminalTheme}
+    />
   )
 }

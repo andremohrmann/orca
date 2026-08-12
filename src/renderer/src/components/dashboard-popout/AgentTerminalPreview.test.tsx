@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import '@testing-library/jest-dom/vitest'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   TERMINAL_PASTE_CHUNK_MAX_BYTES,
@@ -20,6 +20,7 @@ const terminalHarness = vi.hoisted(() => ({
     dispose: ReturnType<typeof vi.fn>
     resize: ReturnType<typeof vi.fn>
     reset: ReturnType<typeof vi.fn>
+    focus: ReturnType<typeof vi.fn>
     paste: ReturnType<typeof vi.fn>
     input: ReturnType<typeof vi.fn>
     scrollToTop: ReturnType<typeof vi.fn>
@@ -233,6 +234,18 @@ describe('AgentTerminalPreview', () => {
 
     act(() => terminal.writeCallbacks.shift()?.())
     expect(ack).toHaveBeenCalledWith('pty-1', 4)
+  })
+
+  it('focuses the preview terminal on pointer down when mosaic autofocus is disabled', async () => {
+    const view = render(<AgentTerminalPreview ptyId="pty-1" autoFocus={false} />)
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+
+    expect(terminal.focus).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(view.container.firstElementChild!)
+
+    expect(terminal.focus).toHaveBeenCalledOnce()
   })
 
   it('installs the macOS IME native-text forwarder and lets its claims bypass chord handling', async () => {
@@ -830,7 +843,7 @@ describe('AgentTerminalPreview', () => {
     view.rerender(<AgentTerminalPreview ptyId="pty-live" />)
 
     await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
-    expect(connect).toHaveBeenLastCalledWith('pty-live', { scrollbackRows: 24 })
+    expect(connect).toHaveBeenLastCalledWith('pty-live', { scrollbackRows: 1000 })
     expect(view.queryByText(/No live terminal/)).not.toBeInTheDocument()
   })
 

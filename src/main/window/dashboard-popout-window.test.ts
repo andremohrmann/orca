@@ -21,6 +21,7 @@ const {
     private onceHandlers: Record<string, ((...args: unknown[]) => void)[]> = {}
     destroyed = false
     minimized = false
+    maximized = false
     fullscreen = false
     focused = false
     zoomLevel = 0
@@ -51,6 +52,9 @@ const {
     show = vi.fn()
     restore = vi.fn(() => {
       this.minimized = false
+    })
+    maximize = vi.fn(() => {
+      this.maximized = true
     })
     loadURL = vi.fn()
     loadFile = vi.fn()
@@ -95,6 +99,9 @@ const {
     }
     isFullScreen(): boolean {
       return this.fullscreen
+    }
+    isMaximized(): boolean {
+      return this.maximized
     }
     getBounds(): { x: number; y: number; width: number; height: number } {
       return this.bounds
@@ -143,8 +150,12 @@ import {
 
 type FakeWindow = InstanceType<typeof BrowserWindowMock>
 
-function makeStore(ui: Record<string, unknown> = {}): {
+function makeStore(
+  ui: Record<string, unknown> = {},
+  settings: Record<string, unknown> = {}
+): {
   getUI: () => Record<string, unknown>
+  getSettings: () => Record<string, unknown>
   updateUI: ReturnType<typeof vi.fn>
   onUIChanged: ReturnType<typeof vi.fn>
   emitUIChanged: (next: Record<string, unknown>) => void
@@ -154,6 +165,7 @@ function makeStore(ui: Record<string, unknown> = {}): {
   const uiChangeUnsubscribe = vi.fn()
   return {
     getUI: () => ui,
+    getSettings: () => settings,
     updateUI: vi.fn(),
     onUIChanged: vi.fn((listener: (next: Record<string, unknown>) => void) => {
       listeners.push(listener)
@@ -217,18 +229,33 @@ describe('createOrFocusDashboardPopout', () => {
     createOrFocusDashboardPopout(makeStore() as never)
     const win = instances[0]
     expect(win.show).not.toHaveBeenCalled()
+    expect(win.maximize).not.toHaveBeenCalled()
     win.emit('ready-to-show')
+    expect(win.maximize).toHaveBeenCalledTimes(1)
+    expect(win.show).toHaveBeenCalledTimes(1)
+    expect(win.show.mock.invocationCallOrder[0]).toBeLessThan(
+      win.maximize.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('maximizes even after the user previously restored the dashboard window', () => {
+    createOrFocusDashboardPopout(makeStore({ dashboardPopoutMaximized: false }) as never)
+    const win = instances[0]
+
+    win.emit('ready-to-show')
+
+    expect(win.maximize).toHaveBeenCalledTimes(1)
     expect(win.show).toHaveBeenCalledTimes(1)
   })
 
   it('loads the prod file entry with the requested view', () => {
-    createOrFocusDashboardPopout(makeStore() as never, 'kanban')
+    createOrFocusDashboardPopout(makeStore() as never, 'live')
     const win = instances[0]
     expect(win.loadURL).not.toHaveBeenCalled()
     expect(win.loadFile).toHaveBeenCalledTimes(1)
     const [file, options] = win.loadFile.mock.calls[0]
     expect(String(file)).toMatch(/renderer[\\/]popout\.html$/)
-    expect(options).toEqual({ search: 'view=kanban' })
+    expect(options).toEqual({ search: 'view=live' })
   })
 
   it('opens on the current dashboard view by default', () => {
@@ -237,13 +264,21 @@ describe('createOrFocusDashboardPopout', () => {
     expect(instances[0].loadFile.mock.calls[0][1]).toEqual({ search: 'view=board' })
   })
 
+  it('uses the saved default dashboard view when no view is requested', () => {
+    createOrFocusDashboardPopout(
+      makeStore({}, { experimentalAgentDashboardDefaultView: 'live' }) as never
+    )
+
+    expect(instances[0].loadFile.mock.calls[0][1]).toEqual({ search: 'view=live' })
+  })
+
   it('loads the dev server URL with the requested view when in dev', () => {
     isMock.dev = true
     vi.stubEnv('ELECTRON_RENDERER_URL', RENDERER_URL)
-    createOrFocusDashboardPopout(makeStore() as never, 'kanban')
+    createOrFocusDashboardPopout(makeStore() as never, 'live')
     const win = instances[0]
     expect(win.loadFile).not.toHaveBeenCalled()
-    expect(win.loadURL).toHaveBeenCalledWith(`${RENDERER_URL}/popout.html?view=kanban`)
+    expect(win.loadURL).toHaveBeenCalledWith(`${RENDERER_URL}/popout.html?view=live`)
   })
 
   it('focuses the existing window instead of creating a second one', () => {
@@ -252,6 +287,7 @@ describe('createOrFocusDashboardPopout', () => {
     const second = createOrFocusDashboardPopout(store as never)
     expect(instances).toHaveLength(1)
     expect(second).toBe(first)
+    expect(instances[0].maximize).toHaveBeenCalledTimes(1)
     expect(instances[0].focus).toHaveBeenCalledTimes(1)
   })
 
@@ -279,6 +315,7 @@ describe('createOrFocusDashboardPopout', () => {
     win.minimized = true
     createOrFocusDashboardPopout(store as never)
     expect(win.restore).toHaveBeenCalledTimes(1)
+    expect(win.maximize).toHaveBeenCalledTimes(1)
     expect(win.focus).toHaveBeenCalledTimes(1)
   })
 
@@ -318,7 +355,8 @@ describe('createOrFocusDashboardPopout', () => {
       win.emit('resize')
       vi.advanceTimersByTime(500)
       expect(store.updateUI).toHaveBeenCalledWith({
-        dashboardPopoutBounds: { x: 10, y: 10, width: 1200, height: 900 }
+        dashboardPopoutBounds: { x: 10, y: 10, width: 1200, height: 900 },
+        dashboardPopoutMaximized: false
       })
 
       store.updateUI.mockClear()
@@ -329,6 +367,17 @@ describe('createOrFocusDashboardPopout', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('persists explicit maximize and restore state', () => {
+    const store = makeStore()
+    const win = createOrFocusDashboardPopout(store as never) as unknown as FakeWindow
+
+    win.emit('maximize')
+    expect(store.updateUI).toHaveBeenCalledWith({ dashboardPopoutMaximized: true })
+
+    win.emit('unmaximize')
+    expect(store.updateUI).toHaveBeenCalledWith({ dashboardPopoutMaximized: false })
   })
 
   it('closeDashboardPopout closes an open window', () => {

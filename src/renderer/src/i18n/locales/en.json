@@ -4538,8 +4538,8 @@
         },
         "SidebarToolbar": {
           "87d0064026": "Workspace board moved to the bottom bar",
-          "a30e34eb5c": "Close workspace board",
-          "49f62c5665": "Workspace board",
+          "a30e34eb5c": "Close all worktrees",
+          "49f62c5665": "All worktrees",
           "19e32d0e5f": "Open folder picker to add a project",
           "abc62b6328": "Add Project"
         },
@@ -4631,9 +4631,9 @@
         },
         "WorkspaceKanbanDrawerHeader": {
           "f369f5c5a3": "Close",
-          "e1a34450fc": "Organize workspaces by status and open workspace cards.",
+          "e1a34450fc": "View every visible worktree in one place, organize them by status, and open their workspace cards.",
           "81870af08f": "selected",
-          "c6a77ab0f4": "Workspace board"
+          "c6a77ab0f4": "All worktrees"
         },
         "WorkspaceKanbanPinDropTarget": {
           "c30151c5ee": "Drop here to pin without changing status.",
@@ -15360,7 +15360,8 @@
     "view": {
       "label": "Dashboard view",
       "board": "Dashboard",
-      "map": "Agent Map"
+      "map": "Agent Map",
+      "live": "Live view"
     },
     "map": {
       "host": {
@@ -15477,6 +15478,10 @@
       "ssh": "SSH host",
       "remoteNamed": "Remote Orca host · {{host}}",
       "remote": "Remote Orca host"
+    },
+    "live": {
+      "empty": "No matching terminals or chats.",
+      "expand": "Expand terminal"
     }
   },
   "dashboard": {

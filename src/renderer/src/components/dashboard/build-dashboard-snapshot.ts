@@ -56,6 +56,10 @@ import {
 } from './dashboard-worktree-launch-options'
 import { buildDashboardSnapshotFilterOptions } from './dashboard-snapshot-filter-options'
 import { dashboardBucketForDotState } from './dashboard-card-bucket'
+import {
+  buildDashboardUsageSnapshot,
+  type DashboardUsageSnapshotState
+} from './dashboard-usage-snapshot'
 
 /** The store slices the snapshot builder reads. Kept as a Pick so unit tests
  *  can pass a partial store without constructing the whole AppState. */
@@ -78,6 +82,7 @@ export type DashboardSnapshotState = Pick<
   Partial<
     DashboardCardTerminalInputState &
       DashboardLaunchDetectionState &
+      DashboardUsageSnapshotState &
       Pick<AppState, 'runtimeEnvironments' | 'sshTargetLabels'>
   >
 
@@ -326,6 +331,7 @@ export function buildDashboardSnapshot(
           )
         }
       : {}),
-    repoIconsByRepoId
+    repoIconsByRepoId,
+    usage: buildDashboardUsageSnapshot(state)
   }
 }

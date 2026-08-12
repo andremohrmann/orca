@@ -1,5 +1,6 @@
 import {
   DASHBOARD_MAX_LABEL_LENGTH,
+  type DashboardAssignWorkspaceStatusArgs,
   type DashboardRevealAgentArgs,
   type DashboardSleepWorkspaceArgs,
   type DashboardSnapshot
@@ -93,6 +94,19 @@ export function isDashboardSleepWorkspaceArgs(
     return false
   }
   return isBoundedString((value as Record<string, unknown>).worktreeId, MAX_ID_LENGTH)
+}
+
+export function isDashboardAssignWorkspaceStatusArgs(
+  value: unknown
+): value is DashboardAssignWorkspaceStatusArgs {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+  const args = value as Record<string, unknown>
+  return (
+    isBoundedString(args.worktreeId, MAX_ID_LENGTH) &&
+    isBoundedString(args.status, MAX_LABEL_LENGTH)
+  )
 }
 
 export function isDashboardSnapshot(value: unknown): value is DashboardSnapshot {

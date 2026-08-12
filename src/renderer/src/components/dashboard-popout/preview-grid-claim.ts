@@ -24,7 +24,8 @@ export function createPreviewGridClaim(args: {
   ptyId: string
   container: HTMLElement
   getTerminal: () => Terminal | null
-}): { schedule: () => void; dispose: () => void } {
+  onFitApplied?: () => void
+}): { requestNow: () => void; schedule: () => void; dispose: () => void } {
   let lastRequestedFit: string | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
@@ -66,7 +67,14 @@ export function createPreviewGridClaim(args: {
     // The resize triggers a main-side resync push; the reconnect snapshot
     // carries the new grid. If the claim didn't land (a phone owns the size),
     // the dialog's scaled fallback rendering stays correct as-is.
-    void window.api.terminalPreview.fit(args.ptyId, cols, rows).catch(() => undefined)
+    void window.api.terminalPreview
+      .fit(args.ptyId, cols, rows)
+      .then((applied) => {
+        if (applied && !disposed) {
+          args.onFitApplied?.()
+        }
+      })
+      .catch(() => undefined)
   }
 
   const schedule = (): void => {
@@ -83,6 +91,7 @@ export function createPreviewGridClaim(args: {
   }
 
   return {
+    requestNow: request,
     schedule,
     dispose: (): void => {
       disposed = true

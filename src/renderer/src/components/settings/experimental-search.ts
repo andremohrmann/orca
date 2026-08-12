@@ -130,6 +130,14 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
           'board'
         ),
         ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.live',
+          'live view'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.startup',
+          'startup'
+        ),
+        ...translateSearchKeyword(
           'auto.components.settings.experimental.search.agentDashboard.inWindow',
           'in-window'
         ),

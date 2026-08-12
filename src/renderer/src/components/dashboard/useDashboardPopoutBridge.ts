@@ -61,6 +61,10 @@ export function dashboardSnapshotInputsChanged(
     state.detectedAgentIds !== previousState.detectedAgentIds ||
     state.remoteDetectedAgentIds !== previousState.remoteDetectedAgentIds ||
     state.runtimeDetectedAgentIds !== previousState.runtimeDetectedAgentIds ||
+    state.rateLimits !== previousState.rateLimits ||
+    state.statusBarItems !== previousState.statusBarItems ||
+    state.usagePercentageDisplay !== previousState.usagePercentageDisplay ||
+    state.statusBarUsageMode !== previousState.statusBarUsageMode ||
     // Live hook status is relayed straight from main to the pop-out. Rebuilding
     // every card here would put map refresh work on the main renderer's hot path.
     // Why: each card carries the host-input profile its preview terminal keys
@@ -123,6 +127,15 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
     }
     return window.api.dashboard.onSleepWorkspace?.(({ worktreeId }) => {
       void runSleepWorktree(worktreeId)
+    })
+  }, [enabled])
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+    return window.api.dashboard.onAssignWorkspaceStatus?.(({ worktreeId, status }) => {
+      void useAppStore.getState().updateWorktreeMeta(worktreeId, { workspaceStatus: status })
     })
   }, [enabled])
 

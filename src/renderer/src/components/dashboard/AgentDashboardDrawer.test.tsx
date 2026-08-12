@@ -104,6 +104,17 @@ describe('AgentDashboardDrawer', () => {
     expect(useAppStore.getState().agentDashboardDrawerOpen).toBe(false)
   })
 
+  it('uses the saved default view when opened in-window', () => {
+    useAppStore.setState({
+      settings: { experimentalAgentDashboardDefaultView: 'live' } as never
+    })
+    render(<AgentDashboardDrawer statusBarVisible />)
+
+    act(() => useAppStore.getState().setAgentDashboardDrawerOpen(true))
+
+    expect(mocks.boardProps?.initialView).toBe('live')
+  })
+
   it('reveals a colliding worktree on the card execution host', () => {
     const setActiveWorktree = vi.spyOn(useAppStore.getState(), 'setActiveWorktree')
     render(<AgentDashboardDrawer statusBarVisible />)

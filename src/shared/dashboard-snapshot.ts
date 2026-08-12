@@ -1,7 +1,10 @@
 import type { AgentType } from './agent-status-types'
 import type { ExecutionHostId } from './execution-host'
+import type { ProviderRateLimits } from './rate-limit-types'
 import type { RepoIcon } from './repo-icon'
-import type { TuiAgent } from './types'
+import type { StatusBarUsageMode } from './status-bar-usage-mode'
+import type { TuiAgent, WorkspaceStatus } from './types'
+import type { UsagePercentageDisplay } from './usage-percentage-display'
 
 /**
  * Serializable contract for the pop-out agent dashboard. The main renderer owns
@@ -175,6 +178,12 @@ export type DashboardFilterOptions = {
   workspaceStatuses: DashboardFilterOption[]
 }
 
+export type DashboardUsageSnapshot = {
+  providers: ProviderRateLimits[]
+  usagePercentageDisplay?: UsagePercentageDisplay
+  statusBarUsageMode?: StatusBarUsageMode
+}
+
 export type DashboardSnapshot = {
   generatedAt: number
   cards: DashboardCard[]
@@ -192,6 +201,9 @@ export type DashboardSnapshot = {
    *  is republished several times a second. Optional so a pop-out running
    *  pre-upgrade code still accepts the payload. */
   repoIconsByRepoId?: Record<string, RepoIcon | null>
+  /** Status-bar usage meters mirrored into dashboard windows. Optional so
+   *  older snapshot producers keep rendering in mixed-version sessions. */
+  usage?: DashboardUsageSnapshot
 }
 
 export const EMPTY_DASHBOARD_SNAPSHOT: DashboardSnapshot = {
@@ -223,4 +235,9 @@ export type DashboardSpawnAgentArgs = {
  *  teardown sequence, so the pop-out only names the target. */
 export type DashboardSleepWorkspaceArgs = {
   worktreeId: string
+}
+
+export type DashboardAssignWorkspaceStatusArgs = {
+  worktreeId: string
+  status: WorkspaceStatus
 }

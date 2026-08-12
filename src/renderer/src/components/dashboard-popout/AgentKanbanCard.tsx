@@ -16,11 +16,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import {
   dashboardCardDisplayState,
+  type DashboardFilterOption,
   type DashboardCard
 } from '../../../../shared/dashboard-snapshot'
 import type { RepoIcon } from '../../../../shared/repo-icon'
+import type { WorkspaceStatus } from '../../../../shared/types'
 import { translate } from '@/i18n/i18n'
 import { DashboardHostBadge } from './DashboardHostBadge'
+import { DashboardWorkspaceStatusButton } from './DashboardWorkspaceStatusButton'
 
 /** Compact "started N ago" (the card is glanceable — coarse units are fine). */
 function formatStartedAgo(startedAt: number, now: number): string {
@@ -92,6 +95,9 @@ function sameCard(a: DashboardCard, b: DashboardCard): boolean {
     a.lastAgentMessage === b.lastAgentMessage &&
     a.repoId === b.repoId &&
     a.worktreeId === b.worktreeId &&
+    a.workspaceStatusId === b.workspaceStatusId &&
+    a.workspaceStatusLabel === b.workspaceStatusLabel &&
+    a.workspaceStatusColor === b.workspaceStatusColor &&
     a.tabId === b.tabId &&
     a.leafId === b.leafId &&
     a.repoName === b.repoName &&
@@ -187,10 +193,12 @@ type AgentKanbanCardProps = {
   /** The card repo's icon. null renders the default folder glyph. */
   repoIcon?: RepoIcon | null
   now: number
+  statusOptions?: readonly DashboardFilterOption[]
   /** Opens the board-level terminal dialog. The dialog is NOT owned by the
    *  card: bucket moves remount the card, and an embedded dialog would close
    *  the chat mid-conversation. */
   onOpenTerminal: (card: DashboardCard) => void
+  onAssignWorkspaceStatus?: (worktreeId: string, status: WorkspaceStatus) => void
 }
 
 /** One agent on the kanban board. Clicking opens the board's live terminal dialog. */
@@ -199,7 +207,9 @@ export const AgentKanbanCard = memo(
     card,
     repoIcon = null,
     now,
-    onOpenTerminal
+    statusOptions,
+    onOpenTerminal,
+    onAssignWorkspaceStatus
   }: AgentKanbanCardProps): React.JSX.Element {
     useTranslation()
     const [subagentsOpen, setSubagentsOpen] = useState(false)
@@ -284,6 +294,13 @@ export const AgentKanbanCard = memo(
           ) : null}
         </button>
 
+        <DashboardWorkspaceStatusButton
+          statuses={statusOptions}
+          currentStatusId={card.workspaceStatusId}
+          onAssign={(status) => onAssignWorkspaceStatus?.(card.worktreeId, status)}
+          variant="pill"
+        />
+
         {card.subagents?.length ? (
           <>
             <button
@@ -350,6 +367,8 @@ export const AgentKanbanCard = memo(
   },
   (previous, next) =>
     previous.onOpenTerminal === next.onOpenTerminal &&
+    previous.onAssignWorkspaceStatus === next.onAssignWorkspaceStatus &&
+    previous.statusOptions === next.statusOptions &&
     sameCard(previous.card, next.card) &&
     sameRepoIcon(previous.repoIcon, next.repoIcon) &&
     (displayTimestamp(previous.card) <= 0 ||

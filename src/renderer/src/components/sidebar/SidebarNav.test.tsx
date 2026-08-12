@@ -25,7 +25,9 @@ const mocks = vi.hoisted(() => ({
   agentBucketCounts: { attention: 0, working: 0, done: 0, idle: 0 },
   getAgentBucketCounts: vi.fn(),
   dismissMobileOnboardingBadge: vi.fn(),
-  setSetupGuideSidebarDismissed: vi.fn()
+  setSetupGuideSidebarDismissed: vi.fn(),
+  setAgentDashboardDrawerOpen: vi.fn(),
+  openDashboardPopout: vi.fn()
 }))
 
 vi.mock('@/store', () => ({
@@ -147,7 +149,9 @@ function setSidebarState({
     persistedUIReady: true,
     activeModal: null,
     setupGuideSidebarDismissed: true,
-    setSetupGuideSidebarDismissed: mocks.setSetupGuideSidebarDismissed
+    setSetupGuideSidebarDismissed: mocks.setSetupGuideSidebarDismissed,
+    agentDashboardDrawerOpen: false,
+    setAgentDashboardDrawerOpen: mocks.setAgentDashboardDrawerOpen
   }
 }
 
@@ -216,6 +220,9 @@ describe('SidebarNav', () => {
     await i18n.changeLanguage('en')
     mocks.hasPairedMobileDevice = false
     mocks.agentBucketCounts = { attention: 0, working: 0, done: 0, idle: 0 }
+    ;(window as unknown as { api: unknown }).api = {
+      dashboard: { openPopout: mocks.openDashboardPopout }
+    }
     setSidebarState()
   })
 
@@ -292,6 +299,22 @@ describe('SidebarNav', () => {
     expect(working?.querySelector('svg')).toBeNull()
     expect(done?.querySelector('svg')).toBeNull()
     expect(idle?.querySelector('svg')).toBeNull()
+  })
+
+  it('opens the popout when the default Agent Dashboard view is the map', async () => {
+    setSidebarState({
+      settings: {
+        ...getDefaultSettings('/tmp'),
+        experimentalAgentDashboardPopout: true,
+        experimentalAgentDashboardDefaultView: 'map'
+      }
+    })
+    const container = await renderSidebarNav()
+
+    queryButtonByText(container, 'Agent Dashboard')?.click()
+
+    expect(mocks.openDashboardPopout).toHaveBeenCalledWith('map')
+    expect(mocks.setAgentDashboardDrawerOpen).not.toHaveBeenCalled()
   })
 
   it('shows the Mobile entry by default for older settings', () => {

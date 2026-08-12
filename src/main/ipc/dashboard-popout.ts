@@ -2,6 +2,7 @@ import { app, ipcMain } from 'electron'
 import type { Store } from '../persistence'
 import type { KeybindingService } from '../keybindings/keybinding-service'
 import type { DashboardSnapshot } from '../../shared/dashboard-snapshot'
+import { isAgentDashboardView } from '../../shared/agent-dashboard-view'
 import {
   createOrFocusDashboardPopout,
   closeDashboardPopout,
@@ -13,6 +14,7 @@ import { safelyRevealWindow } from '../window/focus-existing-window'
 import { getTrustedUIRendererWindow, isTrustedUIRenderer, sendToTrustedUIRenderer } from './ui'
 import {
   admitDashboardSnapshot,
+  isDashboardAssignWorkspaceStatusArgs,
   isDashboardPaneKey,
   isDashboardRevealAgentArgs,
   isDashboardSleepWorkspaceArgs,
@@ -40,6 +42,7 @@ export function registerDashboardPopoutHandlers(
   ipcMain.removeHandler('dashboardPopout:ackAgent')
   ipcMain.removeHandler('dashboardPopout:spawnAgent')
   ipcMain.removeHandler('dashboardPopout:sleepWorkspace')
+  ipcMain.removeHandler('dashboardPopout:assignWorkspaceStatus')
 
   onDashboardPopoutOpenChanged((open) => {
     if (!open) {
@@ -60,7 +63,7 @@ export function registerDashboardPopoutHandlers(
     if (!isTrustedUIRenderer(event.sender) || !isDashboardEnabled(store)) {
       return
     }
-    if (view !== undefined && view !== 'board' && view !== 'map') {
+    if (view !== undefined && !isAgentDashboardView(view)) {
       return
     }
     createOrFocusDashboardPopout(store, view, {
@@ -169,5 +172,16 @@ export function registerDashboardPopoutHandlers(
       return
     }
     sendToTrustedUIRenderer('ui:sleepDashboardWorkspace', args)
+  })
+
+  ipcMain.handle('dashboardPopout:assignWorkspaceStatus', (event, args: unknown): void => {
+    if (
+      !isDashboardPopoutRenderer(event.sender) ||
+      !isDashboardEnabled(store) ||
+      !isDashboardAssignWorkspaceStatusArgs(args)
+    ) {
+      return
+    }
+    sendToTrustedUIRenderer('ui:assignDashboardWorkspaceStatus', args)
   })
 }
