@@ -92,6 +92,7 @@ import { normalizeTerminalCustomThemes } from '../../../shared/terminal-custom-t
 import { normalizeUiLanguage } from '../../../shared/ui-language'
 import { normalizeUsagePercentageDisplay } from '../../../shared/usage-percentage-display'
 import { normalizeStatusBarUsageMode } from '../../../shared/status-bar-usage-mode'
+import { getUpdateFeedInfo } from '../../../shared/update-feed-info'
 import {
   computerAwakeSettingsForMode,
   normalizeComputerAwakeMode
@@ -3185,6 +3186,7 @@ function createUpdaterApi(): NonNullable<Partial<PreloadApi>['updater']> {
   const desktopOnlyMessage = 'Linux package install recovery is only available in the desktop app.'
   return {
     getVersion: () => Promise.resolve('web'),
+    getFeedInfo: () => Promise.resolve(getUpdateFeedInfo()),
     getStatus: () => Promise.resolve({ state: 'idle' } as never),
     check: () => Promise.resolve(),
     download: () => Promise.resolve(),
