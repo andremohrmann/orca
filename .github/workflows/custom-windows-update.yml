@@ -37,6 +37,8 @@ jobs:
         run: |
           git remote remove upstream 2>$null || $true
           git remote add upstream "$env:UPSTREAM_REPO"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

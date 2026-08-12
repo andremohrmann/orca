@@ -70,11 +70,12 @@ function Rebase-CustomBranch {
     $remoteBranch = ($remoteParts | Select-Object -Skip 1) -join '/'
     Invoke-Native "Fetch $remoteName/$remoteBranch" git @(
       'fetch',
+      '--no-tags',
       $remoteName,
       "+refs/heads/$remoteBranch`:refs/remotes/$remoteName/$remoteBranch"
     )
   } else {
-    Invoke-Native "Fetch $remoteName updates" git @('fetch', $remoteName)
+    Invoke-Native "Fetch $remoteName updates" git @('fetch', '--no-tags', $remoteName)
   }
   $currentBranch = Invoke-NativeOutput git @('branch', '--show-current')
   if ($currentBranch -ne $BranchName) {
