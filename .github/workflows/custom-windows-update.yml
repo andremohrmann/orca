@@ -89,6 +89,7 @@ jobs:
           Custom branch: $env:CUSTOM_BRANCH@$(git rev-parse --short=12 HEAD)
           "@
           gh release create "${{ steps.release.outputs.tag }}" `
+            --repo "${{ github.repository }}" `
             "$env:OUTPUT_DIR\orca-windows-setup.exe" `
             "$env:OUTPUT_DIR\orca-windows-setup.exe.blockmap" `
             "$env:OUTPUT_DIR\latest.yml" `
