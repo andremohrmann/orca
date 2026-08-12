@@ -21,7 +21,7 @@ jobs:
     env:
       CUSTOM_BRANCH: custom/orca-dashboard-live-view
       UPSTREAM_REPO: https://github.com/stablyai/orca.git
-      OUTPUT_DIR: ${{ runner.temp }}\orca-custom-windows
+      OUTPUT_DIR: ${{ github.workspace }}\custom-output
 
     steps:
       - name: Check out custom branch
