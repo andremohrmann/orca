@@ -66,6 +66,7 @@ jobs:
             -StampCustomVersion
 
       - name: Push rebased custom branch
+        continue-on-error: true
         shell: pwsh
         run: git push origin HEAD:$env:CUSTOM_BRANCH --force-with-lease
 

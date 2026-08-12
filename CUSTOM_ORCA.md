@@ -18,6 +18,8 @@ It does this:
 
 Installed custom builds check this fork for updates. Official Orca builds still check `stablyai/orca`.
 
+The workflow tries to push the rebased custom branch back to the fork. GitHub may reject that push when the rebased commits include `.github/workflows/*` changes, because the default `GITHUB_TOKEN` lacks workflow-write permission. That does not block the installer release; the EXE is still built from the rebased source in the runner. To make the branch push mandatory, replace the checkout/push token with a personal access token that has `contents:write` and `workflow` permission.
+
 ## Manual local build
 
 From this worktree:
