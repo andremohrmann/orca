@@ -110,6 +110,8 @@ function Build-Installer {
     '--config',
     'config/electron-builder.config.cjs',
     '--win',
+    '--publish',
+    'never',
     '--config.npmRebuild=false',
     "--config.directories.output=$TargetDir"
   )
