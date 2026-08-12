@@ -109,9 +109,10 @@ jobs:
         run: |
           $release = gh release view "${{ steps.release.outputs.tag }}" `
             --repo "${{ github.repository }}" `
-            --json assets,isLatest `
+            --json assets `
             | ConvertFrom-Json
-          if (!$release.isLatest) {
+          $latestTag = (gh release list --repo "${{ github.repository }}" --limit 1 --json tagName | ConvertFrom-Json)[0].tagName
+          if ($latestTag -ne '${{ steps.release.outputs.tag }}') {
             throw 'Custom release was not marked as latest.'
           }
           $assetNames = @($release.assets | ForEach-Object { $_.name })
