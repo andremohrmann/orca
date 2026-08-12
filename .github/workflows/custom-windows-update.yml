@@ -1,0 +1,107 @@
+name: Custom Windows update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: custom-windows-update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository != 'stablyai/orca'
+    runs-on: windows-latest
+    timeout-minutes: 180
+
+    env:
+      CUSTOM_BRANCH: custom/orca-dashboard-live-view
+      UPSTREAM_REPO: https://github.com/stablyai/orca.git
+      OUTPUT_DIR: ${{ runner.temp }}\orca-custom-windows
+
+    steps:
+      - name: Check out custom branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.CUSTOM_BRANCH }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Add upstream remote
+        shell: pwsh
+        run: |
+          git remote remove upstream 2>$null || $true
+          git remote add upstream "$env:UPSTREAM_REPO"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebase, validate, and build installer
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File config/scripts/build-custom-orca-update.ps1 `
+            -Branch "$env:CUSTOM_BRANCH" `
+            -Upstream upstream/main `
+            -OutputDir "$env:OUTPUT_DIR" `
+            -UpdateOwner "${{ github.repository_owner }}" `
+            -UpdateRepo "${{ github.event.repository.name }}" `
+            -StampCustomVersion
+
+      - name: Push rebased custom branch
+        shell: pwsh
+        run: git push origin HEAD:$env:CUSTOM_BRANCH --force-with-lease
+
+      - name: Compute release metadata
+        id: release
+        shell: pwsh
+        run: |
+          $version = (Select-String -LiteralPath "$env:OUTPUT_DIR\latest.yml" -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+          $shortSha = git rev-parse --short=12 HEAD
+          $tag = "custom-windows-$version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "title=Custom Orca Windows $version ($shortSha)" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @"
+          Custom Orca Windows build.
+
+          Upstream: stablyai/orca@$(git rev-parse --short=12 upstream/main)
+          Custom branch: $env:CUSTOM_BRANCH@$(git rev-parse --short=12 HEAD)
+          "@
+          gh release create "${{ steps.release.outputs.tag }}" `
+            "$env:OUTPUT_DIR\orca-windows-setup.exe" `
+            "$env:OUTPUT_DIR\orca-windows-setup.exe.blockmap" `
+            "$env:OUTPUT_DIR\latest.yml" `
+            --title "${{ steps.release.outputs.title }}" `
+            --notes "$notes" `
+            --target "$env:CUSTOM_BRANCH" `
+            --latest
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-orca-windows-${{ steps.release.outputs.version }}
+          path: |
+            ${{ env.OUTPUT_DIR }}\orca-windows-setup.exe
+            ${{ env.OUTPUT_DIR }}\orca-windows-setup.exe.blockmap
+            ${{ env.OUTPUT_DIR }}\latest.yml
