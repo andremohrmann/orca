@@ -64,8 +64,18 @@ function Rebase-CustomBranch {
     [string]$BranchName,
     [string]$UpstreamRef
   )
-  $remoteName = if ($UpstreamRef.Contains('/')) { $UpstreamRef.Split('/')[0] } else { 'origin' }
-  Invoke-Native "Fetch $remoteName updates" git @('fetch', $remoteName)
+  $remoteParts = $UpstreamRef.Split('/')
+  $remoteName = if ($remoteParts.Length -gt 1) { $remoteParts[0] } else { 'origin' }
+  if ($remoteParts.Length -gt 1) {
+    $remoteBranch = ($remoteParts | Select-Object -Skip 1) -join '/'
+    Invoke-Native "Fetch $remoteName/$remoteBranch" git @(
+      'fetch',
+      $remoteName,
+      "+refs/heads/$remoteBranch`:refs/remotes/$remoteName/$remoteBranch"
+    )
+  } else {
+    Invoke-Native "Fetch $remoteName updates" git @('fetch', $remoteName)
+  }
   $currentBranch = Invoke-NativeOutput git @('branch', '--show-current')
   if ($currentBranch -ne $BranchName) {
     Invoke-Native "Switch to $BranchName" git @('switch', $BranchName)
@@ -131,6 +141,18 @@ function Build-Installer {
   Write-Host "`nInstaller: $installer"
   Write-Host "SHA-256: $hash"
   Write-Host "Bytes: $length"
+  $verifyArgs = @(
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    'config/scripts/verify-custom-orca-update.ps1',
+    '-OutputDir',
+    $TargetDir
+  )
+  if ($env:ORCA_UPDATE_OWNER -and $env:ORCA_UPDATE_REPO) {
+    $verifyArgs += @('-UpdateOwner', $env:ORCA_UPDATE_OWNER, '-UpdateRepo', $env:ORCA_UPDATE_REPO)
+  }
+  Invoke-Native 'Verify custom installer update metadata' powershell $verifyArgs
 }
 
 $repoRoot = Invoke-NativeOutput git @('rev-parse', '--show-toplevel')

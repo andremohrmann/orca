@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: custom-windows-update
@@ -97,6 +98,25 @@ jobs:
             --notes "$notes" `
             --target "$env:CUSTOM_BRANCH" `
             --latest
+
+      - name: Verify published release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = gh release view "${{ steps.release.outputs.tag }}" `
+            --repo "${{ github.repository }}" `
+            --json assets,isLatest `
+            | ConvertFrom-Json
+          if (!$release.isLatest) {
+            throw 'Custom release was not marked as latest.'
+          }
+          $assetNames = @($release.assets | ForEach-Object { $_.name })
+          foreach ($required in @('orca-windows-setup.exe', 'orca-windows-setup.exe.blockmap', 'latest.yml')) {
+            if ($assetNames -notcontains $required) {
+              throw "Custom release is missing asset $required."
+            }
+          }
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

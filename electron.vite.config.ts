@@ -41,7 +41,7 @@ function isExternalMainModule(source: string): boolean {
 // (ORCA_BUILD_IDENTITY='stable' | 'rc', ORCA_POSTHOG_WRITE_KEY=phc_...);
 // every other build path resolves these env vars to undefined, which the
 // JSON.stringify below folds to the literal `null`. Ambient declarations
-// for the two constants live in `src/types/build-constants.d.ts`.
+// for these constants live in `src/types/build-constants.d.ts`.
 const orcaBuildIdentity = process.env.ORCA_BUILD_IDENTITY
 const ORCA_BUILD_IDENTITY_LITERAL =
   orcaBuildIdentity === 'stable' || orcaBuildIdentity === 'rc'
@@ -57,6 +57,22 @@ const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
   typeof orcaDiagnosticsTokenUrl === 'string' && orcaDiagnosticsTokenUrl.length > 0
     ? JSON.stringify(orcaDiagnosticsTokenUrl)
     : 'null'
+const orcaUpdateFeedOwner = process.env.ORCA_UPDATE_OWNER
+const orcaUpdateFeedRepo = process.env.ORCA_UPDATE_REPO
+const ORCA_UPDATE_FEED_REPO_LITERAL =
+  typeof orcaUpdateFeedOwner === 'string' &&
+  orcaUpdateFeedOwner.length > 0 &&
+  typeof orcaUpdateFeedRepo === 'string' &&
+  orcaUpdateFeedRepo.length > 0
+    ? JSON.stringify(`${orcaUpdateFeedOwner}/${orcaUpdateFeedRepo}`)
+    : 'null'
+
+const buildDefines = {
+  ORCA_BUILD_IDENTITY: ORCA_BUILD_IDENTITY_LITERAL,
+  ORCA_POSTHOG_WRITE_KEY: ORCA_POSTHOG_WRITE_KEY_LITERAL,
+  ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL,
+  ORCA_UPDATE_FEED_REPO: ORCA_UPDATE_FEED_REPO_LITERAL
+}
 
 function createStartupDiagnosticsBanner(chunkName: string): string {
   return `
@@ -260,13 +276,9 @@ export const electronViteConfig: UserConfig = {
         plugins: [createMainBootstrapPlugin(), createPlainNodeEntryGuardPlugin()]
       }
     },
-    // Why: compile-time substitution for the telemetry gate. See the block
+    // Why: compile-time substitution for release/update metadata. See the block
     // above for the full rationale.
-    define: {
-      ORCA_BUILD_IDENTITY: ORCA_BUILD_IDENTITY_LITERAL,
-      ORCA_POSTHOG_WRITE_KEY: ORCA_POSTHOG_WRITE_KEY_LITERAL,
-      ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL
-    },
+    define: buildDefines,
     // Why: @xterm/headless declares "exports": null in package.json, which
     // prevents Vite's default resolver from finding the CJS entry. Point
     // directly at the published main file so the bundler can inline it.
@@ -280,6 +292,7 @@ export const electronViteConfig: UserConfig = {
     }
   },
   preload: {
+    define: buildDefines,
     build: {
       externalizeDeps: {
         exclude: ['@electron-toolkit/preload']
@@ -287,6 +300,7 @@ export const electronViteConfig: UserConfig = {
     }
   },
   renderer: {
+    define: buildDefines,
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),

@@ -1,16 +1,24 @@
 import { net } from 'electron'
 import { parse } from 'yaml'
+import { getReleaseDownloadBaseUrl, getUpdateFeedInfo } from '../shared/update-feed-info'
 import { compareVersions, isPrereleaseVersion, isValidVersion } from './updater-fallback'
 
-const ATOM_FEED_URL = 'https://github.com/stablyai/orca/releases.atom'
-const RELEASES_DOWNLOAD_BASE = 'https://github.com/stablyai/orca/releases/download'
+const updateFeedInfo = getUpdateFeedInfo()
+const RELEASES_DOWNLOAD_BASE = getReleaseDownloadBaseUrl()
 const FETCH_TIMEOUT_MS = 5000
 const MAX_MANIFEST_PROBE_CANDIDATES = 6
 
 // Why: GitHub's atom feed lists every release (prerelease or stable) in a
 // single flat list. Each entry has a /releases/tag/<tag> URL we can mine
 // without any channel filtering.
-const TAG_HREF_RE = /href="https:\/\/github\.com\/stablyai\/orca\/releases\/tag\/([^"]+)"/g
+const TAG_HREF_RE = new RegExp(
+  `href="${escapeRegExp(`https://github.com/${updateFeedInfo.repo}/releases/tag/`)}([^"]+)"`,
+  'g'
+)
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 export function getReleaseDownloadUrl(tag: string): string {
   return `${RELEASES_DOWNLOAD_BASE}/${encodeURIComponent(tag)}`
@@ -35,7 +43,7 @@ function getReleaseAssetUrl(tag: string, assetName: string): string {
 }
 
 export function normalizeTagToVersion(tag: string): string {
-  return tag.replace(/^v/i, '')
+  return tag.replace(/^custom-windows-/i, '').replace(/^v/i, '')
 }
 
 type ReleaseFeedTag = {
@@ -57,7 +65,9 @@ export function isPerfPrereleaseTag(tag: string): boolean {
 
 async function fetchReleaseFeedTags(): Promise<ReleaseFeedTag[] | null> {
   try {
-    const res = await net.fetch(ATOM_FEED_URL, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    const res = await net.fetch(updateFeedInfo.atomUrl, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    })
     if (!res.ok) {
       return null
     }

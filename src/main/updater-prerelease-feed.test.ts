@@ -95,6 +95,13 @@ describe('fetchNewerReleaseTag', () => {
     setPlatformForTest(ORIGINAL_PLATFORM)
   })
 
+  it('normalizes custom Windows release tags', async () => {
+    const { normalizeTagToVersion } = await import('./updater-prerelease-feed')
+    expect(normalizeTagToVersion('custom-windows-1.4.160-custom.20260812031544')).toBe(
+      '1.4.160-custom.20260812031544'
+    )
+  })
+
   it('returns the newest stable tag when the user is on an RC and a newer stable exists', async () => {
     respondWithAtom(['v1.3.19', 'v1.3.19-rc.6', 'v1.3.19-rc.4', 'v1.3.18'])
     const { fetchNewerReleaseTag } = await import('./updater-prerelease-feed')

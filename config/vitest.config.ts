@@ -5,7 +5,8 @@ const windowsTestWorkerOptions = process.platform === 'win32' ? { maxWorkers: 4 
 
 export default defineConfig({
   define: {
-    ORCA_FEATURE_WALL_ENABLED: 'true'
+    ORCA_FEATURE_WALL_ENABLED: 'true',
+    ORCA_UPDATE_FEED_REPO: 'null'
   },
   resolve: {
     alias: {

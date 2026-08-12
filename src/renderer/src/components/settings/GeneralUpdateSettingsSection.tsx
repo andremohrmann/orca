@@ -11,6 +11,7 @@ import { getUpdateCheckClickOptions, getUpdateCheckHint } from '@/lib/update-che
 import { GeneralRemoteServerUpdates } from './GeneralRemoteServerUpdates'
 import { ReleaseChannelSection } from './ReleaseChannelSection'
 import { getReleaseNotesUrlForVersion } from '../../../../shared/release-channel'
+import type { UpdateFeedInfo } from '../../../../shared/update-feed-info'
 
 export function GeneralUpdateSettingsSection(): React.JSX.Element {
   const updateStatus = useAppStore((s) => s.updateStatus)
@@ -40,6 +41,7 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
   }
 
   const [appVersion, setAppVersion] = useState<string | null>(null)
+  const [updateFeedInfo, setUpdateFeedInfo] = useState<UpdateFeedInfo | null>(null)
   const updateCheckHint = getUpdateCheckHint()
   // Why: channel switching is a power-user escape hatch that can downgrade the app
   // onto an unvetted build. Option/Alt-clicking the header reveals it rather than
@@ -51,6 +53,11 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
     void window.api.updater.getVersion().then((version) => {
       if (!cancelled) {
         setAppVersion(version)
+      }
+    })
+    void window.api.updater.getFeedInfo().then((feedInfo) => {
+      if (!cancelled) {
+        setUpdateFeedInfo(feedInfo)
       }
     })
     return () => {
@@ -82,8 +89,8 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
           )}
           description={translate(
             'auto.components.settings.GeneralUpdateSettingsSection.d91ebfb87e',
-            'Current version: {{value0}}',
-            { value0: appVersion ?? '...' }
+            'Current version: {{value0}} · Update source: {{value1}}',
+            { value0: appVersion ?? '...', value1: updateFeedInfo?.repo ?? '...' }
           )}
         />
       </div>

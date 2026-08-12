@@ -20,3 +20,6 @@ declare const ORCA_POSTHOG_WRITE_KEY: string | null
 // point a packaged build at a staging server without re-running the
 // release pipeline.
 declare const ORCA_DIAGNOSTICS_TOKEN_URL: string | null
+
+// Optional custom GitHub repo used by forked builds for update checks.
+declare const ORCA_UPDATE_FEED_REPO: string | null

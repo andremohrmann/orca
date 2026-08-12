@@ -3092,6 +3092,7 @@ const api = {
   updater: {
     getStatus: () => ipcRenderer.invoke('updater:getStatus'),
     getVersion: () => ipcRenderer.invoke('updater:getVersion'),
+    getFeedInfo: () => ipcRenderer.invoke('updater:getFeedInfo'),
     check: (options) => ipcRenderer.invoke('updater:check', options),
     download: () => ipcRenderer.invoke('updater:download'),
     dismissNudge: () => ipcRenderer.invoke('updater:dismissNudge'),

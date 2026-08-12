@@ -9,6 +9,7 @@ import {
   hasDedicatedReleaseRepo,
   isAdhocVersion,
   isChannelSupportedOnPlatform,
+  isCustomVersion,
   isDailyVersion,
   isHourlyVersion,
   isReleaseChannel,
@@ -17,6 +18,7 @@ import {
   parseDevBuildStamp,
   parseHourlyVersionStamp,
   sortReleaseBuildsNewestFirst,
+  normalizeTagToVersion,
   type ReleaseBuild
 } from './release-channel'
 import { compareAppVersions } from './app-version'
@@ -29,6 +31,7 @@ describe('release channel', () => {
     expect(getVersionChannel('1.4.160-hourly.202607281400')).toBe('hourly')
     expect(getVersionChannel('1.4.160-daily.202607281300')).toBe('daily')
     expect(getVersionChannel('1.4.160-adhoc.20260728140533')).toBe('adhoc')
+    expect(getVersionChannel('custom-windows-1.4.160-custom.20260812031544')).toBe('rc')
     expect(getVersionChannel('not-a-version')).toBeNull()
   })
 
@@ -71,7 +74,19 @@ describe('release channel', () => {
     expect(getReleaseNotesUrlForVersion('1.4.160-adhoc.20260728140533')).toBe(
       'https://github.com/stablyai/orca-adhoc/releases/tag/v1.4.160-adhoc.20260728140533'
     )
+    expect(getReleaseNotesUrlForVersion('1.4.160-custom.20260812031544')).toBe(
+      'https://github.com/stablyai/orca/releases/tag/custom-windows-1.4.160-custom.20260812031544'
+    )
     expect(getReleaseNotesUrlForVersion(null)).toBe('https://github.com/stablyai/orca/releases')
+  })
+
+  it('normalizes custom Windows release tags', () => {
+    expect(normalizeTagToVersion('custom-windows-1.4.160-custom.20260812031544')).toBe(
+      '1.4.160-custom.20260812031544'
+    )
+    expect(isCustomVersion('1.4.160-custom.20260812031544')).toBe(true)
+    expect(isCustomVersion('custom-windows-1.4.160-custom.20260812031544')).toBe(true)
+    expect(isCustomVersion('1.4.160-rc.3')).toBe(false)
   })
 
   it('round-trips an hourly version stamp as UTC', () => {

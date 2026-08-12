@@ -43,6 +43,7 @@ import type {
 import type { ReadClipboardTextOptions } from '../shared/clipboard-text'
 import type { AppIdentity } from '../shared/app-identity'
 import type { ReleaseChannel } from '../shared/release-channel'
+import type { UpdateFeedInfo } from '../shared/update-feed-info'
 import type {
   ForgetRemovedWorktreesForExecutionHostArgs,
   ForgetRemovedWorktreesForExecutionHostResult,
@@ -2722,6 +2723,7 @@ export type PreloadApi = {
   }
   updater: {
     getVersion: () => Promise<string>
+    getFeedInfo: () => Promise<UpdateFeedInfo>
     getStatus: () => Promise<UpdateStatus>
     check: (options?: UpdateCheckOptions) => Promise<void>
     download: () => Promise<void>

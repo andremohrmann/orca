@@ -1,4 +1,5 @@
 import { compareAppVersions, isValidAppVersion } from './app-version'
+import { getConfiguredUpdateFeedRepo } from './update-feed-info'
 
 export type ReleaseChannel = 'stable' | 'rc' | 'hourly' | 'daily' | 'adhoc'
 
@@ -24,7 +25,7 @@ export const RELEASE_CHANNEL_LABELS: Readonly<Record<ReleaseChannel, string>> = 
 export const HOURLY_RELEASE_REPO = 'stablyai/orca-hourly'
 export const DAILY_RELEASE_REPO = 'stablyai/orca-daily'
 export const ADHOC_RELEASE_REPO = 'stablyai/orca-adhoc'
-export const MAIN_RELEASE_REPO = 'stablyai/orca'
+export const MAIN_RELEASE_REPO = getConfiguredUpdateFeedRepo()
 
 export const HOURLY_PRERELEASE_IDENTIFIER = 'hourly'
 export const DAILY_PRERELEASE_IDENTIFIER = 'daily'
@@ -75,7 +76,7 @@ export function getReleaseRepoForChannel(channel: ReleaseChannel): string {
 }
 
 export function normalizeTagToVersion(tag: string): string {
-  return tag.replace(/^v/i, '')
+  return tag.replace(/^custom-windows-/i, '').replace(/^v/i, '')
 }
 
 /** `1.4.160-hourly.202607281400` — a timestamp identifier keeps every build
@@ -97,6 +98,7 @@ const DAILY_VERSION = /^\d+\.\d+\.\d+-daily\.(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})
  * collide on the tag and fail the second build eight minutes in.
  */
 const ADHOC_VERSION = /^\d+\.\d+\.\d+-adhoc\.(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/
+const CUSTOM_VERSION = /^\d+\.\d+\.\d+-custom\.\d{14}$/
 
 /**
  * Both patterns are anchored on the whole version: an unanchored tail match also
@@ -134,6 +136,10 @@ export function isDailyVersion(version: string): boolean {
 
 export function isAdhocVersion(version: string): boolean {
   return ADHOC_VERSION.test(normalizeTagToVersion(version))
+}
+
+export function isCustomVersion(version: string): boolean {
+  return CUSTOM_VERSION.test(normalizeTagToVersion(version))
 }
 
 export function formatHourlyVersion(baseVersion: string, stamp: string): string {
@@ -201,6 +207,9 @@ export function getVersionChannel(version: string): ReleaseChannel | null {
 export function getReleaseNotesUrlForVersion(version: string | null): string {
   const channel = version ? getVersionChannel(version) : null
   const repo = channel ? getReleaseRepoForChannel(channel) : MAIN_RELEASE_REPO
+  if (version && isCustomVersion(version)) {
+    return `https://github.com/${repo}/releases/tag/custom-windows-${normalizeTagToVersion(version)}`
+  }
   return version
     ? `https://github.com/${repo}/releases/tag/v${normalizeTagToVersion(version)}`
     : `https://github.com/${repo}/releases`
