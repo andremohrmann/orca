@@ -60,6 +60,7 @@ import {
   buildDashboardUsageSnapshot,
   type DashboardUsageSnapshotState
 } from './dashboard-usage-snapshot'
+import { buildDashboardCardTerminalLinks as cardLinks } from './dashboard-card-terminal-links'
 
 /** The store slices the snapshot builder reads. Kept as a Pick so unit tests
  *  can pass a partial store without constructing the whole AppState. */
@@ -216,14 +217,9 @@ export function buildDashboardSnapshot(
     }
 
     for (const row of rows) {
-      // Child rows have no pane of their own; the board lists top-level agents.
       if (row.rowSource === 'subagent') {
         continue
       }
-      // Title-derived rows (a live pane read only from its terminal title, no
-      // agent-hook status) carry synthetic prompt/lastAssistantMessage — the
-      // agent LABEL and a status word like "Idle". They're marked by
-      // startedAt === 0, and must NOT be shown as real conversation.
       const isTitleDerived = row.startedAt === 0
       const routingPaneKey = row.activationPaneKey ?? row.paneKey
       const parsed = parsePaneKey(routingPaneKey)
@@ -231,9 +227,7 @@ export function buildDashboardSnapshot(
       const leafId = parsed?.leafId ?? null
       const layoutPtyId =
         (leafId ? terminalLayoutsByTabId[tabId]?.ptyIdsByLeafId?.[leafId] : undefined) ?? null
-      // Layout entries survive app restarts, but their PTYs may not (parked
-      // tabs keep the pre-restart id). Only advertise a pty the terminal
-      // preview can actually serialize — ptyIdsByTabId is the liveness truth.
+      // Only advertise a pty the terminal preview can serialize.
       const ptyId =
         layoutPtyId && (state.ptyIdsByTabId?.[tabId] ?? []).includes(layoutPtyId)
           ? layoutPtyId
@@ -243,9 +237,6 @@ export function buildDashboardSnapshot(
         !isTitleDerived &&
         (state.acknowledgedAgentsByPaneKey?.[row.paneKey] ?? 0) < row.entry.stateStartedAt
       const bucket = dashboardBucketForDotState(dashboardCardDisplayState({ dotState, unseen }))
-      // Why: only a live pty can open a preview terminal, and only a
-      // card-rendering caller can open one — the sidebar's bucket counts must
-      // not pay host resolution on every agent-status tick.
       const terminalInput =
         ptyId && includeCardDetails
           ? resolveDashboardCardTerminalInput(state, {
@@ -304,12 +295,15 @@ export function buildDashboardSnapshot(
         finishedAt,
         stateChangedAt: row.entry.stateStartedAt || row.startedAt,
         statusUpdatedAt: row.entry.updatedAt,
-        // Same derivation as WorktreeCardAgents' unvisitedByPaneKey, so the
-        // board and the sidebar bold/mute the same agents at the same time.
         unseen,
         askSummary: bucket === 'attention' ? (row.entry.interactivePrompt ?? undefined) : undefined,
         conversationName: boundedLabelOrUndefined(rowConversationName(row, generatedTitlesEnabled)),
-        ...(terminalInput ? { terminalInput } : {})
+        ...(terminalInput ? { terminalInput } : {}),
+        ...(ptyId && includeCardDetails
+          ? {
+              terminalLinks: cardLinks(ptyId, worktreeId, worktree.path, row.tab.startupCwd)
+            }
+          : {})
       })
     }
   }

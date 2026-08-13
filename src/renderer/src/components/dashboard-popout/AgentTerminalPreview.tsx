@@ -10,7 +10,6 @@ import { syncPreviewTerminalLigatures } from './preview-terminal-ligatures'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import { installPreviewImeBridge, type PreviewImeBridge } from './preview-terminal-ime-bridge'
-import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
 import { useAppStore } from '@/store'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { createPreviewGridClaim } from './preview-grid-claim'
@@ -23,28 +22,19 @@ import {
 } from './preview-terminal-session'
 import { usePreviewTerminalTheme } from './usePreviewTerminalTheme'
 import { AgentTerminalPreviewFrame } from './AgentTerminalPreviewFrame'
+import type { AgentTerminalPreviewProps } from './agent-terminal-preview-props'
 
 const RESYNC_RETRY_DELAY_MS = 150
 
 export function AgentTerminalPreview({
   ptyId,
   terminalInput = null,
+  terminalLinks = null,
   claimGrid = true,
   scaleToFit = true,
   autoFocus = true,
   className
-}: {
-  ptyId: string
-  /** Host-input facts relayed with the card; null routes bytes by client OS. */
-  terminalInput?: DashboardCardTerminalInput | null
-  /** Compact observers must not resize the real PTY to their tile geometry. */
-  claimGrid?: boolean
-  /** Terminal walls clip full-size text instead of shrinking it below readability. */
-  scaleToFit?: boolean
-  /** Mosaic panes focus only when clicked; background resyncs must not steal input. */
-  autoFocus?: boolean
-  className?: string
-}): React.JSX.Element {
+}: AgentTerminalPreviewProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
@@ -116,7 +106,6 @@ export function AgentTerminalPreview({
           onFitApplied: () => requestGridRefresh()
         })
       : { requestNow: () => undefined, schedule: () => undefined, dispose: () => undefined }
-    // Box growth/shrink (window resize) changes the reachable grid.
     const boxResizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
@@ -215,7 +204,8 @@ export function AgentTerminalPreview({
         return
       }
       disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
-        getSettings: () => settingsRef.current
+        getSettings: () => settingsRef.current,
+        getTerminalLinks: () => terminalLinks
       })
     }
 
@@ -312,7 +302,6 @@ export function AgentTerminalPreview({
         })
       } else if (refreshAgain) {
         refreshAgain = false
-        // Queue behind every replay write so replacement never clears a half-parsed frame.
         writeReplayed('', requestRefresh)
       }
       scheduleFit()
@@ -416,7 +405,7 @@ export function AgentTerminalPreview({
       terminal?.dispose()
       terminalRef.current = null
     }
-  }, [autoFocus, claimGrid, ptyId, scaleToFit, terminalTheme, terminalMode])
+  }, [autoFocus, claimGrid, ptyId, scaleToFit, terminalLinks, terminalTheme, terminalMode])
 
   // Why: appearance settings must land on the open terminal, and the OS input
   // source can flip Option-as-Alt with no settings change at all. A remount

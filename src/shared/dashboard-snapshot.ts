@@ -145,6 +145,8 @@ export type DashboardCard = {
    *  the main renderer owns the store these derive from, so they ride the
    *  snapshot to reach the pop-out. */
   terminalInput?: DashboardCardTerminalInput
+  /** Path/link facts the preview needs to resolve terminal file and URL clicks. */
+  terminalLinks?: DashboardCardTerminalLinks
 }
 
 /**
@@ -165,6 +167,15 @@ export type DashboardCardTerminalInput = {
   ctrlEnterCsiU: boolean
   /** False withholds the kitty (CSI-u) advertisement, as ConPTY panes do. */
   kittyKeyboardAdvertised: boolean
+}
+
+export type DashboardCardTerminalLinks = {
+  worktreeId: string
+  worktreePath: string
+  startupCwd: string
+  runtimeEnvironmentId?: string | null
+  terminalHomePath?: string | null
+  wslDistro?: string | null
 }
 
 export type DashboardFilterOption = {

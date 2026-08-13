@@ -26,10 +26,13 @@ const terminalHarness = vi.hoisted(() => ({
     scrollToTop: ReturnType<typeof vi.fn>
     scrollToBottom: ReturnType<typeof vi.fn>
     selectAll: ReturnType<typeof vi.fn>
+    clearSelection: ReturnType<typeof vi.fn>
+    registerLinkProvider: ReturnType<typeof vi.fn>
     modes: { bracketedPasteMode: boolean }
     selectionText: string
     customKeyHandler: ((event: KeyboardEvent) => boolean) | null
   }[],
+  linkProviderRegistrations: 0,
   userInputListener: null as (() => void) | null,
   userInputDispose: vi.fn()
 }))
@@ -86,6 +89,11 @@ vi.mock('@xterm/xterm', () => ({
     scrollToTop = vi.fn()
     scrollToBottom = vi.fn()
     selectAll = vi.fn()
+    clearSelection = vi.fn()
+    registerLinkProvider = vi.fn(() => {
+      terminalHarness.linkProviderRegistrations += 1
+      return { dispose: vi.fn() }
+    })
     getSelection = vi.fn(() => this.selectionText)
     attachCustomKeyEventHandler = vi.fn((handler: (event: KeyboardEvent) => boolean) => {
       this.customKeyHandler = handler
@@ -163,6 +171,7 @@ describe('AgentTerminalPreview', () => {
 
   beforeEach(() => {
     terminalHarness.instances.length = 0
+    terminalHarness.linkProviderRegistrations = 0
     terminalHarness.userInputListener = null
     platformState.value = 'linux'
     storeState.keybindings = {}
@@ -246,6 +255,22 @@ describe('AgentTerminalPreview', () => {
     fireEvent.pointerDown(view.container.firstElementChild!)
 
     expect(terminal.focus).toHaveBeenCalledOnce()
+  })
+
+  it('installs terminal file link providers when dashboard link context is available', async () => {
+    render(
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        terminalLinks={{
+          worktreeId: 'wt-1',
+          worktreePath: 'D:\\repo',
+          startupCwd: 'D:\\repo'
+        }}
+      />
+    )
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+
+    expect(terminalHarness.linkProviderRegistrations).toBe(1)
   })
 
   it('installs the macOS IME native-text forwarder and lets its claims bypass chord handling', async () => {

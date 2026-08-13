@@ -1,6 +1,7 @@
 import type { Terminal } from '@xterm/xterm'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import type { GlobalSettings } from '../../../../shared/types'
+import type { DashboardCardTerminalLinks } from '../../../../shared/dashboard-snapshot'
 import { activateOrcaTerminalUnicodeProvider } from '../../../../shared/terminal-unicode-provider'
 import { installWindowsCtrlAltChordRepair } from '@/lib/pane-manager/terminal-windows-ctrl-alt-chord-classification'
 import { attachTerminalMouseWheelMultiplier } from '@/lib/pane-manager/pane-terminal-mouse-wheel'
@@ -20,7 +21,10 @@ import { syncPreviewTerminalLigatures } from './preview-terminal-ligatures'
  */
 export function installPreviewTerminalCompatibility(
   terminal: Terminal,
-  deps: { getSettings: () => GlobalSettings | null }
+  deps: {
+    getSettings: () => GlobalSettings | null
+    getTerminalLinks: () => DashboardCardTerminalLinks | null | undefined
+  }
 ): () => void {
   // Why: the width shim wraps xterm's v11 provider, so the addon that registers
   // it has to load first — and both must precede any replay write, or wide
@@ -29,7 +33,9 @@ export function installPreviewTerminalCompatibility(
   terminal.loadAddon(new Unicode11Addon())
   activateOrcaTerminalUnicodeProvider(terminal)
   installWindowsCtrlAltChordRepair(terminal)
-  installPreviewTerminalLinks(terminal)
+  const disposeLinks = installPreviewTerminalLinks(terminal, {
+    getTerminalLinks: deps.getTerminalLinks
+  })
   syncPreviewTerminalLigatures(terminal, deps.getSettings())
   attachTerminalMouseWheelMultiplier(terminal, {
     getTuiMouseWheelMultiplier: () =>
@@ -46,6 +52,7 @@ export function installPreviewTerminalCompatibility(
       terminal.element.removeEventListener('compositionstart', imeAnchorHandler)
       terminal.element.removeEventListener('compositionupdate', imeAnchorHandler)
     }
+    disposeLinks()
     disposeArabicShapingJoiner()
   }
 }

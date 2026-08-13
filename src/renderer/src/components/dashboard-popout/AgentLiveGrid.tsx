@@ -304,6 +304,7 @@ export function AgentLiveGrid({
               <AgentTerminalPreview
                 ptyId={card.ptyId}
                 terminalInput={card.terminalInput ?? null}
+                terminalLinks={card.terminalLinks ?? null}
                 scaleToFit={false}
                 autoFocus={false}
                 className="h-full min-h-0 min-w-0 max-w-full flex-1 overflow-hidden [contain:paint]"
