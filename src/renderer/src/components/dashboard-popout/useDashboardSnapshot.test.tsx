@@ -89,6 +89,7 @@ describe('useDashboardSnapshot', () => {
   afterEach(() => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   it('runs a view transition when a card changes column', () => {
@@ -236,6 +237,33 @@ describe('useDashboardSnapshot', () => {
 
     act(() => vi.advanceTimersByTime(200))
     expect(requestSnapshot).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('refreshes pty-less retained cards so restored panes can reconnect', () => {
+    vi.useFakeTimers()
+    renderHook(() => useDashboardSnapshot())
+    act(() => apply(snapshot([card({ ptyId: null })])))
+    requestSnapshot.mockClear()
+
+    act(() => vi.advanceTimersByTime(5_249))
+    expect(requestSnapshot).not.toHaveBeenCalled()
+
+    act(() => vi.advanceTimersByTime(1))
+    expect(requestSnapshot).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('stops pty-less refresh polling once a retained card is live again', () => {
+    vi.useFakeTimers()
+    renderHook(() => useDashboardSnapshot())
+    act(() => apply(snapshot([card({ ptyId: null })])))
+    act(() => vi.advanceTimersByTime(2_000))
+    act(() => apply(snapshot([card({ ptyId: 'p1' })])))
+    requestSnapshot.mockClear()
+
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(requestSnapshot).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
 })
