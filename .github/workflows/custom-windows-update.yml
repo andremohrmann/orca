@@ -1,6 +1,9 @@
 name: Custom Windows update
 
 on:
+  push:
+    branches:
+      - custom/orca-dashboard-live-view
   workflow_dispatch:
   schedule:
     - cron: '17 3 * * *'
