@@ -51,6 +51,17 @@ export function AgentLiveGrid({
   const draggedPaneKeyRef = useRef<string | null>(null)
   const cancelRenameRef = useRef(false)
   const restoredAtByPaneKeyRef = useRef(new Map<string, number>())
+  const autoMinimizeStateRef = useRef<{
+    visibleOrderedCards: DashboardCard[]
+    minimizedPaneKeys: Set<string>
+    hiddenPaneKeys: Set<string>
+    afterMinutes: number
+  }>({
+    visibleOrderedCards: [],
+    minimizedPaneKeys: new Set(),
+    hiddenPaneKeys: new Set(),
+    afterMinutes: 0
+  })
   const [layout, saveLayout] = useAgentLiveGridLayout()
   const [containerSize, setContainerSize] = useState(getInitialContainerSize)
   const [editingPaneKey, setEditingPaneKey] = useState<string | null>(null)
@@ -110,17 +121,27 @@ export function AgentLiveGrid({
   }, [focusedPaneKey, visibleCards])
 
   useEffect(() => {
-    if (autoMinimizeAfterMinutes <= 0) {
-      return
+    autoMinimizeStateRef.current = {
+      visibleOrderedCards,
+      minimizedPaneKeys,
+      hiddenPaneKeys,
+      afterMinutes: autoMinimizeAfterMinutes
     }
+  }, [autoMinimizeAfterMinutes, hiddenPaneKeys, minimizedPaneKeys, visibleOrderedCards])
+
+  useEffect(() => {
     const minimizeInactivePanes = (): void => {
+      const current = autoMinimizeStateRef.current
+      if (current.afterMinutes <= 0) {
+        return
+      }
       const nextPaneKeys = inactiveLivePaneKeys({
-        cards: visibleOrderedCards,
-        minimizedPaneKeys,
-        hiddenPaneKeys,
+        cards: current.visibleOrderedCards,
+        minimizedPaneKeys: current.minimizedPaneKeys,
+        hiddenPaneKeys: current.hiddenPaneKeys,
         restoredAtByPaneKey: restoredAtByPaneKeyRef.current,
         now: Date.now(),
-        afterMinutes: autoMinimizeAfterMinutes
+        afterMinutes: current.afterMinutes
       })
       if (nextPaneKeys.length === 0) {
         return
@@ -133,13 +154,9 @@ export function AgentLiveGrid({
         return { ...current, minimized: [...next] }
       })
     }
-    const timeout = window.setTimeout(minimizeInactivePanes, 1_000)
     const interval = window.setInterval(minimizeInactivePanes, 30_000)
-    return () => {
-      window.clearTimeout(timeout)
-      window.clearInterval(interval)
-    }
-  }, [autoMinimizeAfterMinutes, hiddenPaneKeys, minimizedPaneKeys, saveLayout, visibleOrderedCards])
+    return () => window.clearInterval(interval)
+  }, [saveLayout])
 
   const windowTitle = (card: DashboardCard): string =>
     layout.names?.[card.paneKey] ||
