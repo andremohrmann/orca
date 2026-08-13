@@ -43,13 +43,15 @@ export function AgentTerminalPreview({
   const settingsRef = useRef(settings)
   const macOptionAsAltRef = useRef(macOptionAsAlt)
   const terminalInputRef = useRef(terminalInput)
+  const terminalLinksRef = useRef(terminalLinks)
   const [ptyGone, setPtyGone] = useState(false)
 
   useLayoutEffect(() => {
     settingsRef.current = settings
     macOptionAsAltRef.current = macOptionAsAlt
     terminalInputRef.current = terminalInput
-  }, [settings, macOptionAsAlt, terminalInput])
+    terminalLinksRef.current = terminalLinks
+  }, [settings, macOptionAsAlt, terminalInput, terminalLinks])
 
   useEffect(() => {
     setPtyGone(false)
@@ -69,9 +71,7 @@ export function AgentTerminalPreview({
     let refreshAgain = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
     let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
-    let gridRefreshTimer: ReturnType<typeof setTimeout> | null = null
     let requestInputRefresh = (): void => undefined
-    let requestGridRefresh = (): void => undefined
     let scheduleGridClaim = (): void => undefined
     const pendingLivePayloads: Extract<TerminalPreviewDataPayload, { type: 'data' }>[] = []
 
@@ -100,7 +100,7 @@ export function AgentTerminalPreview({
           ptyId,
           container,
           getTerminal: () => terminal,
-          onFitApplied: () => requestGridRefresh()
+          onFitApplied: () => undefined
         })
       : { requestNow: () => undefined, schedule: () => undefined, dispose: () => undefined }
     scheduleGridClaim = gridClaim.schedule
@@ -203,7 +203,7 @@ export function AgentTerminalPreview({
       }
       disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
         getSettings: () => settingsRef.current,
-        getTerminalLinks: () => terminalLinks
+        getTerminalLinks: () => terminalLinksRef.current
       })
     }
 
@@ -356,14 +356,6 @@ export function AgentTerminalPreview({
         void setup(true)
       }, 180)
     }
-    requestGridRefresh = (): void => {
-      clearPreviewTerminalTimer(gridRefreshTimer)
-      gridRefreshTimer = setTimeout(() => {
-        gridRefreshTimer = null
-        void setup(true)
-      }, 80)
-    }
-
     const disposeAppMenuClipboard = installPreviewTerminalAppMenuClipboard({
       container,
       getTerminal: () => terminal,
@@ -375,8 +367,6 @@ export function AgentTerminalPreview({
         return
       }
       if (payload.type === 'resync') {
-        clearPreviewTerminalTimer(gridRefreshTimer)
-        gridRefreshTimer = null
         void setup(true)
         return
       }
@@ -388,7 +378,6 @@ export function AgentTerminalPreview({
       disposed = true
       clearPreviewTerminalTimer(retryTimer)
       clearPreviewTerminalTimer(inputRefreshTimer)
-      clearPreviewTerminalTimer(gridRefreshTimer)
       gridClaim.dispose()
       boxResizeObserver?.disconnect()
       disposeAppMenuClipboard()
@@ -403,7 +392,7 @@ export function AgentTerminalPreview({
       terminal?.dispose()
       terminalRef.current = null
     }
-  }, [autoFocus, claimGrid, ptyId, scaleToFit, terminalLinks, terminalTheme, terminalMode])
+  }, [autoFocus, claimGrid, ptyId, scaleToFit, terminalTheme, terminalMode])
 
   // Why: appearance settings must land on the open terminal, and the OS input
   // source can flip Option-as-Alt with no settings change at all. A remount
