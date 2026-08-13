@@ -186,6 +186,8 @@ describe('ExperimentalPane', () => {
     expect(markup).toContain('Default view')
     expect(markup).toContain('Live view')
     expect(markup).toContain('Open Live view on startup')
+    expect(markup).toContain('Auto-minimize inactive Live windows')
+    expect(markup).toContain('Use 0 to keep every window visible')
   })
 
   it('renders Cloud VM as an off-by-default experimental subsection', () => {

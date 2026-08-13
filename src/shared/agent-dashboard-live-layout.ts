@@ -9,12 +9,15 @@ export type AgentDashboardLiveLayout = {
   density?: AgentDashboardLiveDensity
   sort?: AgentDashboardLiveSort
   hideClosed?: boolean
+  /** Minutes before inactive Live view windows auto-minimize. 0 disables it. */
+  autoMinimizeAfterMinutes?: number
 }
 
 export const DEFAULT_AGENT_DASHBOARD_LIVE_LAYOUT: AgentDashboardLiveLayout = {
   density: 'auto',
   sort: 'manual',
-  hideClosed: false
+  hideClosed: false,
+  autoMinimizeAfterMinutes: 0
 }
 
 function stringArray(value: unknown): string[] | undefined {
@@ -43,6 +46,13 @@ export function isAgentDashboardLiveSort(value: unknown): value is AgentDashboar
   return value === 'manual' || value === 'attention' || value === 'workspace' || value === 'recent'
 }
 
+function autoMinimizeAfterMinutes(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(1_440, Math.max(0, Math.round(value)))
+}
+
 export function normalizeAgentDashboardLiveLayout(value: unknown): AgentDashboardLiveLayout {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return DEFAULT_AGENT_DASHBOARD_LIVE_LAYOUT
@@ -55,6 +65,7 @@ export function normalizeAgentDashboardLiveLayout(value: unknown): AgentDashboar
     names: namesRecord(layout.names),
     density: isAgentDashboardLiveDensity(layout.density) ? layout.density : 'auto',
     sort: isAgentDashboardLiveSort(layout.sort) ? layout.sort : 'manual',
-    hideClosed: layout.hideClosed === true
+    hideClosed: layout.hideClosed === true,
+    autoMinimizeAfterMinutes: autoMinimizeAfterMinutes(layout.autoMinimizeAfterMinutes)
   }
 }

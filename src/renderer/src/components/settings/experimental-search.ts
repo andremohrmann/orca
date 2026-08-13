@@ -134,6 +134,14 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
           'live view'
         ),
         ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.autoMinimize',
+          'auto minimize'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.inactive',
+          'inactive'
+        ),
+        ...translateSearchKeyword(
           'auto.components.settings.experimental.search.agentDashboard.startup',
           'startup'
         ),

@@ -3,12 +3,17 @@ import { translate } from '@/i18n/i18n'
 import { Label } from '../ui/label'
 import { SearchableSetting } from './SearchableSetting'
 import {
+  NumberField,
   SettingsRow,
   SettingsSegmentedControl,
   SettingsSwitch,
   SettingsSwitchRow
 } from './SettingsFormControls'
 import { getExperimentalSearchEntry } from './experimental-search'
+import {
+  normalizeAgentDashboardLiveLayout,
+  type AgentDashboardLiveLayout
+} from '../../../../shared/agent-dashboard-live-layout'
 import {
   normalizeAgentDashboardView,
   type AgentDashboardView
@@ -27,6 +32,17 @@ export function AgentDashboardExperimentalSetting({
   const mode = settings.experimentalAgentDashboardMode ?? 'in-window'
   const defaultView = normalizeAgentDashboardView(settings.experimentalAgentDashboardDefaultView)
   const openLiveOnStartup = settings.experimentalAgentDashboardOpenLiveOnStartup === true
+  const liveLayout = normalizeAgentDashboardLiveLayout(
+    settings.experimentalAgentDashboardLiveLayout
+  )
+  const updateLiveLayout = (updates: Partial<AgentDashboardLiveLayout>): void => {
+    updateSettings({
+      experimentalAgentDashboardLiveLayout: normalizeAgentDashboardLiveLayout({
+        ...liveLayout,
+        ...updates
+      })
+    })
+  }
 
   return (
     <SearchableSetting
@@ -159,6 +175,26 @@ export function AgentDashboardExperimentalSetting({
               'auto.components.settings.ExperimentalPane.agentDashboard.openLiveOnStartupLabel',
               'Open Live view on startup'
             )}
+          />
+          <NumberField
+            label={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterLabel',
+              'Auto-minimize inactive Live windows'
+            )}
+            description={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterCopy',
+              'Minimize Live view windows after this many minutes without agent activity. Use 0 to keep every window visible.'
+            )}
+            value={liveLayout.autoMinimizeAfterMinutes ?? 0}
+            defaultValue={0}
+            min={0}
+            max={1440}
+            step={1}
+            suffix={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterSuffix',
+              'min'
+            )}
+            onChange={(autoMinimizeAfterMinutes) => updateLiveLayout({ autoMinimizeAfterMinutes })}
           />
         </div>
       ) : null}

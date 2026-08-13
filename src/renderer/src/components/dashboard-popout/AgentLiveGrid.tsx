@@ -18,6 +18,7 @@ import type { AgentDashboardLiveSort } from '../../../../shared/agent-dashboard-
 import { AgentLiveCompactPaneRow } from './AgentLiveCompactPaneRow'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridToolbar } from './AgentLiveGridToolbar'
+import { inactiveLivePaneKeys } from './agent-live-grid-auto-minimize'
 
 type AgentLiveGridProps = {
   cards: DashboardCard[]
@@ -49,6 +50,7 @@ export function AgentLiveGrid({
   const tileRefs = useRef(new Map<string, HTMLElement>())
   const draggedPaneKeyRef = useRef<string | null>(null)
   const cancelRenameRef = useRef(false)
+  const restoredAtByPaneKeyRef = useRef(new Map<string, number>())
   const [layout, saveLayout] = useAgentLiveGridLayout()
   const [containerSize, setContainerSize] = useState(getInitialContainerSize)
   const [editingPaneKey, setEditingPaneKey] = useState<string | null>(null)
@@ -79,13 +81,21 @@ export function AgentLiveGrid({
   const minimizedPaneKeys = useMemo(() => new Set(layout.minimized ?? []), [layout.minimized])
   const density = layout.density ?? 'auto'
   const orderedCards = useMemo(() => mergeLiveOrder(cards, layout), [cards, layout])
-  const visibleOrderedCards = orderedCards.filter((card) => !hiddenPaneKeys.has(card.paneKey))
-  const visibleCards = visibleOrderedCards.filter(
-    (card) => !minimizedPaneKeys.has(card.paneKey) && (!layout.hideClosed || card.ptyId)
+  const visibleOrderedCards = useMemo(
+    () => orderedCards.filter((card) => !hiddenPaneKeys.has(card.paneKey)),
+    [hiddenPaneKeys, orderedCards]
+  )
+  const visibleCards = useMemo(
+    () =>
+      visibleOrderedCards.filter(
+        (card) => !minimizedPaneKeys.has(card.paneKey) && (!layout.hideClosed || card.ptyId)
+      ),
+    [layout.hideClosed, minimizedPaneKeys, visibleOrderedCards]
   )
   const liveCards = visibleCards.filter((card): card is LiveDashboardCard => Boolean(card.ptyId))
   const closedCards = visibleCards.filter((card) => !card.ptyId)
   const minimizedCards = visibleOrderedCards.filter((card) => minimizedPaneKeys.has(card.paneKey))
+  const autoMinimizeAfterMinutes = layout.autoMinimizeAfterMinutes ?? 0
   const columns = useMemo(
     () =>
       getAgentLiveGridColumns(liveCards.length, containerSize.width, containerSize.height, density),
@@ -98,6 +108,38 @@ export function AgentLiveGrid({
       setFocusedPaneKey(visibleCards[0]?.paneKey ?? null)
     }
   }, [focusedPaneKey, visibleCards])
+
+  useEffect(() => {
+    if (autoMinimizeAfterMinutes <= 0) {
+      return
+    }
+    const minimizeInactivePanes = (): void => {
+      const nextPaneKeys = inactiveLivePaneKeys({
+        cards: visibleOrderedCards,
+        minimizedPaneKeys,
+        hiddenPaneKeys,
+        restoredAtByPaneKey: restoredAtByPaneKeyRef.current,
+        now: Date.now(),
+        afterMinutes: autoMinimizeAfterMinutes
+      })
+      if (nextPaneKeys.length === 0) {
+        return
+      }
+      saveLayout((current) => {
+        const next = new Set(current.minimized ?? [])
+        for (const paneKey of nextPaneKeys) {
+          next.add(paneKey)
+        }
+        return { ...current, minimized: [...next] }
+      })
+    }
+    const timeout = window.setTimeout(minimizeInactivePanes, 1_000)
+    const interval = window.setInterval(minimizeInactivePanes, 30_000)
+    return () => {
+      window.clearTimeout(timeout)
+      window.clearInterval(interval)
+    }
+  }, [autoMinimizeAfterMinutes, hiddenPaneKeys, minimizedPaneKeys, saveLayout, visibleOrderedCards])
 
   const windowTitle = (card: DashboardCard): string =>
     layout.names?.[card.paneKey] ||
@@ -149,6 +191,9 @@ export function AgentLiveGrid({
     setEditingPaneKey(null)
   }
   const toggleSetValue = (key: 'minimized' | 'hidden', paneKey: string, present: boolean): void => {
+    if (key === 'minimized' && !present) {
+      restoredAtByPaneKeyRef.current.set(paneKey, Date.now())
+    }
     saveLayout((current) => {
       const next = new Set(current[key] ?? [])
       if (present) {
