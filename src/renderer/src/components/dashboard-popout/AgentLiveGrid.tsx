@@ -307,6 +307,15 @@ export function AgentLiveGrid({
                 terminalLinks={card.terminalLinks ?? null}
                 scaleToFit={false}
                 autoFocus={false}
+                onClosedActivate={() =>
+                  onRevealAgent({
+                    repoId: card.repoId,
+                    worktreeId: card.worktreeId,
+                    executionHostId: card.executionHostId,
+                    tabId: card.tabId,
+                    leafId: card.leafId
+                  })
+                }
                 className="h-full min-h-0 min-w-0 max-w-full flex-1 overflow-hidden [contain:paint]"
               />
             </section>

@@ -34,6 +34,7 @@ export function AgentTerminalPreview({
   claimGrid = true,
   scaleToFit = true,
   autoFocus = true,
+  onClosedActivate,
   className
 }: AgentTerminalPreviewProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -425,6 +426,7 @@ export function AgentTerminalPreview({
       containerRef={containerRef}
       terminalRef={terminalRef}
       ptyGone={ptyGone}
+      onClosedActivate={onClosedActivate}
       terminalTheme={terminalTheme}
     />
   )

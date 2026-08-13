@@ -10,5 +10,6 @@ export type AgentTerminalPreviewProps = {
   claimGrid?: boolean
   scaleToFit?: boolean
   autoFocus?: boolean
+  onClosedActivate?: () => void
   className?: string
 }

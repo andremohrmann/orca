@@ -7,12 +7,14 @@ export function AgentTerminalPreviewFrame({
   containerRef,
   terminalRef,
   ptyGone,
+  onClosedActivate,
   terminalTheme
 }: {
   className?: string
   containerRef: React.RefObject<HTMLDivElement | null>
   terminalRef: React.MutableRefObject<Terminal | null>
   ptyGone: boolean
+  onClosedActivate?: () => void
   terminalTheme: ITheme | null
 }): React.JSX.Element {
   return (
@@ -23,16 +25,23 @@ export function AgentTerminalPreviewFrame({
       )}
       style={terminalTheme?.background ? { backgroundColor: terminalTheme.background } : undefined}
       onPointerDownCapture={() => {
+        if (ptyGone) {
+          return
+        }
         terminalRef.current?.focus()
       }}
     >
       {ptyGone ? (
-        <div className="absolute inset-0 flex items-center justify-center px-2.5 py-8 text-center text-[11px] text-muted-foreground">
+        <button
+          type="button"
+          className="absolute inset-0 flex items-center justify-center px-2.5 py-8 text-center text-[11px] text-muted-foreground transition-colors hover:bg-accent/35 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
+          onClick={onClosedActivate}
+        >
           {translate(
             'dashboardPopout.terminal.closed',
-            "No live terminal — this agent's pane has closed."
+            'No live terminal — click to restore this workspace.'
           )}
-        </div>
+        </button>
       ) : null}
       <div
         aria-hidden={ptyGone || undefined}
