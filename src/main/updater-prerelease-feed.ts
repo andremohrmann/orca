@@ -51,6 +51,12 @@ type ReleaseFeedTag = {
   version: string
 }
 
+const CUSTOM_VERSION = /^\d+\.\d+\.\d+-custom\.\d{14}$/
+
+export function isCustomReleaseTag(tag: string): boolean {
+  return CUSTOM_VERSION.test(normalizeTagToVersion(tag))
+}
+
 export function isPerfPrereleaseTag(tag: string): boolean {
   const version = normalizeTagToVersion(tag)
   const match = version.match(/^\d+\.\d+\.\d+-([0-9A-Za-z-.]+)(?:\+[0-9A-Za-z-.]+)?$/)
@@ -219,14 +225,19 @@ export async function fetchNewerReleaseTagsWithReadiness(
     return { tags: [], state: 'unavailable', unavailableReason: 'feed' }
   }
 
+  const currentIsCustom = isCustomReleaseTag(currentVersion)
+  const channelTags =
+    updateFeedInfo.isCustom || currentIsCustom
+      ? tags.filter(({ tag }) => isCustomReleaseTag(tag))
+      : tags
   // Why: perf builds are explicit opt-in; regular prerelease checks should
   // stay on the main RC/stable series even though perf tags are semver-newer.
   const candidates =
     options.releaseFilter === 'perf'
-      ? tags.filter(({ tag }) => isPerfPrereleaseTag(tag))
+      ? channelTags.filter(({ tag }) => isPerfPrereleaseTag(tag))
       : includePrerelease
-        ? tags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
-        : tags.filter(({ version }) => !isPrereleaseVersion(version))
+        ? channelTags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
+        : channelTags.filter(({ version }) => !isPrereleaseVersion(version))
   const newestNewerIndex = candidates.findIndex(
     ({ version }) => compareVersions(version, currentVersion) > 0
   )

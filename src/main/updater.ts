@@ -76,11 +76,12 @@ import { listReleaseBuilds, resolveTargetBuild } from './updater-release-builds'
 import {
   hasDedicatedReleaseRepo,
   isChannelSupportedOnPlatform,
+  isCustomVersion,
   RELEASE_CHANNEL_LABELS,
   type ReleaseBuild,
   type ReleaseChannel
 } from '../shared/release-channel'
-import { getReleaseLatestDownloadUrl } from '../shared/update-feed-info'
+import { getReleaseLatestDownloadUrl, getUpdateFeedInfo } from '../shared/update-feed-info'
 
 type CheckFailureSource = 'event' | 'promise' | 'fallback-promise'
 type MissingManifestPrereleaseFallbackResult = { userInitiated: boolean }
@@ -368,6 +369,10 @@ function getOptionsForUpdateCheckVariant(variant: UpdateCheckVariant): UpdateChe
     case 'default':
       return { includePrerelease: false }
   }
+}
+
+function isCustomReleaseUpdateCheck(): boolean {
+  return getUpdateFeedInfo().isCustom || isCustomVersion(app.getVersion())
 }
 
 function getUpdateCheckVariant(options?: UpdateCheckOptions): UpdateCheckVariant {
@@ -1435,6 +1440,13 @@ async function pinDefaultReleaseFeed(
       return 'not-available'
     }
     throw new Error('Could not resolve perf update feed')
+  } else if (isCustomReleaseUpdateCheck()) {
+    clearPrereleaseFallbackContext()
+    clearPublishingWindowLastGoodCheck()
+    console.info(
+      `[updater] custom release feed has no installable custom update: current=${currentVersion} includePrerelease=${includePrerelease}`
+    )
+    return 'not-available'
   } else {
     clearPrereleaseFallbackContext()
     clearPublishingWindowLastGoodCheck()

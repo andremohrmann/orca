@@ -10,11 +10,11 @@ vi.mock('electron', () => ({
   net: { fetch: netFetchMock }
 }))
 
-function buildAtomFeed(tags: string[]): string {
+function buildAtomFeed(tags: string[], repo = 'stablyai/orca'): string {
   const entries = tags
     .map(
       (tag) =>
-        `<entry><link rel="alternate" type="text/html" href="https://github.com/stablyai/orca/releases/tag/${tag}"/><title>${tag}</title></entry>`
+        `<entry><link rel="alternate" type="text/html" href="https://github.com/${repo}/releases/tag/${tag}"/><title>${tag}</title></entry>`
     )
     .join('')
   return `<?xml version="1.0" encoding="UTF-8"?><feed>${entries}</feed>`
@@ -88,6 +88,7 @@ function setPlatformForTest(platform: NodeJS.Platform): void {
 describe('fetchNewerReleaseTag', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.doUnmock('../shared/update-feed-info')
     netFetchMock.mockReset()
   })
 
@@ -96,9 +97,54 @@ describe('fetchNewerReleaseTag', () => {
   })
 
   it('normalizes custom Windows release tags', async () => {
-    const { normalizeTagToVersion } = await import('./updater-prerelease-feed')
+    const { isCustomReleaseTag, normalizeTagToVersion } = await import('./updater-prerelease-feed')
     expect(normalizeTagToVersion('custom-windows-1.4.160-custom.20260812031544')).toBe(
       '1.4.160-custom.20260812031544'
+    )
+    expect(isCustomReleaseTag('custom-windows-1.4.160-custom.20260812031544')).toBe(true)
+    expect(isCustomReleaseTag('v1.4.182-rc.1')).toBe(false)
+  })
+
+  it('keeps custom update feeds on custom Windows tags', async () => {
+    vi.doMock('../shared/update-feed-info', () => ({
+      getUpdateFeedInfo: () => ({
+        repo: 'andremohrmann/orca',
+        isCustom: true,
+        atomUrl: 'https://github.com/andremohrmann/orca/releases.atom',
+        latestDownloadUrl: 'https://github.com/andremohrmann/orca/releases/latest/download',
+        releasesUrl: 'https://github.com/andremohrmann/orca/releases'
+      }),
+      getReleaseDownloadBaseUrl: () => 'https://github.com/andremohrmann/orca/releases/download'
+    }))
+    netFetchMock.mockImplementation((url: string, init?: { method?: string }) => {
+      if (url === 'https://github.com/andremohrmann/orca/releases.atom') {
+        return Promise.resolve({
+          ok: true,
+          text: () =>
+            Promise.resolve(
+              buildAtomFeed(
+                [
+                  'v1.4.182-rc.1',
+                  'custom-windows-1.4.181-custom.20260813010101',
+                  'custom-windows-1.4.180-custom.20260812010101'
+                ],
+                'andremohrmann/orca'
+              )
+            )
+        })
+      }
+      if (url.includes('/releases/download/') && init?.method !== 'HEAD') {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve(buildManifest('custom-windows-1.4.181-custom.20260813010101'))
+        })
+      }
+      return Promise.resolve({ ok: true, text: () => Promise.resolve('') })
+    })
+
+    const { fetchNewerReleaseTag } = await import('./updater-prerelease-feed')
+    expect(await fetchNewerReleaseTag('1.4.180-custom.20260812010101')).toBe(
+      'custom-windows-1.4.181-custom.20260813010101'
     )
   })
 

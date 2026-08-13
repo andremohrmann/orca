@@ -3823,6 +3823,33 @@ describe('updater', () => {
     })
   })
 
+  it('does not fall back to the official moving feed from a custom Windows build', async () => {
+    appMock.getVersion.mockReturnValue('1.4.179-custom.20260813122415')
+    fetchNewerReleaseTagsMock.mockResolvedValue({ tags: [], state: 'no-newer' })
+    autoUpdaterMock.checkForUpdates.mockResolvedValue(undefined)
+
+    const { setupAutoUpdater, checkForUpdatesFromMenu } = await import('./updater')
+
+    const send = vi.fn()
+    setupAutoUpdater({ webContents: { send } } as never, {
+      getLastUpdateCheckAt: () => Date.now()
+    })
+
+    checkForUpdatesFromMenu()
+
+    await vi.waitFor(() => {
+      expect(send).toHaveBeenCalledWith('updater:status', {
+        state: 'not-available',
+        userInitiated: true
+      })
+    })
+    expect(fetchNewerReleaseTagsMock).toHaveBeenCalledWith('1.4.179-custom.20260813122415', 2, {
+      includePrerelease: true
+    })
+    expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled()
+    expect(autoUpdaterMock.setFeedURL).toHaveBeenCalledTimes(1)
+  })
+
   // Why: native GitHub provider can pick cancelled prerelease tags with missing manifests, so keep the manifest-probed generic feed.
   it('uses the manifest-probed generic feed after a Shift-click RC opt-in', async () => {
     appMock.getVersion.mockReturnValue('1.3.17')
