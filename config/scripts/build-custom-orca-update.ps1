@@ -93,9 +93,41 @@ function Rebase-CustomBranch {
   Write-Host "`n==> Rebase $BranchName onto $UpstreamRef"
   & git rebase $UpstreamRef
   if ($LASTEXITCODE -ne 0) {
-    Write-Error "Rebase stopped. Resolve conflicts, run 'git rebase --continue', then rerun this script."
-    exit $LASTEXITCODE
+    if (!(Resolve-DeletedWorkflowRebaseConflicts)) {
+      Write-Error "Rebase stopped. Resolve conflicts, run 'git rebase --continue', then rerun this script."
+      exit $LASTEXITCODE
+    }
   }
+}
+
+function Resolve-DeletedWorkflowRebaseConflicts {
+  for ($attempt = 0; $attempt -lt 10; $attempt++) {
+    $conflicts = @(git diff --name-only --diff-filter=U)
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+    if ($conflicts.Count -eq 0) {
+      return $true
+    }
+    $workflowConflicts = @(
+      $conflicts | Where-Object {
+        $_.StartsWith('.github/workflows/') -and $_ -ne '.github/workflows/custom-windows-update.yml'
+      }
+    )
+    if ($workflowConflicts.Count -ne $conflicts.Count) {
+      return $false
+    }
+    Write-Host "`n==> Resolve removed inherited workflow conflicts"
+    & git rm -- $workflowConflicts
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+    & git -c core.editor=true rebase --continue
+    if ($LASTEXITCODE -eq 0) {
+      return $true
+    }
+  }
+  return $false
 }
 
 function Set-CustomBuildVersion {
