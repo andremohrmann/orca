@@ -23,6 +23,7 @@ import {
 import { usePreviewTerminalTheme } from './usePreviewTerminalTheme'
 import { AgentTerminalPreviewFrame } from './AgentTerminalPreviewFrame'
 import type { AgentTerminalPreviewProps } from './agent-terminal-preview-props'
+import { fitPreviewTerminalToBox } from './preview-terminal-fit'
 
 const RESYNC_RETRY_DELAY_MS = 150
 
@@ -70,21 +71,16 @@ export function AgentTerminalPreview({
     let gridRefreshTimer: ReturnType<typeof setTimeout> | null = null
     let requestInputRefresh = (): void => undefined
     let requestGridRefresh = (): void => undefined
+    let scheduleGridClaim = (): void => undefined
     const pendingLivePayloads: Extract<TerminalPreviewDataPayload, { type: 'data' }>[] = []
 
     const fitToBox = (): void => {
-      const screen = container.querySelector<HTMLElement>('.xterm-screen')
-      const box = container.parentElement
-      if (!screen || !box || !terminal) {
-        return
-      }
-      const scale = scaleToFit ? Math.min(1, box.clientWidth / Math.max(1, screen.offsetWidth)) : 1
-      container.style.transform = scale < 1 ? `scale(${scale})` : ''
-      const cellHeight = screen.offsetHeight / Math.max(1, terminal.rows)
-      const cursorBottom = (terminal.buffer.active.cursorY + 1) * cellHeight * scale
-      const anchorTop = cursorBottom <= box.clientHeight
-      box.style.alignItems = anchorTop ? 'flex-start' : 'flex-end'
-      container.style.transformOrigin = anchorTop ? 'top left' : 'bottom left'
+      fitPreviewTerminalToBox({
+        container,
+        terminal,
+        scaleToFit,
+        onUnscaledOverflow: () => scheduleGridClaim()
+      })
     }
     let fitScheduled = false
     const scheduleFit = (): void => {
@@ -106,6 +102,7 @@ export function AgentTerminalPreview({
           onFitApplied: () => requestGridRefresh()
         })
       : { requestNow: () => undefined, schedule: () => undefined, dispose: () => undefined }
+    scheduleGridClaim = gridClaim.schedule
     const boxResizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
