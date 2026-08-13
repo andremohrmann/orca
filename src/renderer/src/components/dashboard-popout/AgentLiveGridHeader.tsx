@@ -4,6 +4,7 @@ import { AgentStateDot } from '@/components/AgentStateDot'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { RepoIconGlyph } from '@/components/repo/repo-icon'
 import { AgentIcon } from '@/lib/agent-catalog'
 import { agentTypeToIconAgent } from '@/lib/agent-status'
 import { translate } from '@/i18n/i18n'
@@ -12,6 +13,7 @@ import {
   type DashboardCard,
   type DashboardFilterOption
 } from '../../../../shared/dashboard-snapshot'
+import type { RepoIcon } from '../../../../shared/repo-icon'
 import type { WorkspaceStatus } from '../../../../shared/types'
 import type { AgentRevealArgs } from './AgentTerminalDialog'
 import { DashboardWorkspaceStatusButton } from './DashboardWorkspaceStatusButton'
@@ -20,6 +22,7 @@ type AgentLiveGridHeaderProps = {
   card: DashboardCard
   title: string
   subtitle: string
+  repoIcon?: RepoIcon | null
   editingPaneKey: string | null
   nameDraft: string
   setNameDraft: (value: string) => void
@@ -49,6 +52,21 @@ export function AgentLiveGridHeader(props: AgentLiveGridHeaderProps): React.JSX.
       <span className="inline-flex shrink-0">
         <AgentIcon agent={agentTypeToIconAgent(card.agentType)} size={13} />
       </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] bg-muted-foreground/10 text-muted-foreground"
+            aria-label={translate('dashboardPopout.live.projectIcon', 'Project: {{name}}', {
+              name: card.repoName
+            })}
+          >
+            <RepoIconGlyph repoIcon={props.repoIcon} className="size-3" iconClassName="size-3" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          {card.repoName}
+        </TooltipContent>
+      </Tooltip>
       {props.editingPaneKey === card.paneKey ? (
         <Input
           autoFocus

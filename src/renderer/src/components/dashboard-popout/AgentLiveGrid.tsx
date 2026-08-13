@@ -19,9 +19,11 @@ import { AgentLiveCompactPaneRow } from './AgentLiveCompactPaneRow'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridToolbar } from './AgentLiveGridToolbar'
 import { inactiveLivePaneKeys } from './agent-live-grid-auto-minimize'
+import type { RepoIcon } from '../../../../shared/repo-icon'
 
 type AgentLiveGridProps = {
   cards: DashboardCard[]
+  repoIconsByRepoId?: Record<string, RepoIcon | null>
   onOpenTerminal: (card: DashboardCard) => void
   onRevealAgent: (args: AgentRevealArgs) => void
   onAssignWorkspaceStatus: (worktreeId: string, status: WorkspaceStatus) => void
@@ -41,6 +43,7 @@ function getInitialContainerSize(): { width: number; height: number } {
 
 export function AgentLiveGrid({
   cards,
+  repoIconsByRepoId,
   onOpenTerminal,
   onRevealAgent,
   onAssignWorkspaceStatus,
@@ -342,6 +345,7 @@ export function AgentLiveGrid({
                 card={card}
                 title={windowTitle(card)}
                 subtitle={windowSubtitle(card)}
+                repoIcon={repoIconsByRepoId?.[card.repoId]}
                 editingPaneKey={editingPaneKey}
                 nameDraft={nameDraft}
                 setNameDraft={setNameDraft}

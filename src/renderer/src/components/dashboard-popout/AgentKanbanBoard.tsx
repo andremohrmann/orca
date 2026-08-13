@@ -369,6 +369,7 @@ export function AgentKanbanBoard({
             />
             <AgentLiveGrid
               cards={filteredCards}
+              repoIconsByRepoId={snapshot.repoIconsByRepoId}
               onOpenTerminal={handleOpenTerminal}
               onRevealAgent={onRevealAgent}
               onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
