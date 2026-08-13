@@ -147,11 +147,11 @@ describe('resumeTerminalVisibility reveal repaint', () => {
     expect(flushDeferredPaneMetricOptionsIfMeasurable).not.toHaveBeenCalled()
   })
 
-  it('does not fit on a light tab reveal', () => {
+  it('fits on a light tab reveal so stale xterm screen geometry does not persist until input', () => {
     const manager = createManager()
     resumeTerminalVisibility(resumeArgs(manager, true))
 
-    expect(manager.fitAllRevealedPanes).not.toHaveBeenCalled()
+    expect(manager.fitAllRevealedPanes).toHaveBeenCalledTimes(1)
     expect(manager.fitAllPanes).not.toHaveBeenCalled()
   })
 

@@ -74,11 +74,8 @@ export function resumeTerminalVisibility({
   captureViewportPositions(!wasVisible)
   withSuppressedScrollTracking(() => {
     if (shouldUseLightTabResume) {
-      let flushedDeferredMetrics = false
       for (const pane of manager.getPanes()) {
-        if (flushDeferredPaneMetricOptionsIfMeasurable(pane)) {
-          flushedDeferredMetrics = true
-        }
+        flushDeferredPaneMetricOptionsIfMeasurable(pane)
         // Why here: the light path neither recreates WebGL nor fits, so a dpr
         // change that landed while this tab was hidden has no other repair point.
         repairPaneWebglCanvasDprMismatch(pane)
@@ -90,11 +87,9 @@ export function resumeTerminalVisibility({
       requestLightTabBacklogRecovery(manager)
       // Why: reveal is the lifecycle boundary that owns hidden renderer repair.
       scheduleTabRevealWebglAtlasRecovery()
-      if (flushedDeferredMetrics) {
-        // Why: the light path normally skips fitting, but flushed metrics changed
-        // cell size — refit so cols/rows match before the overlay settles.
-        manager.fitAllRevealedPanes()
-      }
+      // Why: hidden-but-mounted workspace tabs can keep an old xterm screen box;
+      // a reveal fit repairs the first painted grid without waiting for input.
+      manager.fitAllRevealedPanes()
       if (isActive) {
         focusActivePane(manager)
       }
