@@ -1,7 +1,7 @@
 import { Kanban } from 'lucide-react'
 import type React from 'react'
 import type { DashboardFilterOption } from '../../../../shared/dashboard-snapshot'
-import type { WorkspaceStatus } from '../../../../shared/types'
+import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

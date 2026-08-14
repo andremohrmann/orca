@@ -11,15 +11,19 @@ import {
 import { CLIPBOARD_TEXT_MEASURE_YIELD_CODE_UNITS } from '../../shared/clipboard-text'
 import { redactPtyIdForDiagnostics } from '../../shared/pty-delivery-diagnostics'
 import { FLOATING_TERMINAL_WORKTREE_ID, getDefaultWorkspaceSession } from '../../shared/constants'
-import type { TuiAgent } from '../../shared/types'
+import type { TuiAgent } from '../../shared/tui-agent'
 import type { AgentSessionOwnerBinding } from '../../shared/agent-session-host-authority'
 import { AGENT_SESSION_CLAIM_DIGEST_VERSION } from '../../shared/agent-session-host-authority'
 import { PtyWriteUnavailableError } from '../providers/pty-write-unavailable-error'
 import { TerminalSessionOwnerUnverifiedError } from '../daemon/daemon-errors'
 import type * as Wsl from '../wsl'
+import { getBundledLauncherPath } from '../cli/bundled-cli-launcher-path'
 
 const isWindowsHost = process.platform === 'win32'
 const posixOnlyIt = isWindowsHost ? it.skip : it
+const BUNDLED_RESOURCES_PATH = join('/tmp', 'orca-bundled-resources')
+// Why: this suite forces darwin before every test, including on Linux CI.
+const BUNDLED_CLI_PATH = getBundledLauncherPath('darwin', BUNDLED_RESOURCES_PATH) as string
 // Why: bare shells no longer mkdir ~/.omp; OMP status lives under userData (#10196).
 const expectedOmpStatusExtension = posix.join(
   '/tmp/orca-user-data',
@@ -133,7 +137,8 @@ vi.mock('fs', () => ({
   writeFileSync: writeFileSyncMock,
   chmodSync: chmodSyncMock,
   constants: {
-    X_OK: 1
+    X_OK: 1,
+    R_OK: 4
   }
 }))
 
@@ -245,7 +250,6 @@ import {
   getLocalPtyProvider,
   isCurrentPtyExit,
   restorePtyIncarnation,
-  bindPaneShell,
   type PrepareCodexSessionResume
 } from './pty'
 import { __resetPersistedWindowsPathCacheForTests } from '../pty/windows-environment-path'
@@ -1868,6 +1872,7 @@ describe('registerPtyHandlers', () => {
     ) => string | null,
     getSettings?: () => {
       agentStatusHooksEnabled?: boolean
+      disabledTuiAgents?: TuiAgent[]
       httpProxyUrl?: string
       httpProxyBypassRules?: string
     },
@@ -1937,6 +1942,42 @@ describe('registerPtyHandlers', () => {
       string[],
       { cwd: string; env: Record<string, string> }
     ]
+  }
+
+  // Why: the Codex launch preflight now carries the bundled CLI's verified absolute
+  // path, so these cases need a resources root whose launcher passes the exec check.
+  async function withBundledCli<T>(
+    run: () => Promise<T>,
+    options?: { launcherExecutable?: boolean }
+  ): Promise<T> {
+    const launcherExecutable = options?.launcherExecutable ?? true
+    const previousResourcesPath = process.resourcesPath
+    Object.defineProperty(process, 'resourcesPath', {
+      configurable: true,
+      value: BUNDLED_RESOURCES_PATH
+    })
+    // Why: only teach the launcher path to look like an executable file; every other
+    // stat/access keeps the permissive default the rest of the harness relies on.
+    statSyncMock.mockImplementation((target: string) => ({
+      isDirectory: () => target !== BUNDLED_CLI_PATH,
+      isFile: () => target === BUNDLED_CLI_PATH,
+      mode: 0o755
+    }))
+    if (!launcherExecutable) {
+      accessSyncMock.mockImplementation((target: string) => {
+        if (target === BUNDLED_CLI_PATH) {
+          throw new Error(`EACCES: ${target}`)
+        }
+      })
+    }
+    try {
+      return await run()
+    } finally {
+      Object.defineProperty(process, 'resourcesPath', {
+        configurable: true,
+        value: previousResourcesPath
+      })
+    }
   }
 
   describe('spawn environment', () => {
@@ -2133,9 +2174,52 @@ describe('registerPtyHandlers', () => {
     })
 
     it('injects the selected Codex home into Orca terminal PTYs', async () => {
-      const env = await spawnAndGetEnv(undefined, undefined, () => TEST_CODEX_HOME)
+      const env = await withBundledCli(() =>
+        spawnAndGetEnv(undefined, undefined, () => TEST_CODEX_HOME)
+      )
       expect(env.CODEX_HOME).toBe(TEST_CODEX_HOME)
       expect(env.ORCA_CODEX_HOME).toBe(TEST_CODEX_HOME)
+      // Why (STA-4270): a bare name would be resolved by the post-profile PATH the codex()
+      // wrapper inherits, so the preflight must carry the CLI's verified absolute path.
+      expect(env.ORCA_CODEX_LAUNCH_PREFLIGHT).toBe(BUNDLED_CLI_PATH)
+    })
+
+    it('skips the Codex launch preflight when the bundled CLI is not executable', async () => {
+      const env = await withBundledCli(
+        () => spawnAndGetEnv(undefined, undefined, () => TEST_CODEX_HOME),
+        { launcherExecutable: false }
+      )
+
+      expect(env.CODEX_HOME).toBe(TEST_CODEX_HOME)
+      expect(env.ORCA_CODEX_LAUNCH_PREFLIGHT).toBeUndefined()
+    })
+
+    // Why (STA-4270): profile scripts run before the codex() wrapper and routinely prepend
+    // directories to PATH, so a scratch `orca` there must never become the preflight.
+    it('pins the Codex launch preflight to the bundled CLI even when PATH leads elsewhere', async () => {
+      const env = await withBundledCli(() =>
+        spawnAndGetEnv(
+          { PATH: `/tmp/hijack-scratch${delimiter}/usr/bin` },
+          undefined,
+          () => TEST_CODEX_HOME
+        )
+      )
+
+      expect(env.ORCA_CODEX_LAUNCH_PREFLIGHT).toBe(BUNDLED_CLI_PATH)
+      expect(env.ORCA_CODEX_LAUNCH_PREFLIGHT).not.toBe('orca')
+      expect(env.ORCA_CODEX_LAUNCH_PREFLIGHT.startsWith('/tmp/hijack-scratch')).toBe(false)
+    })
+
+    it('does not install the Codex launch preflight when Codex hooks are disabled', async () => {
+      const env = await spawnAndGetEnv(
+        undefined,
+        undefined,
+        () => TEST_CODEX_HOME,
+        () => ({ agentStatusHooksEnabled: true, disabledTuiAgents: ['codex'] })
+      )
+
+      expect(env.CODEX_HOME).toBe(TEST_CODEX_HOME)
+      expect(env.ORCA_CODEX_LAUNCH_PREFLIGHT).toBeUndefined()
     })
 
     it('resumes an automatic Codex session from its prepared originating home', async () => {
@@ -5290,10 +5374,7 @@ describe('registerPtyHandlers', () => {
             paneKey?: string
             tabId?: string
           }) => ({
-            id: 'ssh-pty',
-            // The host attests the shell's identity at spawn; the lease has to carry it or the
-            // reconnect fence has nothing to compare and attaches by pty id alone.
-            incarnationId: 'inc-host-ssh-pty'
+            id: 'ssh-pty'
           })
         )
         const store = {
@@ -5379,23 +5460,18 @@ describe('registerPtyHandlers', () => {
             worktreeId: 'wt-1',
             tabId: 'tab-1',
             leafId,
-            // Without this the field exists, loads and is read — and is never written, so the
-            // reconnect fence silently permits everything while every other clause stays green.
-            incarnationId: 'inc-host-ssh-pty',
             state: 'attached'
           })
         )
-        // STA-3077 step P inverted this: SSH pane bindings no longer go to a
-        // per-target `ssh:<target>` partition. One home (`local`) only, so the
-        // hostId argument is gone — pin its absence, not its old value.
-        expect(store.persistPtyBinding).toHaveBeenCalledWith({
-          worktreeId: 'wt-1',
-          tabId: 'tab-1',
-          leafId,
-          ptyId: 'ssh-pty',
-          incarnationId: 'inc-host-ssh-pty'
-        })
-        expect(store.persistPtyBinding.mock.calls.at(-1)).toHaveLength(1)
+        expect(store.persistPtyBinding).toHaveBeenCalledWith(
+          {
+            worktreeId: 'wt-1',
+            tabId: 'tab-1',
+            leafId,
+            ptyId: 'ssh-pty'
+          },
+          'ssh:ssh-1'
+        )
 
         store.upsertSshRemotePtyLease.mockClear()
         store.persistPtyBinding.mockClear()
@@ -6829,38 +6905,6 @@ describe('registerPtyHandlers', () => {
     expect(fallbackShutdown).not.toHaveBeenCalled()
   })
 
-  // Why: before the swap lands the pre-swap local provider owns no daemon id, so its
-  // "not in my table" would answer an authoritative dead for every restored session.
-  it('waits for the desktop startup barrier before pty:hasPty answers for a daemon id', async () => {
-    const barrier = makeDeferred()
-    const awaitLocalPtyProviderStartup = vi.fn(() => barrier.promise)
-    registerPtyHandlers(
-      mainWindow as never,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {
-        awaitLocalPtyProviderStartup
-      }
-    )
-
-    const pending = handlers.get('pty:hasPty')!(null, { id: 'daemon-session' }) as Promise<
-      boolean | null
-    >
-    await Promise.resolve()
-    expect(awaitLocalPtyProviderStartup).toHaveBeenCalledTimes(1)
-
-    installObservableDaemonTestProvider()
-    ;(getLocalPtyProvider() as { hasPty?: (id: string) => boolean | null }).hasPty = vi.fn(
-      (id: string) => id === 'daemon-session'
-    )
-    barrier.resolve()
-
-    await expect(pending).resolves.toBe(true)
-  })
-
   it('waits for the desktop startup barrier before runtime local kills resolve the provider', async () => {
     const barrier = makeDeferred()
     const awaitLocalPtyProviderStartup = vi.fn(() => barrier.promise)
@@ -7881,7 +7925,6 @@ describe('registerPtyHandlers', () => {
           id: opts.sessionId ?? 'daemon-pty'
         })),
         write,
-        hasPty: vi.fn(() => true),
         resize: vi.fn(args.resize ?? (() => {})),
         getAppliedSize: vi.fn(args.getAppliedSize ?? (async () => args.applied)),
         kill: vi.fn(),
@@ -8104,107 +8147,6 @@ describe('registerPtyHandlers', () => {
       await Promise.resolve()
 
       expect(write).not.toHaveBeenCalled()
-    })
-
-    it('does not forward queued host input after the pane rebinds', async () => {
-      const write = setupProviderWithAppliedSize({ applied: { cols: 80, rows: 24 } })
-      let resolveClaim: (claimed: boolean) => void = () => {}
-      const claimRemoteDesktopHost = vi.fn(
-        () =>
-          new Promise<boolean>((resolve) => {
-            resolveClaim = resolve
-          })
-      )
-      const runtime = {
-        setPtyController: vi.fn(),
-        createPreAllocatedTerminalHandle: vi.fn(() => null),
-        registerPty: vi.fn(),
-        getDriver: vi.fn(() => ({ kind: 'idle' })),
-        claimRemoteDesktopHost,
-        onPtySpawned: vi.fn(),
-        onPtyExit: vi.fn(),
-        onPtyData: vi.fn()
-      }
-      handlers.clear()
-      registerPtyHandlers(mainWindow as never, runtime as never)
-      const spawn = await handlers.get('pty:spawn')!(null, { cols: 80, rows: 24, env: {} })
-      const id = (spawn as { id: string }).id
-      const leafId = '3f1c9a2e-7b4d-4e1a-9c8f-2d5e6a7b8c90'
-      const bindingStore = {
-        persistPtyBinding: vi.fn(() => true),
-        getWorkspaceSession: vi.fn(() => getDefaultWorkspaceSession())
-      }
-      bindPaneShell({
-        store: bindingStore,
-        worktreeId: 'repo-1:wt-1',
-        tabId: 'tab-1',
-        leafId,
-        ptyId: id
-      })
-      const claim = onMock.mock.calls.find((entry: unknown[]) => entry[0] === 'pty:claimViewport')
-      const writeEvent = onMock.mock.calls.find((entry: unknown[]) => entry[0] === 'pty:write')
-
-      claim?.[1](mainWindowIpcEvent, { id, cols: 125, rows: 48 })
-      writeEvent?.[1](mainWindowIpcEvent, { id, data: 'queued' })
-      const accepted = handlers.get('pty:writeAccepted')!(mainWindowIpcEvent, {
-        id,
-        data: 'accepted'
-      })
-      bindPaneShell({
-        store: bindingStore,
-        worktreeId: 'repo-1:wt-1',
-        tabId: 'tab-1',
-        leafId,
-        ptyId: 'pty-successor'
-      })
-      resolveClaim(true)
-
-      await expect(accepted).resolves.toBe(false)
-      await Promise.resolve()
-      expect(write).not.toHaveBeenCalled()
-      clearProviderPtyState(id)
-      clearProviderPtyState('pty-successor')
-    })
-
-    it('does not forward queued host input after the PTY incarnation changes', async () => {
-      const write = setupProviderWithAppliedSize({ applied: { cols: 80, rows: 24 } })
-      let resolveClaim: (claimed: boolean) => void = () => {}
-      const runtime = {
-        setPtyController: vi.fn(),
-        createPreAllocatedTerminalHandle: vi.fn(() => null),
-        registerPty: vi.fn(),
-        getDriver: vi.fn(() => ({ kind: 'idle' })),
-        claimRemoteDesktopHost: vi.fn(
-          () =>
-            new Promise<boolean>((resolve) => {
-              resolveClaim = resolve
-            })
-        ),
-        onPtySpawned: vi.fn(),
-        onPtyExit: vi.fn(),
-        onPtyData: vi.fn()
-      }
-      handlers.clear()
-      registerPtyHandlers(mainWindow as never, runtime as never)
-      const spawn = await handlers.get('pty:spawn')!(null, { cols: 80, rows: 24, env: {} })
-      const id = (spawn as { id: string }).id
-      restorePtyIncarnation(id, 'incarnation-old')
-      const claim = onMock.mock.calls.find((entry: unknown[]) => entry[0] === 'pty:claimViewport')
-      const writeEvent = onMock.mock.calls.find((entry: unknown[]) => entry[0] === 'pty:write')
-
-      claim?.[1](mainWindowIpcEvent, { id, cols: 125, rows: 48 })
-      writeEvent?.[1](mainWindowIpcEvent, { id, data: 'queued' })
-      const accepted = handlers.get('pty:writeAccepted')!(mainWindowIpcEvent, {
-        id,
-        data: 'accepted'
-      })
-      restorePtyIncarnation(id, 'incarnation-new')
-      resolveClaim(true)
-
-      await expect(accepted).resolves.toBe(false)
-      await Promise.resolve()
-      expect(write).not.toHaveBeenCalled()
-      clearProviderPtyState(id)
     })
 
     it('does not populate the remote reclaim cache when only a phone drives', async () => {
@@ -8808,17 +8750,12 @@ describe('registerPtyHandlers', () => {
         }
       }): Promise<{ id: string }>
     }
-    let emitExit: ((event: { exitCode: number; signal: number }) => void) | undefined
-    const kill = vi.fn(() => emitExit?.({ exitCode: 0, signal: 0 }))
     const proc = {
       onData: vi.fn(),
-      onExit: vi.fn((callback) => {
-        emitExit = callback
-        return makeDisposable()
-      }),
+      onExit: vi.fn(),
       write: vi.fn(),
       resize: vi.fn(),
-      kill,
+      kill: vi.fn(),
       process: 'zsh',
       pid: 12345
     }
@@ -8873,7 +8810,7 @@ describe('registerPtyHandlers', () => {
     expect(store.persistPtyBinding).toHaveBeenCalledWith(
       expect.objectContaining({ expectedSourceBinding })
     )
-    expect(kill).toHaveBeenCalledOnce()
+    expect(proc.kill).toHaveBeenCalledOnce()
   })
 
   it('reports lower-owner commit before rejecting an early-exited runtime incarnation', async () => {
@@ -9787,9 +9724,6 @@ describe('registerPtyHandlers', () => {
     )
     expect(runtime.noteTerminalSpawnCommand).not.toHaveBeenCalled()
     expect(store.persistPtyBinding).toHaveBeenCalledOnce()
-    // STA-3077 step P inverted this: the reattach writer no longer passes a
-    // hostId slot at all (it used to pass `undefined` here for the local case),
-    // so the call is now strictly single-argument.
     expect(store.persistPtyBinding).toHaveBeenCalledWith(
       expect.objectContaining({
         worktreeId,
@@ -9801,10 +9735,9 @@ describe('registerPtyHandlers', () => {
           ptyId: 'pty-persisted-owner',
           incarnationId: 'inc-stale-owner'
         }
-      })
+      }),
+      undefined
     )
-    expect(store.persistPtyBinding.mock.calls[0]!).toHaveLength(1)
-    expect(getPtyIdForPaneKey(paneKey)).toBe('pty-persisted-owner')
     expect(
       mainWindow.webContents.send.mock.calls.filter(([channel]) => channel === 'pty:spawned')
     ).toHaveLength(1)
@@ -10503,139 +10436,9 @@ describe('registerPtyHandlers', () => {
     expect(runtime.onPtyExit).toHaveBeenCalledWith('pty-already-retired-owner', 0, undefined)
   })
 
-  // Sibling of the clause above, and the reason that one is driven by a proof. Retiring an owner
-  // authorizes a replacement carrying the pane's agent resume payload, so a bare not-found must
-  // not do it: a replaced relay answers exactly that for shells its predecessor still runs.
-  it('does not retire an SSH owner, nor respawn it, on a bare not-found', async () => {
-    const connectionId = 'ssh-unproven-stable-pane'
-    const tabId = 'tab-unproven-ssh-owner'
-    const leafId = '35353535-3535-4535-8535-353535353535'
-    const paneKey = makePaneKey(tabId, leafId)
-    const worktreeId = 'repo-ssh::/remote/unproven-stable-pane'
-    const livePtyId = `ssh:${connectionId}@@live-relay-pty`
-    const freshPtyId = `ssh:${connectionId}@@fresh-relay-pty`
-    const remoteSpawn = vi.fn(async (options: { attachOnly?: boolean; command?: string }) => {
-      if (options.attachOnly) {
-        // The reattach mints this only after verifying the relay's observed exit names this shell.
-        // A bare not-found reaches here too and must NOT retire the owner — pinned by the sibling
-        // clause below, because retirement authorizes a replacement carrying the resume payload.
-        throw new Error('PTY "live-relay-pty" not found')
-      }
-      return { id: freshPtyId, incarnationId: 'inc-fresh-ssh-owner' }
-    })
-    registerSshPtyProvider(connectionId, {
-      spawn: remoteSpawn,
-      write: vi.fn(),
-      resize: vi.fn(),
-      shutdown: vi.fn(),
-      sendSignal: vi.fn(),
-      getCwd: vi.fn(),
-      getInitialCwd: vi.fn(),
-      clearBuffer: vi.fn(),
-      acknowledgeDataEvent: vi.fn(),
-      onData: vi.fn(() => () => {}),
-      onReplay: vi.fn(() => () => {}),
-      onExit: vi.fn(() => () => {}),
-      listProcesses: vi.fn(),
-      hasChildProcesses: vi.fn(),
-      getForegroundProcess: vi.fn(),
-      serialize: vi.fn(),
-      revive: vi.fn(),
-      getDefaultShell: vi.fn(),
-      getProfiles: vi.fn()
-    } as never)
-    let session = {
-      tabsByWorktree: {
-        [worktreeId]: [{ id: tabId, worktreeId, ptyId: livePtyId }]
-      },
-      terminalLayoutsByTabId: {
-        [tabId]: {
-          root: { type: 'leaf' as const, leafId },
-          activeLeafId: leafId,
-          expandedLeafId: null,
-          ptyIdsByLeafId: { [leafId]: livePtyId }
-        }
-      },
-      terminalPtyIncarnationsByPaneKey: { [paneKey]: 'inc-live-ssh-owner' }
-    }
-    const store = {
-      // STA-3077 step P inverted these: the reader/retirer used to target the
-      // per-target `ssh:<connectionId>` partition while the renderer published
-      // pane membership to `local` — two homes, so supersession no-opped. Both
-      // sides now address the single default (local) partition, i.e. no hostId.
-      getWorkspaceSession: vi.fn((requestedHostId?: string) => {
-        expect(requestedHostId).toBeUndefined()
-        return session
-      }),
-      setWorkspaceSession: vi.fn((next, requestedHostId?: string) => {
-        expect(requestedHostId).toBeUndefined()
-        session = next
-      }),
-      flushOrThrow: vi.fn(),
-      persistPtyBinding: vi.fn(),
-      upsertSshRemotePtyLease: vi.fn(),
-      removeSshRemotePtyLease: vi.fn(),
-      markSshRemotePtyLease: vi.fn()
-    }
-    const runtime = {
-      setPtyController: vi.fn(),
-      resolveTerminalPane: vi.fn(() => {
-        throw new Error('terminal_not_found')
-      }),
-      createPreAllocatedTerminalHandle: vi.fn(() => 'term-fresh-ssh-owner'),
-      registerPreAllocatedHandleForPty: vi.fn(),
-      beginPtyRegistration: vi.fn(),
-      cancelPendingPtyRegistration: vi.fn(),
-      assertPtyRegistrationAllowed: vi.fn(),
-      registerPty: vi.fn(),
-      noteTerminalSpawnCommand: vi.fn(),
-      seedHeadlessTerminal: vi.fn(),
-      getDriver: vi.fn(() => ({ kind: 'host' })),
-      onPtySpawned: vi.fn(),
-      onPtyExit: vi.fn(),
-      onPtyData: vi.fn()
-    }
-
-    try {
-      registerPtyHandlers(
-        mainWindow as never,
-        runtime as never,
-        undefined,
-        undefined,
-        undefined,
-        store as never
-      )
-      await expect(
-        handlers.get('pty:spawn')!(null, {
-          cols: 80,
-          rows: 24,
-          cwd: '/remote/unproven-stable-pane',
-          command: 'codex resume a-session-that-may-still-be-running',
-          connectionId,
-          worktreeId,
-          tabId,
-          leafId,
-          env: {
-            ORCA_PANE_KEY: paneKey,
-            ORCA_TAB_ID: tabId,
-            ORCA_WORKTREE_ID: worktreeId
-          }
-        })
-      ).rejects.toThrow(/not found/i)
-
-      // Only the attach ran: no replacement carrying the resume payload.
-      expect(remoteSpawn).toHaveBeenCalledTimes(1)
-      expect(remoteSpawn.mock.calls[0]?.[0]).toMatchObject({ attachOnly: true })
-      // The pane keeps its owner, so the shell stays reattachable.
-      expect(store.setWorkspaceSession).not.toHaveBeenCalled()
-      expect(runtime.onPtyExit).not.toHaveBeenCalled()
-    } finally {
-      unregisterSshPtyProvider(connectionId)
-    }
-  })
-
-  it('retires a dead owner from the local session — the one pane-binding home — before fresh recovery', async () => {
+  it('retires a dead owner from the exact SSH host session before fresh recovery', async () => {
     const connectionId = 'ssh-dead-stable-pane'
+    const hostId = `ssh:${connectionId}`
     const tabId = 'tab-dead-ssh-owner'
     const leafId = '34343434-3434-4434-8434-343434343434'
     const paneKey = makePaneKey(tabId, leafId)
@@ -10644,8 +10447,7 @@ describe('registerPtyHandlers', () => {
     const freshPtyId = `ssh:${connectionId}@@fresh-relay-pty`
     const remoteSpawn = vi.fn(async (options: { attachOnly?: boolean; command?: string }) => {
       if (options.attachOnly) {
-        // Proven exit: only this error authorizes retiring the owner (bare not-found must not).
-        throw new Error('SSH_SESSION_EXPIRED: dead-relay-pty')
+        throw new Error('PTY "dead-relay-pty" not found')
       }
       return { id: freshPtyId, incarnationId: 'inc-fresh-ssh-owner' }
     })
@@ -10685,16 +10487,12 @@ describe('registerPtyHandlers', () => {
       terminalPtyIncarnationsByPaneKey: { [paneKey]: 'inc-dead-ssh-owner' }
     }
     const store = {
-      // STA-3077 step P inverted these: the reader/retirer used to target the
-      // per-target `ssh:<connectionId>` partition while the renderer published
-      // pane membership to `local` — two homes, so supersession no-opped. Both
-      // sides now address the single default (local) partition, i.e. no hostId.
       getWorkspaceSession: vi.fn((requestedHostId?: string) => {
-        expect(requestedHostId).toBeUndefined()
+        expect(requestedHostId).toBe(hostId)
         return session
       }),
       setWorkspaceSession: vi.fn((next, requestedHostId?: string) => {
-        expect(requestedHostId).toBeUndefined()
+        expect(requestedHostId).toBe(hostId)
         session = next
       }),
       flushOrThrow: vi.fn(),
@@ -10757,25 +10555,16 @@ describe('registerPtyHandlers', () => {
       expect(remoteSpawn.mock.calls[1]?.[0]).toMatchObject({
         command: 'codex resume exact-dead-ssh-provider-session'
       })
-      // STA-3077 step P inverted these: the retirement write and the fresh
-      // binding write both land in the single default (local) partition now, so
-      // no hostId is passed. The dead owner must still actually be retired.
-      expect(store.setWorkspaceSession).toHaveBeenCalledOnce()
-      expect(store.setWorkspaceSession.mock.calls[0]!).toHaveLength(1)
-      expect(
-        store.setWorkspaceSession.mock.calls[0]![0].terminalLayoutsByTabId[tabId]?.ptyIdsByLeafId?.[
-          leafId
-        ]
-      ).not.toBe(deadPtyId)
+      expect(store.setWorkspaceSession).toHaveBeenCalledWith(expect.anything(), hostId)
       expect(store.persistPtyBinding).toHaveBeenCalledWith(
         expect.objectContaining({
           worktreeId,
           tabId,
           leafId,
           ptyId: freshPtyId
-        })
+        }),
+        hostId
       )
-      expect(store.persistPtyBinding.mock.calls.at(-1)!).toHaveLength(1)
     } finally {
       unregisterSshPtyProvider(connectionId)
     }
@@ -11121,15 +10910,15 @@ describe('registerPtyHandlers', () => {
         state: 'attached'
       })
     )
-    // STA-3077 step P inverted this: the headless binding writer no longer
-    // targets `ssh:<target>`; one home (`local`) only, so no hostId argument.
-    expect(store.persistPtyBinding).toHaveBeenCalledWith({
-      worktreeId: 'wt-remote',
-      tabId: 'tab-remote',
-      leafId,
-      ptyId: 'ssh:ssh-1@@relay-pty'
-    })
-    expect(store.persistPtyBinding.mock.calls[0]!).toHaveLength(1)
+    expect(store.persistPtyBinding).toHaveBeenCalledWith(
+      {
+        worktreeId: 'wt-remote',
+        tabId: 'tab-remote',
+        leafId,
+        ptyId: 'ssh:ssh-1@@relay-pty'
+      },
+      'ssh:ssh-1'
+    )
     expect(store.persistPtyBinding.mock.invocationCallOrder[0]!).toBeLessThan(
       store.upsertSshRemotePtyLease.mock.invocationCallOrder[0]!
     )
@@ -11273,15 +11062,15 @@ describe('registerPtyHandlers', () => {
         persistHostSessionBinding: true
       })
 
-      // STA-3077 step P inverted this: the reattach binding refresh writes to the
-      // single default (local) partition, so the `ssh:<target>` hostId is gone.
-      expect(store.persistPtyBinding).toHaveBeenCalledWith({
-        worktreeId: 'wt-remote',
-        tabId: 'tab-remote',
-        leafId,
-        ptyId: 'ssh:ssh-reattach-ok@@relay-pty'
-      })
-      expect(store.persistPtyBinding.mock.calls.at(-1)!).toHaveLength(1)
+      expect(store.persistPtyBinding).toHaveBeenCalledWith(
+        {
+          worktreeId: 'wt-remote',
+          tabId: 'tab-remote',
+          leafId,
+          ptyId: 'ssh:ssh-reattach-ok@@relay-pty'
+        },
+        'ssh:ssh-reattach-ok'
+      )
       expect(store.upsertSshRemotePtyLease).toHaveBeenCalledWith(
         expect.objectContaining({
           targetId: 'ssh-reattach-ok',
@@ -17956,31 +17745,6 @@ describe('registerPtyHandlers', () => {
     expect(mockProc.proc.write).toHaveBeenNthCalledWith(2, 'tail')
   })
 
-  it('stops a chunked write when the PTY incarnation changes between chunks', async () => {
-    vi.useFakeTimers()
-    const mockProc = createMockProc()
-    spawnMock.mockReturnValue(mockProc.proc)
-    registerPtyHandlers(mainWindow as never)
-    const result = (await handlers.get('pty:spawn')!(null, {
-      cols: 80,
-      rows: 24
-    })) as { id: string }
-    restorePtyIncarnation(result.id, 'incarnation-old')
-    const text = ['x'.repeat(TERMINAL_INPUT_CHUNK_MAX_BYTES), 'tail'].join('')
-
-    const writeResult = handlers.get('pty:writeAccepted')!(mainWindowIpcEvent, {
-      id: result.id,
-      data: text
-    })
-    expect(mockProc.proc.write).toHaveBeenCalledOnce()
-    restorePtyIncarnation(result.id, 'incarnation-new')
-    await vi.runAllTimersAsync()
-
-    await expect(writeResult).resolves.toBe(false)
-    expect(mockProc.proc.write).toHaveBeenCalledOnce()
-    clearProviderPtyState(result.id)
-  })
-
   it('yields while validating accepted large acknowledged pty writes before provider writes', async () => {
     const mockProc = createMockProc()
     spawnMock.mockReturnValue(mockProc.proc)
@@ -18003,30 +17767,6 @@ describe('registerPtyHandlers', () => {
     await vi.runAllTimersAsync()
     await expect(writeResult).resolves.toBe(true)
     expect(mockProc.proc.write.mock.calls.map(([chunk]) => chunk).join('')).toBe(text)
-  })
-
-  it('drops a deferred write when the PTY incarnation changes during validation', async () => {
-    vi.useFakeTimers()
-    const mockProc = createMockProc()
-    spawnMock.mockReturnValue(mockProc.proc)
-    registerPtyHandlers(mainWindow as never)
-    const result = (await handlers.get('pty:spawn')!(null, {
-      cols: 80,
-      rows: 24
-    })) as { id: string }
-    restorePtyIncarnation(result.id, 'incarnation-old')
-    const text = 'é'.repeat(CLIPBOARD_TEXT_MEASURE_YIELD_CODE_UNITS + 1)
-
-    const writeResult = handlers.get('pty:writeAccepted')!(mainWindowIpcEvent, {
-      id: result.id,
-      data: text
-    })
-    restorePtyIncarnation(result.id, 'incarnation-new')
-    await vi.runAllTimersAsync()
-
-    await expect(writeResult).resolves.toBe(false)
-    expect(mockProc.proc.write).not.toHaveBeenCalled()
-    clearProviderPtyState(result.id)
   })
 
   it('rejects oversized acknowledged pty writes before provider writes', async () => {

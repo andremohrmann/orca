@@ -14,7 +14,7 @@ import {
   type DashboardFilterOption
 } from '../../../../shared/dashboard-snapshot'
 import type { RepoIcon } from '../../../../shared/repo-icon'
-import type { WorkspaceStatus } from '../../../../shared/types'
+import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 import type { AgentRevealArgs } from './AgentTerminalDialog'
 import { DashboardWorkspaceStatusButton } from './DashboardWorkspaceStatusButton'
 

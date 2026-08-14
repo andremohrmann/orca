@@ -1,6 +1,6 @@
 import { Terminal, type ITheme } from '@xterm/xterm'
 import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
-import type { GlobalSettings } from '../../../../shared/types'
+import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { buildPreviewTerminalOptions } from './preview-terminal-options'
 
 export const PREVIEW_SCROLLBACK_BUFFER_ROWS = 1000

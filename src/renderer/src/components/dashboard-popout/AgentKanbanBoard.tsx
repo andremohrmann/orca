@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button'
 import { lazyWithRetry } from '@/lib/lazy-with-retry'
 import { AgentLiveGrid } from './AgentLiveGrid'
 import { DashboardUsageBar } from './DashboardUsageBar'
-import type { WorkspaceStatus } from '../../../../shared/types'
+import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 
 const AgentDashboardMapView = lazyWithRetry(
   () =>

@@ -13,19 +13,14 @@ import {
 } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type {
-  PersistedState,
-  Project,
-  ProjectGroup,
-  ProjectHostSetup,
-  Repo,
-  GlobalSettings,
-  TerminalPaneLayoutNode,
-  TerminalTab,
-  WorktreeLineage,
-  WorkspaceLineage,
-  WorkspaceSessionState
-} from '../shared/types'
+import type { GlobalSettings } from '../shared/global-settings-types'
+import type { PersistedState } from '../shared/persisted-state-types'
+import type { ProjectGroup } from '../shared/project-group-types'
+import type { Project, ProjectHostSetup } from '../shared/project-types'
+import type { Repo } from '../shared/repo-types'
+import type { TerminalPaneLayoutNode, TerminalTab } from '../shared/terminal-tab-types'
+import type { WorkspaceSessionState } from '../shared/workspace-session-state-types'
+import type { WorkspaceLineage, WorktreeLineage } from '../shared/worktree/lineage-types'
 import { isTerminalLeafId, makePaneKey } from '../shared/stable-pane-id'
 import { TERMINAL_SCROLLBACK_REPLAY_BYTE_LIMIT } from '../shared/terminal-scrollback-limits'
 import { MAX_BROWSER_HISTORY_ENTRIES } from '../shared/workspace-session-browser-history'
@@ -42,6 +37,7 @@ import { SshConnectionStore } from './ssh/ssh-connection-store'
 import { setSourceControlActionDefault } from '../shared/source-control-ai-actions'
 import { LEGACY_DEFAULT_SSH_RELAY_GRACE_PERIOD_SECONDS } from '../shared/ssh-types'
 import { closeTerminalTabInWorkspaceSession } from '../shared/workspace-session-terminal-tab-close'
+import { createDefaultWorkspaceCleanupBrowseState } from '../shared/workspace-cleanup-browse-state'
 
 // Shared mutable state so the electron mock can reference a per-test directory
 const testState = { dir: '' }
@@ -595,6 +591,124 @@ describe('Store', () => {
     })
   })
 
+  it('carries project state and independent setups across a repo remote identity change', async () => {
+    const originProjectId = 'git:git.example.com/acme/app'
+    writeDataFile({
+      ...getDefaultPersistedState(testState.dir),
+      repos: [
+        makeRepo({
+          id: 'r1',
+          path: '/repo',
+          displayName: 'App',
+          gitRemoteIdentity: {
+            canonicalKey: 'git.example.com/acme/app',
+            remoteName: 'origin',
+            remoteUrl: 'git@git.example.com:acme/app.git'
+          }
+        })
+      ],
+      projects: [
+        makeProject({
+          id: originProjectId,
+          sourceRepoIds: ['r1'],
+          localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' }
+        })
+      ],
+      projectHostSetups: [
+        makeProjectHostSetup({ id: 'r1', projectId: originProjectId, repoId: 'r1' }),
+        makeProjectHostSetup({
+          id: 'app::gpu-vm',
+          projectId: originProjectId,
+          hostId: 'runtime:gpu-vm',
+          repoId: '',
+          path: '/srv/app'
+        })
+      ]
+    })
+    const store = await createStore()
+
+    // A re-probe that now prefers the `upstream` remote rewrites the derived project id.
+    store.updateRepo('r1', {
+      gitRemoteIdentity: {
+        canonicalKey: 'git.example.com/acme/app-upstream',
+        remoteName: 'upstream',
+        remoteUrl: 'git@git.example.com:acme/app-upstream.git'
+      }
+    })
+
+    const upstreamProjectId = 'git:git.example.com/acme/app-upstream'
+    expect(store.getProjects().map((project) => project.id)).toEqual([upstreamProjectId])
+    expect(store.getProjects()[0]?.localWindowsRuntimePreference).toEqual({
+      kind: 'wsl',
+      distro: 'Ubuntu'
+    })
+    expect(
+      store.getProjectHostSetups().find((setup) => setup.id === 'app::gpu-vm')?.projectId
+    ).toBe(upstreamProjectId)
+  })
+
+  it('picks one predecessor project when several prior rows overlap the same repos', async () => {
+    const sharedIdentity = {
+      canonicalKey: 'git.example.com/acme/shared',
+      remoteName: 'origin',
+      remoteUrl: 'git@git.example.com:acme/shared.git'
+    }
+    writeDataFile({
+      ...getDefaultPersistedState(testState.dir),
+      repos: [
+        makeRepo({
+          id: 'r1',
+          path: '/left',
+          displayName: 'Left',
+          gitRemoteIdentity: sharedIdentity
+        }),
+        makeRepo({
+          id: 'r2',
+          path: '/right',
+          displayName: 'Right',
+          gitRemoteIdentity: sharedIdentity
+        })
+      ],
+      projects: [
+        makeProject({
+          id: 'git:git.example.com/acme/left',
+          sourceRepoIds: ['r1'],
+          updatedAt: 200,
+          localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' }
+        }),
+        makeProject({
+          id: 'git:git.example.com/acme/right',
+          sourceRepoIds: ['r2'],
+          updatedAt: 100,
+          localWindowsRuntimePreference: { kind: 'windows-host' }
+        })
+      ],
+      projectHostSetups: [
+        makeProjectHostSetup({
+          id: 'r1',
+          projectId: 'git:git.example.com/acme/left',
+          repoId: 'r1'
+        }),
+        makeProjectHostSetup({
+          id: 'r2',
+          projectId: 'git:git.example.com/acme/right',
+          repoId: 'r2'
+        })
+      ]
+    })
+
+    const store = await createStore()
+
+    // Equal repo overlap resolves by newest updatedAt; the loser's preference is never merged in.
+    expect(store.getProjects()).toEqual([
+      expect.objectContaining({
+        id: 'git:git.example.com/acme/shared',
+        sourceRepoIds: ['r1', 'r2'],
+        localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' }
+      })
+    ])
+  })
+
   it('migrates legacy WSL agent settings into the global Windows runtime default', async () => {
     writeDataFile({
       schemaVersion: 1,
@@ -685,6 +799,7 @@ describe('Store', () => {
     expect(settings.editorAutoSaveDelayMs).toBe(1000)
     expect(settings.terminalFontSize).toBe(14)
     expect(settings.terminalFontWeight).toBe(500)
+    expect(settings.terminalFontWeightBold).toBe(700)
     expect(settings.terminalScrollSensitivity).toBe(1.15)
     expect(settings.terminalFastScrollSensitivity).toBe(5)
     expect(settings.terminalTuiScrollSensitivity).toBe(1)
@@ -4739,7 +4854,94 @@ describe('Store', () => {
     expect(updated!.externalWorktreeVisibilityLegacy).toBe(true)
   })
 
-  it('keeps rollback agent visibility writes authoritative for both built-in sources', async () => {
+  it('migrates implicit legacy visibility to an explicit override before defaulting global hide', async () => {
+    const persisted = getDefaultPersistedState(testState.dir)
+    delete persisted.settings.worktreeVisibilityDefaults
+    persisted.repos = [
+      makeRepo({
+        id: 'legacy',
+        kind: 'git',
+        externalWorktreeVisibility: undefined,
+        externalWorktreeVisibilityLegacy: undefined
+      }),
+      makeRepo({ id: 'explicit', externalWorktreeVisibility: 'hide' }),
+      makeRepo({
+        id: 'inherited',
+        externalWorktreeVisibility: undefined,
+        externalWorktreeVisibilityLegacy: false
+      })
+    ]
+    writeDataFile(persisted)
+
+    const store = await createStore()
+
+    expect(store.getSettings().worktreeVisibilityDefaults).toEqual({ external: 'hide' })
+    expect(store.getRepo('legacy')).toMatchObject({
+      externalWorktreeVisibility: 'show',
+      externalWorktreeVisibilityLegacy: true
+    })
+    expect(store.getRepo('explicit')?.externalWorktreeVisibility).toBe('hide')
+    expect(store.getRepo('inherited')?.externalWorktreeVisibility).toBeUndefined()
+
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getRepo('legacy')).toMatchObject({
+      externalWorktreeVisibility: 'show',
+      externalWorktreeVisibilityLegacy: true
+    })
+    expect(reloaded.getRepo('inherited')?.externalWorktreeVisibility).toBeUndefined()
+  })
+
+  it('merges visibility-default patches so future source defaults survive older controls', async () => {
+    const store = await createStore()
+    store.updateSettings({
+      worktreeVisibilityDefaults: {
+        external: 'show',
+        futureSource: 'hide'
+      } as GlobalSettings['worktreeVisibilityDefaults']
+    })
+
+    store.updateSettings({ worktreeVisibilityDefaults: { external: 'hide' } })
+
+    expect(store.getSettings().worktreeVisibilityDefaults).toEqual({
+      external: 'hide',
+      futureSource: 'hide'
+    })
+  })
+
+  it('normalizes and persists global worktree source defaults', async () => {
+    const store = await createStore()
+
+    store.updateSettings({
+      worktreeVisibilityDefaults: {
+        external: 'show',
+        customSources: [
+          { id: 'team', rootPath: ' /srv/team-worktrees ' },
+          { id: 'invalid', rootPath: '../relative' }
+        ],
+        sourcePreferences: {
+          builtIn: { claude: 'show', gsd: 'hide' },
+          custom: { team: 'show' }
+        }
+      }
+    })
+
+    expect(store.getSettings().worktreeVisibilityDefaults).toEqual({
+      external: 'show',
+      customSources: [{ id: 'team', rootPath: '/srv/team-worktrees' }],
+      sourcePreferences: {
+        builtIn: { claude: 'show', gsd: 'hide' },
+        custom: { team: 'show' }
+      }
+    })
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getSettings().worktreeVisibilityDefaults).toEqual(
+      store.getSettings().worktreeVisibilityDefaults
+    )
+  })
+
+  it('persists agent worktree visibility independently from external visibility', async () => {
     const store = await createStore()
     store.addRepo(makeRepo({ externalWorktreeVisibility: 'hide' }))
 
@@ -4792,6 +4994,25 @@ describe('Store', () => {
     expect(reloaded.getRepo('r1')?.customWorktreeVisibilitySources).toEqual([
       { id: 'team', rootPath: '/srv/team-worktrees' }
     ])
+  })
+
+  it('clears an explicit external-worktree override without stamping an inherited default', async () => {
+    const store = await createStore()
+    store.addRepo(
+      makeRepo({
+        externalWorktreeVisibility: 'show',
+        externalWorktreeVisibilityLegacy: true
+      })
+    )
+
+    const updated = store.updateRepo('r1', { externalWorktreeVisibility: null })
+
+    expect(updated?.externalWorktreeVisibility).toBeUndefined()
+    expect(updated?.externalWorktreeVisibilityLegacy).toBe(false)
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getRepo('r1')?.externalWorktreeVisibility).toBeUndefined()
+    expect(reloaded.getRepo('r1')?.externalWorktreeVisibilityLegacy).toBe(false)
   })
 
   it('updateRepo clears source-control AI overrides independently from other clearable fields', async () => {
@@ -5831,7 +6052,8 @@ describe('Store', () => {
       editorAutoSaveDelayMs: 1500,
       appFontFamily: 'Inter',
       terminalFontSize: 16,
-      terminalFontWeight: 600
+      terminalFontWeight: 600,
+      terminalFontWeightBold: 800
     })
     expect(updated.theme).toBe('dark')
     expect(updated.editorAutoSave).toBe(true)
@@ -5839,6 +6061,7 @@ describe('Store', () => {
     expect(updated.appFontFamily).toBe('Inter')
     expect(updated.terminalFontSize).toBe(16)
     expect(updated.terminalFontWeight).toBe(600)
+    expect(updated.terminalFontWeightBold).toBe(800)
     // Other fields preserved
     expect(updated.branchPrefix).toBe('git-username')
   })
@@ -7011,6 +7234,29 @@ describe('Store', () => {
       'agent-browser-use': { firstInteractedAt: 100, interactionCount: 1 },
       tasks: { firstInteractedAt: 200, interactionCount: 1 }
     })
+  })
+
+  it('updateUI preserves browse state when a legacy peer publishes dismissals only', async () => {
+    const store = await createStore()
+    const browse = createDefaultWorkspaceCleanupBrowseState()
+    browse.filters.query = 'stale'
+
+    store.updateUI({ workspaceCleanup: { dismissals: {}, browse } })
+    store.updateUI({
+      workspaceCleanup: {
+        dismissals: {
+          'wt-1': {
+            worktreeId: 'wt-1',
+            dismissedAt: 1700000000000,
+            fingerprint: 'fp-1',
+            classifierVersion: 2
+          }
+        }
+      }
+    })
+
+    expect(store.getUI().workspaceCleanup?.browse).toEqual(browse)
+    expect(store.getUI().workspaceCleanup?.dismissals).toHaveProperty('wt-1')
   })
 
   it('updateUI merges contextual tour seen ids instead of replacing stale snapshots', async () => {
@@ -10028,9 +10274,6 @@ describe('Store', () => {
       expect(store.getWorkspaceSession(hostId).terminalPtyIncarnationsByPaneKey?.[paneKey]).toBe(
         'inc-live'
       )
-      // Unchanged by STA-3077 step P. The fold moves an SSH pane's incarnation only when it moves
-      // the binding it fences, and this fixture's tab exists solely in the SSH partition — so
-      // there is no second home to disagree with, nothing folds, and both halves stay together.
       const reloaded = await createStore()
       expect(reloaded.getWorkspaceSession(hostId).terminalPtyIncarnationsByPaneKey?.[paneKey]).toBe(
         'inc-live'

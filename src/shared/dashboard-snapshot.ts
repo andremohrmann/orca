@@ -3,8 +3,9 @@ import type { ExecutionHostId } from './execution-host'
 import type { ProviderRateLimits } from './rate-limit-types'
 import type { RepoIcon } from './repo-icon'
 import type { StatusBarUsageMode } from './status-bar-usage-mode'
-import type { TuiAgent, WorkspaceStatus } from './types'
+import type { TuiAgent } from './tui-agent'
 import type { UsagePercentageDisplay } from './usage-percentage-display'
+import type { WorkspaceStatus } from './worktree/types'
 
 /**
  * Serializable contract for the pop-out agent dashboard. The main renderer owns

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { formatAgentTypeLabel } from '@/lib/agent-status'
 import type { DashboardCard, DashboardFilterOption } from '../../../../shared/dashboard-snapshot'
-import type { WorkspaceStatus } from '../../../../shared/types'
+import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 import { AgentTerminalPreview } from './AgentTerminalPreview'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
