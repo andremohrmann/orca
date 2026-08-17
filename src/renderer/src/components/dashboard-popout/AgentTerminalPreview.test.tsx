@@ -14,6 +14,7 @@ import {
 import {
   imeHarness,
   platformState,
+  runtimeStreamHarness,
   storeState,
   terminalHarness
 } from './agent-terminal-preview-test-harness'
@@ -42,6 +43,18 @@ describe('AgentTerminalPreview', () => {
     imeHarness.forwarders.length = 0
     imeHarness.trackers.length = 0
     imeHarness.claimResult = false
+    runtimeStreamHarness.watcher = null
+    runtimeStreamHarness.subscribeToRuntimeTerminalData.mockImplementation(
+      async (
+        _settings: unknown,
+        _ptyId: string,
+        _clientId: string,
+        watcher: (data: string) => void
+      ) => {
+        runtimeStreamHarness.watcher = watcher
+        return runtimeStreamHarness.dispose
+      }
+    )
     emitData = null
     emitAppMenuPaste = null
     emitAppMenuSelectionAction = null
@@ -351,6 +364,21 @@ describe('AgentTerminalPreview', () => {
     )
     expect(terminal.input).toHaveBeenCalledWith('\x1b\rsecond line')
     expect(terminal.paste).not.toHaveBeenCalled()
+  })
+
+  it('subscribes remote previews to live-tail output without preview IPC ACKs', async () => {
+    render(<AgentTerminalPreview ptyId="remote:windows-box@@pty-1" />)
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    await waitFor(() =>
+      expect(runtimeStreamHarness.subscribeToRuntimeTerminalData).toHaveBeenCalled()
+    )
+    const terminal = terminalHarness.instances[0]!
+
+    act(() => runtimeStreamHarness.watcher?.('remote live'))
+
+    expect(terminal.write).toHaveBeenCalledWith('remote live', expect.any(Function))
+    act(() => terminal.writeCallbacks.shift()?.())
+    expect(ack).not.toHaveBeenCalledWith('remote:windows-box@@pty-1', 0)
   })
 
   it('handles app-menu selection actions while the preview owns focus', async () => {
@@ -766,5 +794,4 @@ describe('AgentTerminalPreview', () => {
     expect(connect).toHaveBeenLastCalledWith('pty-live', { scrollbackRows: 1000 })
     expect(view.queryByText(/No live terminal/)).not.toBeInTheDocument()
   })
-
 })

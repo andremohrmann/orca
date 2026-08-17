@@ -29,6 +29,19 @@ type PreviewTerminalHarness = {
   userInputDispose: TerminalPreviewMock
 }
 
+type RuntimeStreamHarness = {
+  subscribeToRuntimeTerminalData: Mock<
+    (
+      settings: unknown,
+      ptyId: string,
+      clientId: string,
+      watcher: (data: string) => void
+    ) => Promise<() => void>
+  >
+  watcher: ((data: string) => void) | null
+  dispose: TerminalPreviewMock
+}
+
 const terminalHarness = vi.hoisted(
   (): PreviewTerminalHarness => ({
     instances: [],
@@ -54,6 +67,14 @@ const imeHarness = vi.hoisted(() => ({
   trackers: [] as { dispose: ReturnType<typeof vi.fn> }[],
   claimResult: false
 }))
+
+const runtimeStreamHarness = vi.hoisted(
+  (): RuntimeStreamHarness => ({
+    subscribeToRuntimeTerminalData: vi.fn(),
+    watcher: null as ((data: string) => void) | null,
+    dispose: vi.fn()
+  })
+)
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: class {
@@ -153,5 +174,12 @@ vi.mock('@/store', () => {
   useAppStore.getState = (): typeof storeState => storeState
   return { useAppStore }
 })
+vi.mock('@/runtime/runtime-terminal-stream', () => ({
+  getRemoteRuntimePtyEnvironmentId: (ptyId: string) => {
+    const match = /^remote:([^@]+)@@/.exec(ptyId)
+    return match?.[1] ?? null
+  },
+  subscribeToRuntimeTerminalData: runtimeStreamHarness.subscribeToRuntimeTerminalData
+}))
 
-export { imeHarness, platformState, storeState, terminalHarness }
+export { imeHarness, platformState, runtimeStreamHarness, storeState, terminalHarness }

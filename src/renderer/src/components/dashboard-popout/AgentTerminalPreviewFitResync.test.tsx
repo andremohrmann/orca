@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
-import { act, cleanup, render } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { terminalHarness } from './agent-terminal-preview-test-harness'
 import { AgentTerminalPreview } from './AgentTerminalPreview'
@@ -101,5 +102,34 @@ describe('AgentTerminalPreview fit resync', () => {
     view.unmount()
     await vi.advanceTimersByTimeAsync(150)
     expect(connect).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps retrying a restored pane after a closed preview is activated', async () => {
+    vi.useFakeTimers()
+    const onClosedActivate = vi.fn()
+    connect
+      .mockResolvedValueOnce({ snapshot: null, replay: [] })
+      .mockResolvedValueOnce({ snapshot: null, replay: [] })
+      .mockResolvedValueOnce({
+        snapshot: { data: 'restored', cols: 80, rows: 24, seq: 2 },
+        replay: []
+      })
+
+    const view = render(
+      <AgentTerminalPreview ptyId="pty-restore" onClosedActivate={onClosedActivate} />
+    )
+    await vi.waitFor(() => expect(view.getByRole('button', { name: /No live terminal/ })))
+
+    fireEvent.click(view.getByRole('button', { name: /No live terminal/ }))
+    await vi.waitFor(() => expect(connect).toHaveBeenCalledTimes(2))
+    expect(onClosedActivate).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1_000)
+
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(view.queryByRole('button', { name: /No live terminal/ })).not.toBeInTheDocument()
+    )
+    expect(connect).toHaveBeenCalledTimes(3)
   })
 })

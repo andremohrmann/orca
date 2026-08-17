@@ -13,11 +13,7 @@ import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler
 import { createPreviewGridClaim } from './preview-grid-claim'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
-import {
-  PREVIEW_SCROLLBACK_ROWS,
-  clearPreviewTerminalTimer,
-  ensurePreviewTerminal
-} from './preview-terminal-session'
+import { PREVIEW_SCROLLBACK_ROWS, clearPreviewTerminalTimer, ensurePreviewTerminal } from './preview-terminal-session'
 import { usePreviewTerminalTheme } from './usePreviewTerminalTheme'
 import { AgentTerminalPreviewFrame } from './AgentTerminalPreviewFrame'
 import type { AgentTerminalPreviewProps } from './agent-terminal-preview-props'
@@ -27,36 +23,32 @@ import { usePreviewTerminalContextMenu } from './usePreviewTerminalContextMenu'
 import { usePreviewTerminalAppearance } from './usePreviewTerminalAppearance'
 import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
 import { installPreviewTerminalInteractions } from './preview-terminal-interaction-installers'
-
+import { createPreviewGonePtyRetry } from './preview-terminal-gone-retry'
+import { usePreviewRemoteTerminalLiveTail } from './use-preview-remote-terminal-live-tail'
 const RESYNC_RETRY_DELAY_MS = 150
-
-export function AgentTerminalPreview({
-  ptyId,
-  terminalInput = null,
-  terminalLinks = null,
-  claimGrid = true,
-  scaleToFit = true,
-  autoFocus = true,
-  onClosedActivate,
-  className
-}: AgentTerminalPreviewProps): React.JSX.Element {
+type PendingLivePayload = {
+  acknowledge: boolean
+  payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>
+}
+export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JSX.Element {
+  const { ptyId, terminalInput = null, terminalLinks = null, claimGrid = true, scaleToFit = true, autoFocus = true, onClosedActivate, className } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
   const { settingsRef, macOptionAsAltRef, terminalInputRef, terminalLinksRef } =
     usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
-  const [ptyGone, setPtyGone] = useState(false)
+  const [ptyGone, setPtyGone] = useState(false),
+    retryGonePtyRef = useRef<() => void>(() => undefined),
+    remoteLiveDataRef = useRef<(data: string) => void>(() => undefined)
   const { pasteClipboardTextRef, installContextMenu, contextMenu } =
     usePreviewTerminalContextMenu(terminalRef)
   usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
-
   useEffect(() => {
     setPtyGone(false)
     const container = containerRef.current
     if (!container) {
       return
     }
-    const pasteRef = pasteClipboardTextRef
     let disposed = false
     let terminal: Terminal | null = null
     let offData: (() => void) | null = null
@@ -70,9 +62,9 @@ export function AgentTerminalPreview({
     let refreshAgain = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
     let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
-    let requestInputRefresh = (): void => undefined
-    let scheduleGridClaim = (): void => undefined
-    const pendingLivePayloads: Extract<TerminalPreviewDataPayload, { type: 'data' }>[] = []
+    let requestInputRefresh = (): void => undefined,
+      scheduleGridClaim = (): void => undefined
+    const pendingLivePayloads: PendingLivePayload[] = []
     const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
     const fitToBox = (): void => {
       fitPreviewTerminalToBox({
@@ -93,7 +85,11 @@ export function AgentTerminalPreview({
         fitToBox()
       })
     }
-
+    const goneRetry = createPreviewGonePtyRetry({
+      retryDelayMs: 1_000,
+      requestReconnect: () => void setup(true),
+      isDisposed: () => disposed
+    })
     const gridClaim = claimGrid
       ? createPreviewGridClaim({
           ptyId,
@@ -116,8 +112,6 @@ export function AgentTerminalPreview({
     boxResizeObserver?.observe(container)
     let replayDepth = 0
     const writeReplayed = (chunk: string, onDone?: () => void, live = false): void => {
-      // Why: a redelivered snapshot repeats the TUI's one-time kitty push, so
-      // replayed bytes must apply as idempotent sets (see the tracker's docs).
       if (live) {
         kittyKeyboardModes.scan(chunk)
       } else {
@@ -130,27 +124,24 @@ export function AgentTerminalPreview({
         onDone?.()
       })
     }
-
-    const writeLive = (payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>): void => {
-      // A live echo means the preview is healthy; keep its existing xterm
-      // frame instead of replacing it with a snapshot after every keystroke.
+    const writeLive = (payload: PendingLivePayload['payload'], acknowledge = true): void => {
       clearPreviewTerminalTimer(inputRefreshTimer)
       inputRefreshTimer = null
       if (!terminal) {
-        pendingLivePayloads.push(payload)
+        pendingLivePayloads.push({ payload, acknowledge })
         return
       }
       writeReplayed(
         payload.data,
         () => {
-          if (!disposed) {
+          if (!disposed && acknowledge) {
             void window.api.terminalPreview.ack(ptyId, payload.bytes)
           }
         },
         true
       )
     }
-
+    remoteLiveDataRef.current = (data) => writeLive({ type: 'data', ptyId, data, bytes: 0 }, false)
     const pasteClipboardText = createPreviewClipboardPaster({
       ptyId,
       container,
@@ -158,23 +149,19 @@ export function AgentTerminalPreview({
       getTerminalInput: () => terminalInputRef.current,
       isDisposed: () => disposed
     })
-    pasteRef.current = pasteClipboardText
+    pasteClipboardTextRef.current = pasteClipboardText
 
     const disposeImeNativeTextBridge = (): void => {
       imeBridge?.dispose()
       imeBridge = null
     }
-
     const installImeNativeTextBridge = (): void => {
       if (terminal) {
-        // Why a live getter: kitty state can change between keydown and commit,
-        // and the tracker outlives every reconnect inside this effect.
         imeBridge = installPreviewImeBridge(terminal, {
           getKittyKeyboardFlags: () => kittyKeyboardModes.flags
         })
       }
     }
-
     const installKeyHandler = (): void => {
       if (!terminal) {
         return
@@ -184,7 +171,6 @@ export function AgentTerminalPreview({
         claimImeKeyEvent: (event) => imeBridge?.claimKeyEvent(event) ?? false,
         pasteClipboardText: (activeElement, source) =>
           void pasteClipboardText(activeElement, source),
-        // Why: route through terminal.input so the chord's bytes carry core's user-input signal, like typed keys.
         sendInput: (data) => terminal?.input(data),
         getShortcutContext: () => ({
           clientPlatform: getShortcutPlatform(),
@@ -196,7 +182,6 @@ export function AgentTerminalPreview({
         })
       })
     }
-
     const installTerminalCompatibility = (): void => {
       if (!terminal) {
         return
@@ -206,7 +191,6 @@ export function AgentTerminalPreview({
         getTerminalLinks: () => terminalLinksRef.current
       })
     }
-
     const installInputRouting = (): void => {
       if (!terminal) {
         return
@@ -220,7 +204,6 @@ export function AgentTerminalPreview({
         if (signaledUserInput) {
           pendingUserInputSignals--
         }
-        // Why: core's signal distinguishes real input from parser replies, so typing survives live replay without forwarding synthetic CPR/DA bytes.
         if (userInputDisposable ? !signaledUserInput : replayDepth > 0) {
           return
         }
@@ -275,12 +258,11 @@ export function AgentTerminalPreview({
         kittyKeyboardModes,
         write: (chunk, live) => writeReplayed(chunk, undefined, live)
       })
-      for (const payload of pendingLivePayloads.splice(0)) {
-        writeLive(payload)
+      for (const pending of pendingLivePayloads.splice(0)) {
+        writeLive(pending.payload, pending.acknowledge)
       }
       if (connection.resyncRequired) {
         refreshAgain = false
-        // Why: sustained output can overflow every capture; delay retries so recovery cannot spin two serializations per event-loop turn.
         writeReplayed('', () => {
           if (disposed || retryTimer) {
             return
@@ -318,8 +300,6 @@ export function AgentTerminalPreview({
       if (!snap) {
         refreshInFlight = false
         setPtyGone(true)
-        offData?.()
-        offData = null
         userInputDisposable?.dispose()
         userInputDisposable = null
         disposeImeNativeTextBridge()
@@ -331,9 +311,12 @@ export function AgentTerminalPreview({
         terminal = null
         terminalRef.current = null
         void window.api.terminalPreview.unsubscribe(ptyId)
+        goneRetry.schedule()
         return
       }
       refreshInFlight = false
+      setPtyGone(false)
+      goneRetry.dispose()
       if (!connection.resyncRequired && retryTimer) {
         clearTimeout(retryTimer)
         retryTimer = null
@@ -348,6 +331,7 @@ export function AgentTerminalPreview({
         void setup(true)
       }, 180)
     }
+    retryGonePtyRef.current = goneRetry.retryNow
     const disposeAppMenuClipboard = installPreviewTerminalAppMenuClipboard({
       container,
       getTerminal: () => terminal,
@@ -370,8 +354,11 @@ export function AgentTerminalPreview({
       disposed = true
       clearPreviewTerminalTimer(retryTimer)
       clearPreviewTerminalTimer(inputRefreshTimer)
+      goneRetry.dispose()
+      retryGonePtyRef.current = () => undefined
+      remoteLiveDataRef.current = () => undefined
       horizontalReset.dispose()
-      pasteRef.current = null
+      pasteClipboardTextRef.current = null
       gridClaim.dispose()
       boxResizeObserver?.disconnect()
       disposeAppMenuClipboard()
@@ -399,6 +386,7 @@ export function AgentTerminalPreview({
     terminalTheme,
     terminalMode
   ])
+  usePreviewRemoteTerminalLiveTail({ ptyId, onDataRef: remoteLiveDataRef })
 
   return (
     <AgentTerminalPreviewFrame
@@ -406,7 +394,10 @@ export function AgentTerminalPreview({
       containerRef={containerRef}
       terminalRef={terminalRef}
       ptyGone={ptyGone}
-      onClosedActivate={onClosedActivate}
+      onClosedActivate={() => {
+        onClosedActivate?.()
+        retryGonePtyRef.current()
+      }}
       terminalTheme={terminalTheme}
       contextMenu={contextMenu}
     />
