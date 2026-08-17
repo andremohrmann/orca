@@ -2,7 +2,10 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
-import { fitPreviewTerminalToBox } from './preview-terminal-fit'
+import {
+  fitPreviewTerminalToBox,
+  resetPreviewTerminalHorizontalScroll
+} from './preview-terminal-fit'
 
 function terminal(rows = 24): Terminal {
   return { rows, buffer: { active: { cursorY: rows - 1 } } } as Terminal
@@ -37,5 +40,36 @@ describe('fitPreviewTerminalToBox', () => {
 
     expect(container.style.transform).toBe('')
     expect(onUnscaledOverflow).toHaveBeenCalledOnce()
+  })
+
+  it('clips the rendered screen to the preview box after fitting', () => {
+    const container = fixture({ boxWidth: 600, boxHeight: 300, screenWidth: 900 })
+
+    fitPreviewTerminalToBox({
+      container,
+      terminal: terminal(),
+      scaleToFit: true,
+      onUnscaledOverflow: vi.fn()
+    })
+
+    const screen = container.querySelector<HTMLElement>('.xterm-screen')!
+    expect(container.style.overflow).toBe('hidden')
+    expect(screen.style.overflow).toBe('hidden')
+  })
+
+  it('resets horizontal xterm scroll drift', () => {
+    const container = document.createElement('div')
+    const viewport = document.createElement('div')
+    viewport.className = 'xterm-viewport'
+    viewport.scrollLeft = 120
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    screen.scrollLeft = 80
+    container.append(viewport, screen)
+
+    resetPreviewTerminalHorizontalScroll(container)
+
+    expect(viewport.scrollLeft).toBe(0)
+    expect(screen.scrollLeft).toBe(0)
   })
 })

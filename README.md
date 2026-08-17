@@ -20,6 +20,28 @@
   Run Codex, ClaudeCode, OpenCode or Pi side-by-side — each in its own worktree, tracked in one place.
 </p>
 
+## André's Custom Windows Fork
+
+This fork tracks upstream Orca and carries a small Windows-focused custom layer for André's daily agent dashboard workflow.
+
+It currently adds and maintains:
+
+- a custom Windows update/release channel under [`andremohrmann/orca`](https://github.com/andremohrmann/orca/releases)
+- dashboard live-view and kanban compatibility patches for the custom branch
+- persisted dashboard popout state and custom dashboard defaults
+- Windows build hardening for transient file locks during web projection
+- local packaging scripts for stamped custom Windows installers
+
+The stable fallback release kept for comparison is [`custom-windows-1.4.179-custom.20260813202123`](https://github.com/andremohrmann/orca/releases/tag/custom-windows-1.4.179-custom.20260813202123). The latest custom Windows build is published on the fork's [GitHub releases page](https://github.com/andremohrmann/orca/releases/latest).
+
+This is not an upstream Orca release channel. For stock Orca builds and support, use the upstream project at [`stablyai/orca`](https://github.com/stablyai/orca).
+
+<p align="center">
+  <img src="docs/assets/custom-live-view-dashboard.png" alt="Custom Orca live-view dashboard with terminal contents blurred" width="960" />
+  <br/>
+  <sub>Custom live view can show any number of agent terminals from different workspaces in one dashboard; terminal contents are blurred here for privacy.</sub>
+</p>
+
 <h3 align="center"><a href="https://onorca.dev/download"><ins>Download Orca</ins></a></h3>
 
 <p align="center">
@@ -215,6 +237,13 @@ Works with **any CLI agent** — if it runs in a terminal, it runs in Orca.
 - Or grab a build directly: [macOS Apple Silicon](https://github.com/stablyai/orca/releases/latest/download/orca-macos-arm64.dmg) · [macOS Intel](https://github.com/stablyai/orca/releases/latest/download/orca-macos-x64.dmg) · [Windows (.exe)](https://github.com/stablyai/orca/releases/latest/download/orca-windows-setup.exe) · [Linux AppImage](https://github.com/stablyai/orca/releases/latest/download/orca-linux.AppImage) · [All builds](https://github.com/stablyai/orca/releases/latest)
 - Running `orca serve` on a headless Linux server? See the [headless Linux server guide](docs/reference/headless-linux-server.md).
 
+### Custom Windows Build
+
+For this fork's Windows build, use the latest custom installer:
+
+- **[Custom Windows installer](https://github.com/andremohrmann/orca/releases/latest/download/orca-windows-setup.exe)**
+- **[All custom releases](https://github.com/andremohrmann/orca/releases)**
+
 _Or via a package manager:_
 
 ```bash
@@ -231,6 +260,27 @@ Pair with your desktop app to monitor and steer your agents from your phone.
 
 - **iOS:** [Download on the App Store](https://apps.apple.com/us/app/orca-ide/id6766130217) or [join TestFlight](https://testflight.apple.com/join/YjeGMQBA)
 - **Android:** [Download APK 0.0.42](https://github.com/stablyai/orca/releases/download/mobile-android-v0.0.42/app-release.apk)
+
+---
+
+## Maintaining This Fork
+
+The custom branch is `custom/orca-dashboard-live-view`.
+
+Build and verify a stamped Windows installer with:
+
+```powershell
+pnpm run custom:build-windows
+```
+
+The script rebases or verifies the branch against `origin/main`, stamps a `1.4.179-custom.<timestamp>` version, builds the Windows installer, and verifies the update metadata for `andremohrmann/orca`.
+
+Useful checks:
+
+```powershell
+pnpm run typecheck
+pnpm run custom:verify-windows-update
+```
 
 ---
 

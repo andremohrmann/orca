@@ -57,7 +57,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Rebase, validate, and build installer
+      - name: Merge upstream, validate, and build installer
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File config/scripts/build-custom-orca-update.ps1 `
@@ -68,10 +68,10 @@ jobs:
             -UpdateRepo "${{ github.event.repository.name }}" `
             -StampCustomVersion
 
-      - name: Push rebased custom branch
+      - name: Push updated custom branch
         continue-on-error: true
         shell: pwsh
-        run: git push origin HEAD:$env:CUSTOM_BRANCH --force-with-lease
+        run: git push origin HEAD:$env:CUSTOM_BRANCH
 
       - name: Compute release metadata
         id: release

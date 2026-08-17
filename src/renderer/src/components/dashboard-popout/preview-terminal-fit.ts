@@ -1,5 +1,13 @@
 import type { Terminal } from '@xterm/xterm'
 
+export function resetPreviewTerminalHorizontalScroll(container: HTMLElement): void {
+  for (const element of container.querySelectorAll<HTMLElement>(
+    '.xterm, .xterm-screen, .xterm-viewport, .xterm-scroll-area'
+  )) {
+    element.scrollLeft = 0
+  }
+}
+
 export function fitPreviewTerminalToBox(args: {
   container: HTMLElement
   terminal: Terminal | null
@@ -13,6 +21,8 @@ export function fitPreviewTerminalToBox(args: {
   }
   const scale = args.scaleToFit ? Math.min(1, box.clientWidth / Math.max(1, screen.offsetWidth)) : 1
   args.container.style.transform = scale < 1 ? `scale(${scale})` : ''
+  args.container.style.overflow = 'hidden'
+  screen.style.overflow = 'hidden'
   if (!args.scaleToFit && screen.offsetWidth > box.clientWidth + 1) {
     args.onUnscaledOverflow()
   }

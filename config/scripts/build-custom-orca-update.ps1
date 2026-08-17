@@ -59,7 +59,7 @@ function Assert-CleanWorktree {
   }
 }
 
-function Rebase-CustomBranch {
+function Merge-CustomBranch {
   param(
     [string]$BranchName,
     [string]$UpstreamRef
@@ -90,17 +90,17 @@ function Rebase-CustomBranch {
   if ($LASTEXITCODE -ne 1) {
     throw "Could not compare $BranchName with $UpstreamRef."
   }
-  Write-Host "`n==> Rebase $BranchName onto $UpstreamRef"
-  & git rebase $UpstreamRef
+  Write-Host "`n==> Merge $UpstreamRef into $BranchName"
+  & git merge --no-edit $UpstreamRef
   if ($LASTEXITCODE -ne 0) {
-    if (!(Resolve-DeletedWorkflowRebaseConflicts)) {
-      Write-Error "Rebase stopped. Resolve conflicts, run 'git rebase --continue', then rerun this script."
+    if (!(Resolve-DeletedWorkflowMergeConflicts)) {
+      Write-Error "Merge stopped. Resolve conflicts, commit the merge, then rerun this script."
       exit $LASTEXITCODE
     }
   }
 }
 
-function Resolve-DeletedWorkflowRebaseConflicts {
+function Resolve-DeletedWorkflowMergeConflicts {
   for ($attempt = 0; $attempt -lt 10; $attempt++) {
     $conflicts = @(git diff --name-only --diff-filter=U)
     if ($LASTEXITCODE -ne 0) {
@@ -122,7 +122,7 @@ function Resolve-DeletedWorkflowRebaseConflicts {
     if ($LASTEXITCODE -ne 0) {
       return $false
     }
-    & git -c core.editor=true rebase --continue
+    & git -c core.editor=true commit --no-edit
     if ($LASTEXITCODE -eq 0) {
       return $true
     }
@@ -192,7 +192,7 @@ $repoRoot = Invoke-NativeOutput git @('rev-parse', '--show-toplevel')
 Set-Location -LiteralPath $repoRoot
 Enable-Node24IfAvailable
 Assert-CleanWorktree
-Rebase-CustomBranch -BranchName $Branch -UpstreamRef $Upstream
+Merge-CustomBranch -BranchName $Branch -UpstreamRef $Upstream
 
 if ($StampCustomVersion) {
   Set-CustomBuildVersion

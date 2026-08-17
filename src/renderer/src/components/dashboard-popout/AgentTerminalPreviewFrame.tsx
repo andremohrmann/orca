@@ -1,4 +1,5 @@
 import type { Terminal, ITheme } from '@xterm/xterm'
+import type { ReactNode } from 'react'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 
@@ -8,7 +9,8 @@ export function AgentTerminalPreviewFrame({
   terminalRef,
   ptyGone,
   onClosedActivate,
-  terminalTheme
+  terminalTheme,
+  contextMenu
 }: {
   className?: string
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -16,9 +18,11 @@ export function AgentTerminalPreviewFrame({
   ptyGone: boolean
   onClosedActivate?: () => void
   terminalTheme: ITheme | null
+  contextMenu?: ReactNode
 }): React.JSX.Element {
   return (
     <div
+      data-preview-terminal-frame="true"
       className={cn(
         'relative h-[calc(100vh-140px)] w-full overflow-hidden bg-background p-1.5',
         className
@@ -52,6 +56,7 @@ export function AgentTerminalPreviewFrame({
       >
         <div ref={containerRef} className="max-w-full origin-bottom-left" />
       </div>
+      {contextMenu}
     </div>
   )
 }

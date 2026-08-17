@@ -1,12 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { subscribeToTerminalUserInput } from '@/components/terminal-pane/terminal-user-input-signal'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
 import { replayPreviewConnectionSnapshot } from './preview-terminal-snapshot-replay'
-import { buildPreviewAppearanceOptions } from './preview-terminal-options'
-import { syncPreviewTerminalLigatures } from './preview-terminal-ligatures'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import { installPreviewImeBridge, type PreviewImeBridge } from './preview-terminal-ime-bridge'
@@ -24,6 +22,11 @@ import { usePreviewTerminalTheme } from './usePreviewTerminalTheme'
 import { AgentTerminalPreviewFrame } from './AgentTerminalPreviewFrame'
 import type { AgentTerminalPreviewProps } from './agent-terminal-preview-props'
 import { fitPreviewTerminalToBox } from './preview-terminal-fit'
+import { createPreviewTerminalHorizontalScrollReset } from './preview-terminal-horizontal-scroll'
+import { usePreviewTerminalContextMenu } from './usePreviewTerminalContextMenu'
+import { usePreviewTerminalAppearance } from './usePreviewTerminalAppearance'
+import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
+import { installPreviewTerminalInteractions } from './preview-terminal-interaction-installers'
 
 const RESYNC_RETRY_DELAY_MS = 150
 
@@ -40,18 +43,12 @@ export function AgentTerminalPreview({
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
-  const settingsRef = useRef(settings)
-  const macOptionAsAltRef = useRef(macOptionAsAlt)
-  const terminalInputRef = useRef(terminalInput)
-  const terminalLinksRef = useRef(terminalLinks)
+  const { settingsRef, macOptionAsAltRef, terminalInputRef, terminalLinksRef } =
+    usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
   const [ptyGone, setPtyGone] = useState(false)
-
-  useLayoutEffect(() => {
-    settingsRef.current = settings
-    macOptionAsAltRef.current = macOptionAsAlt
-    terminalInputRef.current = terminalInput
-    terminalLinksRef.current = terminalLinks
-  }, [settings, macOptionAsAlt, terminalInput, terminalLinks])
+  const { pasteClipboardTextRef, installContextMenu, contextMenu } =
+    usePreviewTerminalContextMenu(terminalRef)
+  usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
 
   useEffect(() => {
     setPtyGone(false)
@@ -59,6 +56,7 @@ export function AgentTerminalPreview({
     if (!container) {
       return
     }
+    const pasteRef = pasteClipboardTextRef
     let disposed = false
     let terminal: Terminal | null = null
     let offData: (() => void) | null = null
@@ -66,6 +64,7 @@ export function AgentTerminalPreview({
     let imeBridge: PreviewImeBridge | null = null
     let disposeKeyHandler: (() => void) | null = null
     let disposeTerminalCompatibility: (() => void) | null = null
+    let disposeInteractions: (() => void) | null = null
     const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker()
     let refreshInFlight = false
     let refreshAgain = false
@@ -74,7 +73,7 @@ export function AgentTerminalPreview({
     let requestInputRefresh = (): void => undefined
     let scheduleGridClaim = (): void => undefined
     const pendingLivePayloads: Extract<TerminalPreviewDataPayload, { type: 'data' }>[] = []
-
+    const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
     const fitToBox = (): void => {
       fitPreviewTerminalToBox({
         container,
@@ -115,7 +114,6 @@ export function AgentTerminalPreview({
       boxResizeObserver?.observe(container.parentElement)
     }
     boxResizeObserver?.observe(container)
-
     let replayDepth = 0
     const writeReplayed = (chunk: string, onDone?: () => void, live = false): void => {
       // Why: a redelivered snapshot repeats the TUI's one-time kitty push, so
@@ -159,6 +157,7 @@ export function AgentTerminalPreview({
       getTerminal: () => terminal,
       isDisposed: () => disposed
     })
+    pasteRef.current = pasteClipboardText
 
     const disposeImeNativeTextBridge = (): void => {
       imeBridge?.dispose()
@@ -226,28 +225,20 @@ export function AgentTerminalPreview({
         }
         void window.api.terminalPreview.input(ptyId, data)
         requestInputRefresh()
+        if (data.includes('\r') || data.includes('\n')) {
+          horizontalReset.schedule()
+        }
       })
     }
 
-    const reportTerminalFocus = (focused: boolean): void => {
-      if (!terminal?.modes.sendFocusMode) {
-        return
-      }
-      void window.api.terminalPreview.input(ptyId, focused ? '\x1b[I' : '\x1b[O')
-      requestInputRefresh()
-    }
-    const handleFocusIn = (event: FocusEvent): void => {
-      if (event.target instanceof Element && event.target.closest('.xterm')) {
-        reportTerminalFocus(true)
-      }
-    }
-    const handleFocusOut = (event: FocusEvent): void => {
-      if (!container.contains(event.relatedTarget as Node | null)) {
-        reportTerminalFocus(false)
-      }
-    }
-    container.addEventListener('focusin', handleFocusIn)
-    container.addEventListener('focusout', handleFocusOut)
+    disposeInteractions = installPreviewTerminalInteractions({
+      container,
+      getTerminal: () => terminal,
+      sendInput: (data) => void window.api.terminalPreview.input(ptyId, data),
+      requestInputRefresh,
+      installContextMenu,
+      pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
+    })
 
     const replayConnection = (
       connection: Awaited<ReturnType<typeof window.api.terminalPreview.connect>>,
@@ -378,6 +369,8 @@ export function AgentTerminalPreview({
       disposed = true
       clearPreviewTerminalTimer(retryTimer)
       clearPreviewTerminalTimer(inputRefreshTimer)
+      horizontalReset.dispose()
+      pasteRef.current = null
       gridClaim.dispose()
       boxResizeObserver?.disconnect()
       disposeAppMenuClipboard()
@@ -386,28 +379,25 @@ export function AgentTerminalPreview({
       disposeImeNativeTextBridge()
       disposeTerminalCompatibility?.()
       disposeKeyHandler?.()
-      container.removeEventListener('focusin', handleFocusIn)
-      container.removeEventListener('focusout', handleFocusOut)
+      disposeInteractions?.()
       void window.api.terminalPreview.unsubscribe(ptyId)
       terminal?.dispose()
       terminalRef.current = null
     }
-  }, [autoFocus, claimGrid, ptyId, scaleToFit, terminalTheme, terminalMode])
-
-  // Why: appearance settings must land on the open terminal, and the OS input
-  // source can flip Option-as-Alt with no settings change at all. A remount
-  // would reconnect the pty and repaint the agent's screen from a new snapshot.
-  useEffect(() => {
-    const terminal = terminalRef.current
-    if (!terminal) {
-      return
-    }
-    Object.assign(
-      terminal.options,
-      buildPreviewAppearanceOptions(settings, macOptionAsAlt === 'true')
-    )
-    syncPreviewTerminalLigatures(terminal, settings)
-  }, [settings, macOptionAsAlt])
+  }, [
+    autoFocus,
+    claimGrid,
+    installContextMenu,
+    macOptionAsAltRef,
+    pasteClipboardTextRef,
+    ptyId,
+    scaleToFit,
+    settingsRef,
+    terminalInputRef,
+    terminalLinksRef,
+    terminalTheme,
+    terminalMode
+  ])
 
   return (
     <AgentTerminalPreviewFrame
@@ -417,6 +407,7 @@ export function AgentTerminalPreview({
       ptyGone={ptyGone}
       onClosedActivate={onClosedActivate}
       terminalTheme={terminalTheme}
+      contextMenu={contextMenu}
     />
   )
 }
