@@ -11,148 +11,12 @@ import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START
 } from '@/components/terminal-pane/terminal-bracketed-paste'
-
-const terminalHarness = vi.hoisted(() => ({
-  instances: [] as {
-    write: ReturnType<typeof vi.fn>
-    writeCallbacks: (() => void)[]
-    onDataListener: ((data: string) => void) | null
-    dispose: ReturnType<typeof vi.fn>
-    resize: ReturnType<typeof vi.fn>
-    reset: ReturnType<typeof vi.fn>
-    focus: ReturnType<typeof vi.fn>
-    paste: ReturnType<typeof vi.fn>
-    input: ReturnType<typeof vi.fn>
-    scrollToTop: ReturnType<typeof vi.fn>
-    scrollToBottom: ReturnType<typeof vi.fn>
-    selectAll: ReturnType<typeof vi.fn>
-    clearSelection: ReturnType<typeof vi.fn>
-    registerLinkProvider: ReturnType<typeof vi.fn>
-    modes: { bracketedPasteMode: boolean }
-    selectionText: string
-    customKeyHandler: ((event: KeyboardEvent) => boolean) | null
-  }[],
-  linkProviderRegistrations: 0,
-  userInputListener: null as (() => void) | null,
-  userInputDispose: vi.fn()
-}))
-
-const platformState = vi.hoisted(() => ({ value: 'linux' }))
-const storeState = vi.hoisted(() => ({
-  settings: null,
-  keybindings: {} as Record<string, string[]>
-}))
-
-const imeHarness = vi.hoisted(() => ({
-  forwarders: [] as {
-    claimKeyEvent: ReturnType<typeof vi.fn>
-    dispose: ReturnType<typeof vi.fn>
-    sendInput: (data: string) => void
-    getKittyKeyboardFlags: () => number
-  }[],
-  trackers: [] as { dispose: ReturnType<typeof vi.fn> }[],
-  claimResult: false
-}))
-
-vi.mock('@xterm/xterm', () => ({
-  Terminal: class {
-    cols = 80
-    rows = 24
-    buffer = { active: { cursorY: 0 } }
-    writeCallbacks: (() => void)[] = []
-    onDataListener: ((data: string) => void) | null = null
-    customKeyHandler: ((event: KeyboardEvent) => boolean) | null = null
-    selectionText = ''
-    write = vi.fn((_data: string, callback?: () => void) => {
-      if (callback) {
-        this.writeCallbacks.push(callback)
-      }
-    })
-    open = vi.fn()
-    focus = vi.fn()
-    dispose = vi.fn()
-    resize = vi.fn()
-    reset = vi.fn()
-    modes = { bracketedPasteMode: false }
-    paste = vi.fn((data: string) => {
-      terminalHarness.userInputListener?.()
-      this.onDataListener?.(data)
-    })
-    input = vi.fn((data: string) => {
-      terminalHarness.userInputListener?.()
-      this.onDataListener?.(data)
-    })
-    element = document.createElement('div')
-    unicode = { activeVersion: '6', versions: ['6', '11'], register: vi.fn() }
-    loadAddon = vi.fn()
-    attachCustomWheelEventHandler = vi.fn()
-    scrollToTop = vi.fn()
-    scrollToBottom = vi.fn()
-    selectAll = vi.fn()
-    clearSelection = vi.fn()
-    registerLinkProvider = vi.fn(() => {
-      terminalHarness.linkProviderRegistrations += 1
-      return { dispose: vi.fn() }
-    })
-    getSelection = vi.fn(() => this.selectionText)
-    attachCustomKeyEventHandler = vi.fn((handler: (event: KeyboardEvent) => boolean) => {
-      this.customKeyHandler = handler
-    })
-    onData = vi.fn((listener: (data: string) => void) => {
-      this.onDataListener = listener
-      return { dispose: vi.fn() }
-    })
-
-    constructor() {
-      terminalHarness.instances.push(this)
-    }
-  }
-}))
-vi.mock(import('@/lib/pane-manager/pane-terminal-options'), async (importOriginal) => ({
-  ...(await importOriginal()),
-  buildDefaultTerminalOptions: () => ({})
-}))
-vi.mock('@/components/terminal-pane/terminal-user-input-signal', () => ({
-  subscribeToTerminalUserInput: (_terminal: unknown, listener: () => void) => {
-    terminalHarness.userInputListener = listener
-    return { dispose: terminalHarness.userInputDispose }
-  }
-}))
-vi.mock('@/components/terminal-pane/use-system-prefers-dark', () => ({
-  useSystemPrefersDark: () => false
-}))
-vi.mock('@/lib/shortcut-platform', () => ({
-  getShortcutPlatform: () => platformState.value
-}))
-vi.mock('@/components/terminal-pane/terminal-ime-native-text-forwarder', () => ({
-  installTerminalImeNativeTextForwarder: (args: {
-    sendInput: (data: string) => void
-    getKittyKeyboardFlags?: () => number
-  }) => {
-    const forwarder = {
-      claimKeyEvent: vi.fn(() => imeHarness.claimResult),
-      dispose: vi.fn(),
-      sendInput: args.sendInput,
-      // Why captured: the bridge's whole job is handing the live mirror to the
-      // forwarder, so the test reads what a real commit would read.
-      getKittyKeyboardFlags: args.getKittyKeyboardFlags ?? ((): number => 0)
-    }
-    imeHarness.forwarders.push(forwarder)
-    return forwarder
-  }
-}))
-vi.mock('@/components/terminal-pane/terminal-ime-composition-tracker', () => ({
-  installTerminalImeCompositionTracker: () => {
-    const tracker = { isActive: () => false, dispose: vi.fn() }
-    imeHarness.trackers.push(tracker)
-    return tracker
-  }
-}))
-vi.mock('@/store', () => {
-  const useAppStore = (selector: (s: typeof storeState) => unknown): unknown => selector(storeState)
-  useAppStore.getState = (): typeof storeState => storeState
-  return { useAppStore }
-})
+import {
+  imeHarness,
+  platformState,
+  storeState,
+  terminalHarness
+} from './agent-terminal-preview-test-harness'
 
 import { AgentTerminalPreview } from './AgentTerminalPreview'
 
@@ -456,6 +320,37 @@ describe('AgentTerminalPreview', () => {
     act(() => emitAppMenuPaste!())
     await waitFor(() => expect(terminal.paste).toHaveBeenCalledWith('clip-text'))
     expect(input).toHaveBeenCalledWith('pty-1', 'clip-text')
+  })
+
+  it('encodes a leading newline for a remote Windows Codex preview without submitting', async () => {
+    readClipboardText.mockResolvedValueOnce('\nsecond line')
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="remote:windows-box@@pty-1"
+        terminalInput={{
+          hostPlatform: 'win32',
+          localWindowsConpty: false,
+          windowsShiftEnterEncoding: 'alt-enter',
+          windowsInputRecordPasteNewline: 'alt-enter',
+          ctrlEnterCsiU: false,
+          kittyKeyboardAdvertised: false
+        }}
+      />
+    )
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+    const host = view.container.querySelector<HTMLElement>('.origin-bottom-left')!
+    const focusTarget = document.createElement('input')
+    host.appendChild(focusTarget)
+    focusTarget.focus()
+
+    act(() => emitAppMenuPaste!())
+
+    await waitFor(() =>
+      expect(input).toHaveBeenCalledWith('remote:windows-box@@pty-1', '\x1b\rsecond line')
+    )
+    expect(terminal.input).toHaveBeenCalledWith('\x1b\rsecond line')
+    expect(terminal.paste).not.toHaveBeenCalled()
   })
 
   it('handles app-menu selection actions while the preview owns focus', async () => {
@@ -872,55 +767,4 @@ describe('AgentTerminalPreview', () => {
     expect(view.queryByText(/No live terminal/)).not.toBeInTheDocument()
   })
 
-  it('claims a grid sized to the dialog box and never re-requests an unchanged target', async () => {
-    vi.useFakeTimers()
-    const view = render(<AgentTerminalPreview ptyId="pty-1" />)
-    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
-
-    const host = view.container.querySelector<HTMLElement>('.origin-bottom-left')!
-    const box = host.parentElement!
-    Object.defineProperty(box, 'clientWidth', { configurable: true, value: 900 })
-    Object.defineProperty(box, 'clientHeight', { configurable: true, value: 480 })
-    // 80×24 grid rendered at 800×384 → 10×16 cells → the box holds 90×30.
-    const screen = document.createElement('div')
-    screen.className = 'xterm-screen'
-    Object.defineProperty(screen, 'offsetWidth', { configurable: true, value: 800 })
-    Object.defineProperty(screen, 'offsetHeight', { configurable: true, value: 384 })
-    host.appendChild(screen)
-
-    await vi.advanceTimersByTimeAsync(200)
-    expect(fit).toHaveBeenCalledTimes(1)
-    expect(fit).toHaveBeenCalledWith('pty-1', 90, 30)
-
-    // A reconnect (e.g. the host reclaiming the grid) computes the same
-    // target — no repeat claim, so no resize tug-of-war with the host.
-    act(() => emitData?.({ type: 'resync', ptyId: 'pty-1' }))
-    await vi.waitFor(() => expect(connect).toHaveBeenCalledTimes(2))
-    await vi.advanceTimersByTimeAsync(400)
-    expect(fit).toHaveBeenCalledTimes(1)
-  })
-
-  it('delays repeated capture after an overflow and cancels the retry on unmount', async () => {
-    vi.useFakeTimers()
-    connect.mockResolvedValue({
-      snapshot: { data: 'screen', cols: 80, rows: 24, seq: 1 },
-      replay: [],
-      resyncRequired: true
-    })
-    const view = render(<AgentTerminalPreview ptyId="pty-1" />)
-    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
-    const terminal = terminalHarness.instances[0]!
-    expect(connect).toHaveBeenCalledTimes(1)
-
-    act(() => terminal.writeCallbacks.splice(0).forEach((callback) => callback()))
-    await vi.advanceTimersByTimeAsync(149)
-    expect(connect).toHaveBeenCalledTimes(1)
-    await vi.advanceTimersByTimeAsync(1)
-    expect(connect).toHaveBeenCalledTimes(2)
-
-    act(() => terminal.writeCallbacks.splice(0).forEach((callback) => callback()))
-    view.unmount()
-    await vi.advanceTimersByTimeAsync(150)
-    expect(connect).toHaveBeenCalledTimes(2)
-  })
 })

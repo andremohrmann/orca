@@ -155,6 +155,7 @@ export function AgentTerminalPreview({
       ptyId,
       container,
       getTerminal: () => terminal,
+      getTerminalInput: () => terminalInputRef.current,
       isDisposed: () => disposed
     })
     pasteRef.current = pasteClipboardText
@@ -190,7 +191,7 @@ export function AgentTerminalPreview({
           macOptionAsAlt: macOptionAsAltRef.current,
           keybindings: useAppStore.getState().keybindings,
           terminalInput: terminalInputRef.current,
-          kittyKeyboardActive: () => kittyKeyboardModes.flags > 0,
+          getKittyKeyboardFlags: () => kittyKeyboardModes.flags,
           terminalShortcutPolicy: settingsRef.current?.terminalShortcutPolicy
         })
       })
