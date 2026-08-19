@@ -15,7 +15,9 @@ const shellContractFiles = [
   'src/main/providers/local-pty-shell-ready-zsh-zdotdir-discovery.test.ts',
   'src/main/providers/local-pty-shell-ready-zsh-zdotdir-normalization.test.ts',
   'src/main/providers/__tests__/shell-ready-framework-example.test.ts',
+  'src/main/shell-startup-feature-channel.test.ts',
   'src/main/zsh-scoped-histfile.live-shell.test.ts',
+  'src/main/zsh-wrapper-version-mismatch.live-shell.test.ts',
   'src/shared/posix-command-path-lookup.test.ts'
 ]
 const patchedNodePtyContractFiles = [
@@ -202,7 +204,12 @@ describe('PR workflow parallelism', () => {
         (step) => step.uses === './.github/actions/install-node-dependencies'
       )
 
-    for (const jobName of ['static_analysis', 'typecheck', 'git_compatibility']) {
+    for (const jobName of [
+      'static_analysis',
+      'typecheck',
+      'git_compatibility',
+      'xterm_patch_sync'
+    ]) {
       expect(installFor(jobName).with, jobName).toBeUndefined()
     }
     expect(installFor('shell_contracts').with['native-runtime']).toBe('node')
@@ -303,6 +310,7 @@ describe('PR workflow parallelism', () => {
       'root_directory_guard',
       'typecheck',
       'git_compatibility',
+      'xterm_patch_sync',
       'shell_contracts',
       'test',
       'managed_hook_node18',
