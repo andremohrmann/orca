@@ -248,7 +248,7 @@ describe('remote runtime terminal data subscriptions', () => {
   })
 
   it('exposes input on the subscribed remote terminal stream', async () => {
-    let sendInput: ((data: string) => boolean) | null = null
+    let sendInput: (data: string) => boolean = () => false
     const dispose = await subscribeToRuntimeTerminalData(
       { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-1',
@@ -265,7 +265,7 @@ describe('remote runtime terminal data subscriptions', () => {
     const subscribePayload =
       subscribeFrame && decodeTerminalStreamJson<{ streamId: number }>(subscribeFrame.payload)
 
-    expect(sendInput?.('answer\r')).toBe(true)
+    expect(sendInput('answer\r')).toBe(true)
     const inputFrame = sendBinary.mock.calls
       .slice(1)
       .map((call) => decodeTerminalStreamFrame(call[0]))
@@ -274,7 +274,7 @@ describe('remote runtime terminal data subscriptions', () => {
     expect(inputFrame && decodeTerminalStreamText(inputFrame.payload)).toBe('answer\r')
 
     dispose()
-    expect(sendInput?.('ignored')).toBe(false)
+    expect(sendInput('ignored')).toBe(false)
   })
 
   it('keeps the shared terminal multiplexer until the last watcher closes', async () => {
