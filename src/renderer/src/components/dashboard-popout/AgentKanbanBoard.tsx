@@ -4,6 +4,7 @@ import {
   DASHBOARD_BUCKET_ORDER,
   type DashboardCard,
   type DashboardAssignWorkspaceStatusArgs,
+  type DashboardRenameWorkspaceArgs,
   type DashboardSleepWorkspaceArgs,
   type DashboardSnapshot,
   type DashboardSpawnAgentArgs
@@ -64,6 +65,10 @@ function assignWorkspaceStatusViaPopoutRelay(args: DashboardAssignWorkspaceStatu
   void window.api.dashboard.assignWorkspaceStatus?.(args)
 }
 
+function renameWorkspaceViaPopoutRelay(args: DashboardRenameWorkspaceArgs): void {
+  void window.api.dashboard.renameWorkspace?.(args)
+}
+
 type AgentKanbanBoardProps = {
   snapshot: DashboardSnapshot
   initialView?: AgentDashboardView
@@ -83,6 +88,7 @@ type AgentKanbanBoardProps = {
    *  host already offers the full sidebar menu, so it opts out. */
   onSleepWorkspace?: (args: DashboardSleepWorkspaceArgs) => void
   onAssignWorkspaceStatus?: (args: DashboardAssignWorkspaceStatusArgs) => void
+  onRenameWorkspace?: (args: DashboardRenameWorkspaceArgs) => void
   /** When provided, renders a close control in the header (in-window mode). The
    *  pop-out relies on its native window controls, so it omits this. */
   onClose?: () => void
@@ -113,7 +119,8 @@ export function AgentKanbanBoard({
   onOpenMap,
   workspaceContextMenusEnabled = false,
   onWorkspaceContextMenuOpenChange,
-  onAssignWorkspaceStatus = assignWorkspaceStatusViaPopoutRelay
+  onAssignWorkspaceStatus = assignWorkspaceStatusViaPopoutRelay,
+  onRenameWorkspace = renameWorkspaceViaPopoutRelay
 }: AgentKanbanBoardProps): React.JSX.Element {
   const [view, setView] = useState(initialView)
   const visibleBuckets = useMemo(
@@ -223,6 +230,12 @@ export function AgentKanbanBoard({
       onAssignWorkspaceStatus({ worktreeId, status })
     },
     [onAssignWorkspaceStatus]
+  )
+  const handleRenameWorkspace = useCallback(
+    (worktreeId: string, displayName: string) => {
+      onRenameWorkspace({ worktreeId, displayName })
+    },
+    [onRenameWorkspace]
   )
   // Watching the open dialog counts as seeing state changes as they happen —
   // without this, an agent finishing while you watch would re-flag its card.
@@ -373,6 +386,7 @@ export function AgentKanbanBoard({
               onOpenTerminal={handleOpenTerminal}
               onRevealAgent={onRevealAgent}
               onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
+              onRenameWorkspace={handleRenameWorkspace}
               statusOptions={snapshot.filterOptions?.workspaceStatuses}
             />
           </>

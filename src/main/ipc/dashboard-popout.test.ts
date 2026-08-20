@@ -279,6 +279,19 @@ describe('registerDashboardPopoutHandlers', () => {
     expect(sendToTrustedMock).toHaveBeenCalledWith('ui:sleepDashboardWorkspace', args)
   })
 
+  it('relays only valid workspace renames from the popout', () => {
+    const args = { worktreeId: 'worktree-1', displayName: 'Renamed workspace' }
+    handlers.get('dashboardPopout:renameWorkspace')!({ sender: untrustedSender } as never, args)
+    handlers.get('dashboardPopout:renameWorkspace')!({ sender: popoutSender } as never, {
+      ...args,
+      displayName: ''
+    })
+    expect(sendToTrustedMock).not.toHaveBeenCalled()
+
+    handlers.get('dashboardPopout:renameWorkspace')!({ sender: popoutSender } as never, args)
+    expect(sendToTrustedMock).toHaveBeenCalledWith('ui:renameDashboardWorkspace', args)
+  })
+
   it('reveals an agent in only the trusted main window', () => {
     const main = makeWindow(mainSender)
     getTrustedWindowMock.mockReturnValue(main)

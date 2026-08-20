@@ -27,6 +27,7 @@ type AgentLiveGridProps = {
   onOpenTerminal: (card: DashboardCard) => void
   onRevealAgent: (args: AgentRevealArgs) => void
   onAssignWorkspaceStatus: (worktreeId: string, status: WorkspaceStatus) => void
+  onRenameWorkspace: (worktreeId: string, displayName: string) => void
   statusOptions?: readonly DashboardFilterOption[]
 }
 
@@ -47,6 +48,7 @@ export function AgentLiveGrid({
   onOpenTerminal,
   onRevealAgent,
   onAssignWorkspaceStatus,
+  onRenameWorkspace,
   statusOptions
 }: AgentLiveGridProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -200,13 +202,16 @@ export function AgentLiveGrid({
       return
     }
     const name = nameDraft.trim().slice(0, 128)
+    const card = cards.find((item) => item.paneKey === editingPaneKey)
+    const canceled = cancelRenameRef.current
     saveLayout((current) => ({
       ...current,
       names:
-        cancelRenameRef.current || !name
-          ? current.names
-          : { ...current.names, [editingPaneKey]: name }
+        canceled || !name ? current.names : { ...current.names, [editingPaneKey]: name }
     }))
+    if (!canceled && name && card) {
+      onRenameWorkspace(card.worktreeId, name)
+    }
     cancelRenameRef.current = false
     setEditingPaneKey(null)
   }

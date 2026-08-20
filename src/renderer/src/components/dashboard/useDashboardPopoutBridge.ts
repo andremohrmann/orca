@@ -143,6 +143,15 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
     if (!enabled) {
       return
     }
+    return window.api.dashboard.onRenameWorkspace?.(({ worktreeId, displayName }) => {
+      void useAppStore.getState().updateWorktreeMeta(worktreeId, { displayName })
+    })
+  }, [enabled])
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
     return window.api.dashboard.onRevealAgent((args) => {
       useAppStore.getState().setActiveWorktree(args.worktreeId, args.executionHostId)
       activateTabAndFocusPane(args.tabId, args.leafId, { flashFocusedPane: true })

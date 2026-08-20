@@ -79,6 +79,12 @@ function AgentDashboardDrawerBody({
     },
     []
   )
+  const handleRenameWorkspace = useCallback(
+    ({ worktreeId, displayName }: { worktreeId: string; displayName: string }) => {
+      void useAppStore.getState().updateWorktreeMeta(worktreeId, { displayName })
+    },
+    []
+  )
 
   return (
     <AgentKanbanBoard
@@ -91,6 +97,7 @@ function AgentDashboardDrawerBody({
       onRevealAgent={handleRevealAgent}
       onSpawnAgent={launchDashboardAgent}
       onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
+      onRenameWorkspace={handleRenameWorkspace}
       onClose={onClose}
       onOpenMap={handleOpenMap}
       headerActions={

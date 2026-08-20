@@ -8,6 +8,7 @@ import type { MacCapturedDigitRowChord } from '../shared/macos-symbolic-hotkeys'
 import type { ComputerAwakeStatus } from '../shared/computer-awake-mode'
 import type {
   DashboardAssignWorkspaceStatusArgs,
+  DashboardRenameWorkspaceArgs,
   DashboardRevealAgentArgs,
   DashboardSleepWorkspaceArgs,
   DashboardSnapshot,
@@ -2470,6 +2471,14 @@ const api = {
       ipcRenderer.on('ui:assignDashboardWorkspaceStatus', listener)
       return () => ipcRenderer.removeListener('ui:assignDashboardWorkspaceStatus', listener)
     },
+    onRenameWorkspace: (callback: (args: DashboardRenameWorkspaceArgs) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        args: DashboardRenameWorkspaceArgs
+      ): void => callback(args)
+      ipcRenderer.on('ui:renameDashboardWorkspace', listener)
+      return () => ipcRenderer.removeListener('ui:renameDashboardWorkspace', listener)
+    },
 
     // ── Consumer side (pop-out window) ───────────────────────────────────
     requestSnapshot: (): Promise<void> => ipcRenderer.invoke('dashboard:requestSnapshot'),
@@ -2494,7 +2503,9 @@ const api = {
     sleepWorkspace: (args: DashboardSleepWorkspaceArgs): Promise<void> =>
       ipcRenderer.invoke('dashboardPopout:sleepWorkspace', args),
     assignWorkspaceStatus: (args: DashboardAssignWorkspaceStatusArgs): Promise<void> =>
-      ipcRenderer.invoke('dashboardPopout:assignWorkspaceStatus', args)
+      ipcRenderer.invoke('dashboardPopout:assignWorkspaceStatus', args),
+    renameWorkspace: (args: DashboardRenameWorkspaceArgs): Promise<void> =>
+      ipcRenderer.invoke('dashboardPopout:renameWorkspace', args)
   },
 
   terminalPreview: {

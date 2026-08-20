@@ -1,5 +1,6 @@
 import type {
   DashboardAssignWorkspaceStatusArgs,
+  DashboardRenameWorkspaceArgs,
   DashboardRevealAgentArgs,
   DashboardSleepWorkspaceArgs,
   DashboardSnapshot,
@@ -24,6 +25,7 @@ export type DashboardApi = {
   onAssignWorkspaceStatus: (
     callback: (args: DashboardAssignWorkspaceStatusArgs) => void
   ) => () => void
+  onRenameWorkspace: (callback: (args: DashboardRenameWorkspaceArgs) => void) => () => void
   requestSnapshot: () => Promise<void>
   onSnapshot: (callback: (snapshot: DashboardSnapshot) => void) => () => void
   onViewRequested: (callback: (view: AgentDashboardView) => void) => () => void
@@ -32,6 +34,7 @@ export type DashboardApi = {
   spawnAgent: (args: DashboardSpawnAgentArgs) => Promise<void>
   sleepWorkspace: (args: DashboardSleepWorkspaceArgs) => Promise<void>
   assignWorkspaceStatus: (args: DashboardAssignWorkspaceStatusArgs) => Promise<void>
+  renameWorkspace: (args: DashboardRenameWorkspaceArgs) => Promise<void>
 }
 
 export type TerminalPreviewApi = {

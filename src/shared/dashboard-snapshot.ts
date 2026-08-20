@@ -257,3 +257,8 @@ export type DashboardAssignWorkspaceStatusArgs = {
   worktreeId: string
   status: WorkspaceStatus
 }
+
+export type DashboardRenameWorkspaceArgs = {
+  worktreeId: string
+  displayName: string
+}

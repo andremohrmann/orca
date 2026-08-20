@@ -16,6 +16,7 @@ import {
   admitDashboardSnapshot,
   isDashboardAssignWorkspaceStatusArgs,
   isDashboardPaneKey,
+  isDashboardRenameWorkspaceArgs,
   isDashboardRevealAgentArgs,
   isDashboardSleepWorkspaceArgs,
   isDashboardSpawnAgentArgs
@@ -43,6 +44,7 @@ export function registerDashboardPopoutHandlers(
   ipcMain.removeHandler('dashboardPopout:spawnAgent')
   ipcMain.removeHandler('dashboardPopout:sleepWorkspace')
   ipcMain.removeHandler('dashboardPopout:assignWorkspaceStatus')
+  ipcMain.removeHandler('dashboardPopout:renameWorkspace')
 
   onDashboardPopoutOpenChanged((open) => {
     if (!open) {
@@ -183,5 +185,16 @@ export function registerDashboardPopoutHandlers(
       return
     }
     sendToTrustedUIRenderer('ui:assignDashboardWorkspaceStatus', args)
+  })
+
+  ipcMain.handle('dashboardPopout:renameWorkspace', (event, args: unknown): void => {
+    if (
+      !isDashboardPopoutRenderer(event.sender) ||
+      !isDashboardEnabled(store) ||
+      !isDashboardRenameWorkspaceArgs(args)
+    ) {
+      return
+    }
+    sendToTrustedUIRenderer('ui:renameDashboardWorkspace', args)
   })
 }
