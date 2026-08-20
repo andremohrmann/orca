@@ -94,40 +94,37 @@ function Merge-CustomBranch {
   & git merge --no-edit $UpstreamRef
   if ($LASTEXITCODE -ne 0) {
     if (!(Resolve-DeletedWorkflowMergeConflicts)) {
-      Write-Error "Merge stopped. Resolve conflicts, commit the merge, then rerun this script."
-      exit $LASTEXITCODE
+      throw 'Merge stopped. Resolve the reported conflicts, commit the merge, then rerun this script.'
     }
   }
 }
 
 function Resolve-DeletedWorkflowMergeConflicts {
-  for ($attempt = 0; $attempt -lt 10; $attempt++) {
-    $conflicts = @(git diff --name-only --diff-filter=U)
-    if ($LASTEXITCODE -ne 0) {
-      return $false
+  $conflicts = @(git diff --name-only --diff-filter=U)
+  if ($LASTEXITCODE -ne 0) {
+    return $false
+  }
+  $workflowConflicts = @(
+    $conflicts | Where-Object {
+      $_.StartsWith('.github/workflows/') -and
+      $_ -ne '.github/workflows/custom-windows-update.yml' -and
+      !(git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 2\s')
     }
-    if ($conflicts.Count -eq 0) {
-      return $true
-    }
-    $workflowConflicts = @(
-      $conflicts | Where-Object {
-        $_.StartsWith('.github/workflows/') -and $_ -ne '.github/workflows/custom-windows-update.yml'
-      }
-    )
-    if ($workflowConflicts.Count -ne $conflicts.Count) {
-      return $false
-    }
-    Write-Host "`n==> Resolve removed inherited workflow conflicts"
+  )
+  if ($workflowConflicts.Count -gt 0) {
+    Write-Host "`n==> Preserve removed inherited workflows"
     & git rm -- $workflowConflicts
     if ($LASTEXITCODE -ne 0) {
       return $false
     }
-    & git -c core.editor=true commit --no-edit
-    if ($LASTEXITCODE -eq 0) {
-      return $true
-    }
   }
-  return $false
+  $remainingConflicts = @(git diff --name-only --diff-filter=U)
+  if ($LASTEXITCODE -ne 0 -or $remainingConflicts.Count -gt 0) {
+    Write-Warning "Unresolved upstream conflicts:`n$($remainingConflicts -join "`n")"
+    return $false
+  }
+  & git -c core.editor=true commit --no-edit
+  return $LASTEXITCODE -eq 0
 }
 
 function Set-CustomBuildVersion {
@@ -216,7 +213,9 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
     'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
-    'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx'
+    'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
+    'src/shared/custom-windows-release-channel.test.ts',
+    'src/shared/release-channel.test.ts'
   )
 }
 
