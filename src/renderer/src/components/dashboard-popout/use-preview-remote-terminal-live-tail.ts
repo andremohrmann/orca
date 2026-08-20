@@ -9,10 +9,12 @@ let nextPreviewRemoteLiveClientId = 0
 
 export function usePreviewRemoteTerminalLiveTail({
   ptyId,
-  onDataRef
+  onDataRef,
+  sendInputRef
 }: {
   ptyId: string
   onDataRef: MutableRefObject<(data: string) => void>
+  sendInputRef: MutableRefObject<((data: string) => boolean) | null>
 }): void {
   const settings = useAppStore((state) => state.settings)
 
@@ -32,7 +34,12 @@ export function usePreviewRemoteTerminalLiveTail({
           onDataRef.current(data)
         }
       },
-      { startAtLiveTail: true }
+      {
+        startAtLiveTail: true,
+        onInputReady: (sendInput) => {
+          sendInputRef.current = sendInput
+        }
+      }
     )
       .then((dispose) => {
         if (disposed) {
@@ -45,7 +52,8 @@ export function usePreviewRemoteTerminalLiveTail({
 
     return () => {
       disposed = true
+      sendInputRef.current = null
       disposeSubscription?.()
     }
-  }, [onDataRef, ptyId, settings])
+  }, [onDataRef, ptyId, sendInputRef, settings])
 }

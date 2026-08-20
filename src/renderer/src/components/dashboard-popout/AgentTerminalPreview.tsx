@@ -9,6 +9,7 @@ import { installPreviewTerminalCompatibility } from './preview-terminal-compatib
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import { installPreviewImeBridge, type PreviewImeBridge } from './preview-terminal-ime-bridge'
 import { useAppStore } from '@/store'
+import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/runtime-terminal-stream'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { createPreviewGridClaim } from './preview-grid-claim'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
@@ -39,7 +40,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
   const [ptyGone, setPtyGone] = useState(false),
     retryGonePtyRef = useRef<() => void>(() => undefined),
-    remoteLiveDataRef = useRef<(data: string) => void>(() => undefined)
+    remoteLiveDataRef = useRef<(data: string) => void>(() => undefined),
+    remoteSendInputRef = useRef<((data: string) => boolean) | null>(null)
   const { pasteClipboardTextRef, installContextMenu, contextMenu } =
     usePreviewTerminalContextMenu(terminalRef)
   usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
@@ -142,11 +144,18 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       )
     }
     remoteLiveDataRef.current = (data) => writeLive({ type: 'data', ptyId, data, bytes: 0 }, false)
+    const sendInput = (data: string): boolean | Promise<boolean> => {
+      if (getRemoteRuntimePtyEnvironmentId(ptyId)) {
+        return remoteSendInputRef.current?.(data) ?? false
+      }
+      return window.api.terminalPreview.input(ptyId, data)
+    }
     const pasteClipboardText = createPreviewClipboardPaster({
       ptyId,
       container,
       getTerminal: () => terminal,
       getTerminalInput: () => terminalInputRef.current,
+      writePty: sendInput,
       isDisposed: () => disposed
     })
     pasteClipboardTextRef.current = pasteClipboardText
@@ -207,7 +216,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         if (userInputDisposable ? !signaledUserInput : replayDepth > 0) {
           return
         }
-        void window.api.terminalPreview.input(ptyId, data)
+        void sendInput(data)
         requestInputRefresh()
         if (data.includes('\r') || data.includes('\n')) {
           horizontalReset.schedule()
@@ -218,7 +227,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     disposeInteractions = installPreviewTerminalInteractions({
       container,
       getTerminal: () => terminal,
-      sendInput: (data) => void window.api.terminalPreview.input(ptyId, data),
+      sendInput,
       requestInputRefresh,
       installContextMenu,
       pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
@@ -386,7 +395,11 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     terminalTheme,
     terminalMode
   ])
-  usePreviewRemoteTerminalLiveTail({ ptyId, onDataRef: remoteLiveDataRef })
+  usePreviewRemoteTerminalLiveTail({
+    ptyId,
+    onDataRef: remoteLiveDataRef,
+    sendInputRef: remoteSendInputRef
+  })
 
   return (
     <AgentTerminalPreviewFrame

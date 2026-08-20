@@ -19,6 +19,7 @@ export function createPreviewClipboardPaster(deps: {
   container: HTMLElement
   getTerminal: () => Terminal | null
   getTerminalInput: () => DashboardCardTerminalInput | null
+  writePty: (data: string) => boolean | Promise<boolean>
   isDisposed: () => boolean
 }): (activeElementAtDispatch: Element | null, source: 'keyboard' | 'app-menu') => Promise<void> {
   return async (activeElementAtDispatch, source) => {
@@ -58,9 +59,9 @@ export function createPreviewClipboardPaster(deps: {
       terminalBracketedPasteMode: pasteTerminal.modes.bracketedPasteMode
     })
     await executeTerminalPastePlan(plan, {
-      // Why: stream large pastes so the renderer never emits one huge IPC payload.
+      // Why: stream large pastes so neither terminal transport receives one huge payload.
       pasteText: (text, options) => pasteTerminalText(pasteTerminal, text, options),
-      writePty: (data) => window.api.terminalPreview.input(deps.ptyId, data),
+      writePty: deps.writePty,
       isTargetCurrent: targetIsCurrent,
       // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
       canContinue: () => true
