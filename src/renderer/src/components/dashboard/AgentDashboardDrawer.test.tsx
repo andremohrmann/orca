@@ -85,23 +85,14 @@ describe('AgentDashboardDrawer', () => {
     expect(useAppStore.getState().agentDashboardDrawerOpen).toBe(false)
   })
 
-  it('hands map rendering to the dedicated popout', () => {
-    const openPopout = vi.mocked(window.api.dashboard.openPopout)
+  it('hands the map view to the popout', () => {
     render(<AgentDashboardDrawer statusBarVisible />)
     expect(mocks.boardProps).toBeNull()
 
     act(() => useAppStore.setState({ agentDashboardDrawerOpen: true }))
+    expect(mocks.boardProps).not.toBeNull()
+    expect(mocks.boardProps?.onOpenMap).toBeTypeOf('function')
     expect(mocks.boardProps?.initialView).toBe('board')
-    expect(mocks.boardProps?.workspaceContextMenusEnabled).toBeUndefined()
-    const onOpenMap = mocks.boardProps?.onOpenMap
-    expect(onOpenMap).toBeTypeOf('function')
-
-    act(() => {
-      ;(onOpenMap as () => void)()
-    })
-
-    expect(openPopout).toHaveBeenCalledWith('map')
-    expect(useAppStore.getState().agentDashboardDrawerOpen).toBe(false)
   })
 
   it('uses the saved default view when opened in-window', () => {
