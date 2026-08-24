@@ -31,6 +31,10 @@ const isWinHourly = process.env.ORCA_WIN_HOURLY === '1'
 const isWinDaily = process.env.ORCA_WIN_DAILY === '1'
 const isWinAdhoc = process.env.ORCA_WIN_ADHOC === '1'
 const isWinDevChannel = isWinHourly || isWinDaily || isWinAdhoc
+const isWinCustomBuild = /^\d+\.\d+\.\d+-custom\.\d{14}$/.test(
+  process.env.ORCA_LOCAL_BUILD_VERSION || ''
+)
+const isUnsignedWinUpdateBuild = isWinDevChannel || isWinCustomBuild
 const isMacRelease = process.env.ORCA_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
 const isLinuxArm64Release = process.env.ORCA_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion =
@@ -320,15 +324,15 @@ module.exports = {
     // Why: Windows installers are signed after electron-builder packaging by
     // SignPath, so the packager cannot infer the updater publisherName.
     //
-    // Why dev channels drop it instead: they ship unsigned, because SignPath's
-    // approval waits are budgeted in hours and cannot fit an hourly cadence.
+    // Why unsigned update builds drop it instead: dev channels cannot wait for
+    // SignPath approval, and private custom builds have no official signing job.
     // electron-updater Authenticode-verifies every installer it downloads
     // against the publisherName baked into the *installed* app's app-update.yml
     // (NsisUpdater.verifySignature), and skips verification entirely when that
     // name is absent. An unsigned build that still claimed 'SignPath Foundation'
     // would therefore reject its own channel's next build — and its way back to
-    // stable with it. Dropping it is what makes dev→dev and dev→stable work.
-    ...(isWinDevChannel
+    // stable with it. Dropping it keeps unsigned update chains usable.
+    ...(isUnsignedWinUpdateBuild
       ? { verifyUpdateCodeSignature: false }
       : { signtoolOptions: { publisherName: 'SignPath Foundation' } }),
     extraResources: [

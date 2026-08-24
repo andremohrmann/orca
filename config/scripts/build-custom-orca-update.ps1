@@ -113,7 +113,7 @@ function Resolve-DeletedWorkflowMergeConflicts {
   )
   if ($workflowConflicts.Count -gt 0) {
     Write-Host "`n==> Preserve removed inherited workflows"
-    & git rm -- $workflowConflicts
+    & git rm -- $workflowConflicts | Out-Host
     if ($LASTEXITCODE -ne 0) {
       return $false
     }
@@ -123,7 +123,7 @@ function Resolve-DeletedWorkflowMergeConflicts {
     Write-Warning "Unresolved upstream conflicts:`n$($remainingConflicts -join "`n")"
     return $false
   }
-  & git -c core.editor=true commit --no-edit
+  & git -c core.editor=true commit --no-edit | Out-Host
   return $LASTEXITCODE -eq 0
 }
 
@@ -200,6 +200,11 @@ if ($UpdateOwner.Length -gt 0) {
 if ($UpdateRepo.Length -gt 0) {
   $env:ORCA_UPDATE_REPO = $UpdateRepo
 }
+if ($StampCustomVersion) {
+  Invoke-Native 'Validate custom Windows packaging identity' node @(
+    'config/scripts/verify-custom-windows-packaging.mjs'
+  )
+}
 
 if (!$SkipValidation) {
   Invoke-Native 'Validate web types' pnpm @('run', 'typecheck:web')
@@ -214,6 +219,8 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
     'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
     'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
+    'config/scripts/build-custom-orca-update.test.mjs',
+    'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/release-channel.test.ts'
   )
