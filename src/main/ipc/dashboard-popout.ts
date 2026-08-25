@@ -14,13 +14,15 @@ import { safelyRevealWindow } from '../window/focus-existing-window'
 import { getTrustedUIRendererWindow, isTrustedUIRenderer, sendToTrustedUIRenderer } from './ui'
 import {
   admitDashboardSnapshot,
-  isDashboardAssignWorkspaceStatusArgs,
   isDashboardPaneKey,
-  isDashboardRenameWorkspaceArgs,
   isDashboardRevealAgentArgs,
   isDashboardSleepWorkspaceArgs,
   isDashboardSpawnAgentArgs
 } from './dashboard-payload-validation'
+import {
+  isDashboardAssignWorkspaceStatusArgs,
+  isDashboardRenameWorkspaceArgs
+} from './dashboard-workspace-mutation-validation'
 
 // The most recent snapshot the main renderer published, replayed to the popout
 // the instant it mounts so the board paints without waiting for the next tick.

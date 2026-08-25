@@ -1,7 +1,5 @@
 import {
   DASHBOARD_MAX_LABEL_LENGTH,
-  type DashboardAssignWorkspaceStatusArgs,
-  type DashboardRenameWorkspaceArgs,
   type DashboardRevealAgentArgs,
   type DashboardSleepWorkspaceArgs,
   type DashboardSnapshot
@@ -96,32 +94,6 @@ export function isDashboardSleepWorkspaceArgs(
     return false
   }
   return isBoundedString((value as Record<string, unknown>).worktreeId, MAX_ID_LENGTH)
-}
-
-export function isDashboardAssignWorkspaceStatusArgs(
-  value: unknown
-): value is DashboardAssignWorkspaceStatusArgs {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return false
-  }
-  const args = value as Record<string, unknown>
-  return (
-    isBoundedString(args.worktreeId, MAX_ID_LENGTH) &&
-    isBoundedString(args.status, MAX_LABEL_LENGTH)
-  )
-}
-
-export function isDashboardRenameWorkspaceArgs(
-  value: unknown
-): value is DashboardRenameWorkspaceArgs {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return false
-  }
-  const args = value as Record<string, unknown>
-  return (
-    isBoundedString(args.worktreeId, MAX_ID_LENGTH) &&
-    isBoundedString(args.displayName, MAX_LABEL_LENGTH)
-  )
 }
 
 export function isDashboardSnapshot(value: unknown): value is DashboardSnapshot {
@@ -285,6 +257,8 @@ function isDashboardCard(value: unknown): boolean {
     DASHBOARD_BUCKETS.has(card.bucket) &&
     typeof card.dotState === 'string' &&
     DASHBOARD_DOT_STATES.has(card.dotState) &&
+    (card.workingMode === undefined ||
+      (card.dotState === 'working' && card.workingMode === 'monitoring')) &&
     isBoundedString(card.task, AGENT_STATUS_MAX_FIELD_LENGTH, true) &&
     isOptionalBoundedString(card.lastUserMessage, AGENT_STATUS_MAX_FIELD_LENGTH) &&
     isOptionalBoundedString(card.lastAgentMessage, AGENT_STATUS_ASSISTANT_MESSAGE_MAX_LENGTH) &&

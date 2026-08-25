@@ -1,4 +1,4 @@
-import type { AgentType } from './agent-status-types'
+import type { AgentType, AgentWorkingMode } from './agent-status-types'
 import type { ExecutionHostId } from './execution-host'
 import type { ProviderRateLimits } from './rate-limit-types'
 import type { RepoIcon } from './repo-icon'
@@ -39,11 +39,15 @@ export const DASHBOARD_MAX_MAP_WORKSPACES = 2_000
 
 /** Kept distinct from `bucket` so attention cards retain their precise dot state. */
 export type DashboardCardDotState = 'working' | 'blocked' | 'waiting' | 'done' | 'idle'
+export type DashboardCardDisplayState = DashboardCardDotState | 'monitoring'
 
 /** Completed agents stay green until acknowledged, then settle into gray idle. */
 export function dashboardCardDisplayState(
-  card: Pick<DashboardCard, 'dotState' | 'unseen'>
-): DashboardCardDotState {
+  card: Pick<DashboardCard, 'dotState' | 'workingMode' | 'unseen'>
+): DashboardCardDisplayState {
+  if (card.dotState === 'working' && card.workingMode === 'monitoring') {
+    return 'monitoring'
+  }
   return card.dotState === 'done' && !card.unseen ? 'idle' : card.dotState
 }
 
@@ -88,6 +92,8 @@ export type DashboardCard = {
   agentType: AgentType
   bucket: DashboardBucket
   dotState: DashboardCardDotState
+  /** Additive discriminator; older pop-outs render this as ordinary working. */
+  workingMode?: AgentWorkingMode
   /** One-line task/prompt text shown on the card. */
   task: string
   /** The most recent message the user sent this agent (its current prompt). */
