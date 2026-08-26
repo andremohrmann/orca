@@ -298,7 +298,7 @@ export const electronViteConfig: UserConfig = {
     define: buildDefines,
     build: {
       externalizeDeps: {
-        exclude: ['@electron-toolkit/preload']
+        exclude: ['@electron-toolkit/preload', 'zod']
       }
     }
   },

@@ -175,6 +175,7 @@ import type {
   SkillUpdateRun,
   SkillUpdateStartResult
 } from '../shared/skill-freshness'
+import type { ClientHostedBrowserRowsEvent } from '../shared/client-hosted-browser-rows'
 import type {
   RuntimeBrowserDriverState,
   RuntimeMobileSessionTabMove,
@@ -273,6 +274,8 @@ import {
   type KeyboardLayoutChangeEvent
 } from '../shared/keyboard-layout-events'
 import { createBrowserFindSubscriptions } from './browser-find-subscriptions'
+import { createBrowserClientPageRendererRequests } from './browser-client-page-renderer-requests'
+import { readBrowserClientHostIdArgument } from '../shared/browser-client-host-id-argument'
 import { createUsageProviderApi } from './usage-provider-api'
 import type { AppStarSource } from '../shared/gh-star-source'
 import type { ExecutionHostId } from '../shared/execution-host'
@@ -339,7 +342,9 @@ import type {
   ReactErrorBoundaryReportResult
 } from '../shared/crash-reporting'
 import type { RendererHeapStatistics } from '../shared/renderer-heap-statistics'
+import type { RendererProcessMemory } from '../shared/renderer-process-memory'
 import { readRendererHeapStatistics } from './renderer-heap-statistics-reader'
+import { readRendererProcessMemory } from './renderer-process-memory-reader'
 import { createUpdaterQuitAbortRelay } from '../shared/renderer-restart-preparation'
 import {
   prepareAndInvokeAppRestart,
@@ -532,6 +537,10 @@ document.addEventListener(
 
 const startupDiagnosticsEnabled = process.env.ORCA_STARTUP_DIAGNOSTICS === '1'
 const browserFindSubscriptions = createBrowserFindSubscriptions()
+const browserClientPageRendererRequests = createBrowserClientPageRendererRequests({
+  ipc: ipcRenderer,
+  isTopFrame: () => window.top === window
+})
 
 ipcRenderer.on('ui:findInBrowserPage', (_event, source: unknown) => {
   browserFindSubscriptions.dispatch(source)
@@ -1385,7 +1394,8 @@ const api = {
       ipcRenderer.invoke('crashReports:submit', args),
     copyLatestDiagnostics: (args?: CrashReportCopyDiagnosticsArgs) =>
       ipcRenderer.invoke('crashReports:copyLatestDiagnostics', args),
-    readHeapStatistics: (): RendererHeapStatistics | null => readRendererHeapStatistics()
+    readHeapStatistics: (): RendererHeapStatistics | null => readRendererHeapStatistics(),
+    readProcessMemory: (): Promise<RendererProcessMemory | null> => readRendererProcessMemory()
   },
 
   export: {
@@ -2711,6 +2721,8 @@ const api = {
   },
 
   browser: {
+    onClientPageRendererRequest: browserClientPageRendererRequests.subscribe,
+    readClientHostId: (): string | null => readBrowserClientHostIdArgument(process.argv),
     registerGuest: (args: {
       browserPageId: string
       workspaceId: string
@@ -2766,6 +2778,9 @@ const api = {
 
     setAnnotationViewportBridge: (args): Promise<boolean> =>
       ipcRenderer.invoke('browser:setAnnotationViewportBridge', args),
+
+    publishClientPageMetadata: (args) =>
+      ipcRenderer.invoke('browser:publishClientPageMetadata', args),
 
     onGuestLoadFailed: (
       callback: (args: {
@@ -2883,6 +2898,7 @@ const api = {
         downloadId: string
         status: 'completed' | 'canceled' | 'failed'
         savePath: string | null
+        remoteDestination?: { workspaceRelativePath: string; hostLabel: string }
         error: string | null
       }) => void
     ): (() => void) => {
@@ -2893,6 +2909,7 @@ const api = {
           downloadId: string
           status: 'completed' | 'canceled' | 'failed'
           savePath: string | null
+          remoteDestination?: { workspaceRelativePath: string; hostLabel: string }
           error: string | null
         }
       ) => callback(data)
@@ -3033,6 +3050,13 @@ const api = {
     sessionListProfiles: (): Promise<unknown[]> =>
       ipcRenderer.invoke('browser:session:listProfiles'),
 
+    prepareSshWorkspacePartition: (args: {
+      targetId: string
+      browserProfileId?: string
+      skipProbe?: boolean
+    }): Promise<{ partition: string }> =>
+      ipcRenderer.invoke('browser:prepareSshWorkspacePartition', args),
+
     sessionCreateProfile: (args: {
       scope: 'default' | 'isolated' | 'imported'
       label: string
@@ -3054,12 +3078,31 @@ const api = {
     sessionDetectBrowsers: (): Promise<unknown[]> =>
       ipcRenderer.invoke('browser:session:detectBrowsers'),
 
+    sessionDetectBrowsersForClientHost: (args: {
+      environmentId: string
+    }): Promise<unknown[] | null> =>
+      ipcRenderer.invoke('browser:session:detectBrowsersForClientHost', args),
+
     sessionImportFromBrowser: (args: {
       profileId: string
       browserFamily: string
     }): Promise<
       { ok: true; profileId: string; summary: unknown } | { ok: false; reason: string }
     > => ipcRenderer.invoke('browser:session:importFromBrowser', args),
+
+    sessionImportFromBrowserForClientHost: (args: {
+      environmentId: string
+      profileId: string
+      browserFamily: string
+      browserProfile?: string
+    }): Promise<
+      { ok: true; profileId: string; summary: unknown } | { ok: false; reason: string } | null
+    > => ipcRenderer.invoke('browser:session:importFromBrowserForClientHost', args),
+
+    sessionClientRouteImportSources: (args: {
+      environmentId: string
+    }): Promise<Record<string, unknown>> =>
+      ipcRenderer.invoke('browser:session:clientRouteImportSources', args),
 
     sessionClearDefaultCookies: (): Promise<boolean> =>
       ipcRenderer.invoke('browser:session:clearDefaultCookies'),
@@ -4554,6 +4597,10 @@ const api = {
         driver: RuntimeBrowserDriverState
       }[]
     > => ipcRenderer.invoke('runtime:getBrowserDrivers'),
+    getBrowserRemoteViewerPages: (): Promise<string[]> =>
+      ipcRenderer.invoke('runtime:getBrowserRemoteViewerPages'),
+    getClientHostedBrowserRows: (): Promise<ClientHostedBrowserRowsEvent[]> =>
+      ipcRenderer.invoke('runtime:getClientHostedBrowserRows'),
     restoreTerminalFit: (ptyId: string): Promise<{ restored: boolean }> =>
       ipcRenderer.invoke('runtime:restoreTerminalFit', { ptyId }),
     reclaimBrowserForDesktop: (browserPageId: string): Promise<{ reclaimed: boolean }> =>
@@ -4613,6 +4660,27 @@ const api = {
       ) => callback(data)
       ipcRenderer.on('runtime:browserDriverChanged', listener)
       return () => ipcRenderer.removeListener('runtime:browserDriverChanged', listener)
+    },
+    onBrowserRemoteViewersChanged: (
+      callback: (event: { browserPageId: string; hasRemoteViewers: boolean }) => void
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        data: {
+          browserPageId: string
+          hasRemoteViewers: boolean
+        }
+      ) => callback(data)
+      ipcRenderer.on('runtime:browserRemoteViewersChanged', listener)
+      return () => ipcRenderer.removeListener('runtime:browserRemoteViewersChanged', listener)
+    },
+    onClientHostedBrowserRowsChanged: (
+      callback: (event: ClientHostedBrowserRowsEvent) => void
+    ): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: ClientHostedBrowserRowsEvent) =>
+        callback(data)
+      ipcRenderer.on('runtime:clientHostedBrowserRowsChanged', listener)
+      return () => ipcRenderer.removeListener('runtime:clientHostedBrowserRowsChanged', listener)
     }
   },
 
@@ -4648,6 +4716,8 @@ const api = {
       timeoutMs?: number
     }): Promise<RuntimeRpcResponse<RuntimeStatus>> =>
       ipcRenderer.invoke('runtimeEnvironments:getStatus', args),
+    prepareBrowserClientHostPlacement: (args) =>
+      ipcRenderer.invoke('runtimeEnvironments:prepareBrowserClientHostPlacement', args),
     retryConnectionsNow: (): Promise<void> =>
       ipcRenderer.invoke('runtimeEnvironments:retryConnectionsNow'),
     call: (args: {
