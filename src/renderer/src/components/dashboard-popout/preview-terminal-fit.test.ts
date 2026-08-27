@@ -7,8 +7,16 @@ import {
   resetPreviewTerminalHorizontalScroll
 } from './preview-terminal-fit'
 
-function terminal(rows = 24): Terminal {
-  return { rows, buffer: { active: { cursorY: rows - 1 } } } as Terminal
+function terminal(rows = 24, cols = 80): Terminal {
+  const term = {
+    cols,
+    rows,
+    resize: vi.fn((nextCols: number, nextRows: number) => {
+      Object.assign(term, { cols: nextCols, rows: nextRows })
+    }),
+    buffer: { active: { cursorY: rows - 1 } }
+  } as unknown as Terminal
+  return term
 }
 
 function fixture(args: { boxWidth: number; boxHeight: number; screenWidth: number }): HTMLElement {
@@ -40,6 +48,23 @@ describe('fitPreviewTerminalToBox', () => {
 
     expect(container.style.transform).toBe('')
     expect(onUnscaledOverflow).toHaveBeenCalledOnce()
+  })
+
+  it('fits passive live-view previews locally without claiming the PTY grid', () => {
+    const container = fixture({ boxWidth: 600, boxHeight: 300, screenWidth: 900 })
+    const previewTerminal = terminal()
+    const onUnscaledOverflow = vi.fn()
+
+    fitPreviewTerminalToBox({
+      container,
+      terminal: previewTerminal,
+      scaleToFit: false,
+      localResizeToFit: true,
+      onUnscaledOverflow
+    })
+
+    expect(previewTerminal.resize).toHaveBeenCalledWith(53, 18)
+    expect(onUnscaledOverflow).not.toHaveBeenCalled()
   })
 
   it('clips the rendered screen to the preview box after fitting', () => {

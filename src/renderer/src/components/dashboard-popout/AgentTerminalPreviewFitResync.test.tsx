@@ -80,6 +80,33 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(fit).toHaveBeenCalledTimes(1)
   })
 
+  it('fits a passive live-view preview locally without claiming the PTY grid', async () => {
+    vi.useFakeTimers()
+    const view = render(
+      <AgentTerminalPreview ptyId="pty-1" claimGrid={false} scaleToFit={false} autoFocus={false} />
+    )
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+
+    const host = view.container.querySelector<HTMLElement>('.origin-bottom-left')!
+    const box = host.parentElement!
+    Object.defineProperty(box, 'clientWidth', { configurable: true, value: 600 })
+    Object.defineProperty(box, 'clientHeight', { configurable: true, value: 320 })
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    Object.defineProperty(screen, 'offsetWidth', { configurable: true, value: 800 })
+    Object.defineProperty(screen, 'offsetHeight', { configurable: true, value: 384 })
+    host.appendChild(screen)
+
+    act(() => emitData?.({ type: 'data', ptyId: 'pty-1', data: 'output', bytes: 6 }))
+    act(() =>
+      terminalHarness.instances[0]!.writeCallbacks.splice(0).forEach((callback) => callback())
+    )
+    await vi.advanceTimersByTimeAsync(20)
+
+    expect(terminalHarness.instances[0]!.resize).toHaveBeenCalledWith(60, 20)
+    expect(fit).not.toHaveBeenCalled()
+  })
+
   it('delays repeated capture after an overflow and cancels the retry on unmount', async () => {
     vi.useFakeTimers()
     connect.mockResolvedValue({
