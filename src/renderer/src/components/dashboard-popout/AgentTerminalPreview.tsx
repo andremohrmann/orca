@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
-import { subscribeToTerminalUserInput } from '@/components/terminal-pane/terminal-user-input-signal'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
 import { replayPreviewConnectionSnapshot } from './preview-terminal-snapshot-replay'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
@@ -14,12 +13,17 @@ import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler
 import { createPreviewGridClaim } from './preview-grid-claim'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
-import { PREVIEW_SCROLLBACK_ROWS, clearPreviewTerminalTimer, ensurePreviewTerminal } from './preview-terminal-session'
+import {
+  PREVIEW_SCROLLBACK_ROWS,
+  clearPreviewTerminalTimer,
+  ensurePreviewTerminal
+} from './preview-terminal-session'
 import { usePreviewTerminalTheme } from './usePreviewTerminalTheme'
 import { AgentTerminalPreviewFrame } from './AgentTerminalPreviewFrame'
 import type { AgentTerminalPreviewProps } from './agent-terminal-preview-props'
-import { fitPreviewTerminalToBox } from './preview-terminal-fit'
+import { createPreviewTerminalFitScheduler } from './preview-terminal-fit'
 import { createPreviewTerminalHorizontalScrollReset } from './preview-terminal-horizontal-scroll'
+import { installPreviewTerminalInputRouting } from './preview-terminal-input-routing'
 import { usePreviewTerminalContextMenu } from './usePreviewTerminalContextMenu'
 import { usePreviewTerminalAppearance } from './usePreviewTerminalAppearance'
 import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
@@ -32,7 +36,16 @@ type PendingLivePayload = {
   payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>
 }
 export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JSX.Element {
-  const { ptyId, terminalInput = null, terminalLinks = null, claimGrid = true, scaleToFit = true, autoFocus = true, onClosedActivate, className } = props
+  const {
+    ptyId,
+    terminalInput = null,
+    terminalLinks = null,
+    claimGrid = true,
+    scaleToFit = true,
+    autoFocus = true,
+    onClosedActivate,
+    className
+  } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
@@ -60,7 +73,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     let disposeTerminalCompatibility: (() => void) | null = null
     let disposeInteractions: (() => void) | null = null
     const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker()
-    let refreshInFlight = false
+    let replayDepth = 0,
+      refreshInFlight = false
     let refreshAgain = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
     let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -68,25 +82,13 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       scheduleGridClaim = (): void => undefined
     const pendingLivePayloads: PendingLivePayload[] = []
     const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
-    const fitToBox = (): void => {
-      fitPreviewTerminalToBox({
-        container,
-        terminal,
-        scaleToFit,
-        onUnscaledOverflow: () => scheduleGridClaim()
-      })
-    }
-    let fitScheduled = false
-    const scheduleFit = (): void => {
-      if (fitScheduled) {
-        return
-      }
-      fitScheduled = true
-      requestAnimationFrame(() => {
-        fitScheduled = false
-        fitToBox()
-      })
-    }
+    const scheduleFit = createPreviewTerminalFitScheduler({
+      container,
+      getTerminal: () => terminal,
+      scaleToFit,
+      localResizeToFit: !claimGrid,
+      onUnscaledOverflow: () => scheduleGridClaim()
+    })
     const goneRetry = createPreviewGonePtyRetry({
       retryDelayMs: 1_000,
       requestReconnect: () => void setup(true),
@@ -112,7 +114,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       boxResizeObserver?.observe(container.parentElement)
     }
     boxResizeObserver?.observe(container)
-    let replayDepth = 0
     const writeReplayed = (chunk: string, onDone?: () => void, live = false): void => {
       if (live) {
         kittyKeyboardModes.scan(chunk)
@@ -191,39 +192,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         })
       })
     }
-    const installTerminalCompatibility = (): void => {
-      if (!terminal) {
-        return
-      }
-      disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
-        getSettings: () => settingsRef.current,
-        getTerminalLinks: () => terminalLinksRef.current
-      })
-    }
-    const installInputRouting = (): void => {
-      if (!terminal) {
-        return
-      }
-      let pendingUserInputSignals = 0
-      userInputDisposable = subscribeToTerminalUserInput(terminal, () => {
-        pendingUserInputSignals = Math.min(32, pendingUserInputSignals + 1)
-      })
-      terminal.onData((data) => {
-        const signaledUserInput = pendingUserInputSignals > 0
-        if (signaledUserInput) {
-          pendingUserInputSignals--
-        }
-        if (userInputDisposable ? !signaledUserInput : replayDepth > 0) {
-          return
-        }
-        void sendInput(data)
-        requestInputRefresh()
-        if (data.includes('\r') || data.includes('\n')) {
-          horizontalReset.schedule()
-        }
-      })
-    }
-
     disposeInteractions = installPreviewTerminalInteractions({
       container,
       getTerminal: () => terminal,
@@ -256,8 +224,17 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       }
       if (resolved.created) {
         terminalRef.current = terminal
-        installTerminalCompatibility()
-        installInputRouting()
+        disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
+          getSettings: () => settingsRef.current,
+          getTerminalLinks: () => terminalLinksRef.current
+        })
+        userInputDisposable = installPreviewTerminalInputRouting({
+          terminal,
+          sendInput,
+          requestInputRefresh,
+          scheduleHorizontalReset: horizontalReset.schedule,
+          isReplaying: () => replayDepth > 0
+        })
         installImeNativeTextBridge()
         installKeyHandler()
       }
