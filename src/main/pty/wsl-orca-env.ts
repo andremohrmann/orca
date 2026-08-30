@@ -77,7 +77,6 @@ export function addOrcaWslInteropEnv(env: Record<string, string>): void {
     // and it cannot derive the hash segment from ORCA_USER_DATA_PATH alone.
     'ORCA_SHELL_READY_ROOT/p',
     'ORCA_CLI_COMMAND/u',
-    'ORCA_CODEX_LAUNCH_PREFLIGHT/p',
     'ORCA_PANE_KEY/u',
     'ORCA_TAB_ID/u',
     'ORCA_WORKTREE_ID/u',
@@ -91,7 +90,6 @@ export function addOrcaWslInteropEnv(env: Record<string, string>): void {
     'ORCA_AGENT_HOOK_TOKEN/u',
     'ORCA_AGENT_HOOK_ENV/u',
     'ORCA_AGENT_HOOK_VERSION/u',
-    'ORCA_AGENT_HOOK_TRANSPORT/u',
     `ORCA_AGENT_HOOK_ENDPOINT/${endpointFlag}`,
     ...opencodeOverlayEntries,
     'ORCA_WSL_HOOK_RELAY_VERSION/u',

@@ -16,8 +16,21 @@ function sourceBetween(source: string, startPattern: string, endPattern: string)
 
 describe('GitHub Enterprise slug routing boundaries', () => {
   it('keeps work-item URL hosts on TaskPage metadata and issue mutations', () => {
-    const statusSection = componentSource('task-page/github/github-status-cell.tsx')
-    const assigneeSection = componentSource('task-page/github/github-assignees-cell.tsx')
+    const source = componentSource('TaskPage.tsx')
+    // Why: the end sentinel just bounds GHStatusCell's body — formatPRDelta moved out to
+    // task-page-pr-delta-summary.ts, so the next declaration is the boundary now.
+    const statusSection = sourceBetween(
+      source,
+      'function GHStatusCell',
+      'function ReviewChipAvatar'
+    )
+    // Why: the end sentinel just bounds GHAssigneesCell's body — getChecksLabel moved out to
+    // task-page-checks-pill.ts, so the next declaration is the boundary now.
+    const assigneeSection = sourceBetween(
+      source,
+      'function GHAssigneesCell',
+      'function sameOptionalGitHubOwnerRepo'
+    )
 
     expect(statusSection).toContain('host: githubProjectHost(parsedOwnerRepo.host)')
     expect(assigneeSection).toContain('parsed?.slug.host')
@@ -25,8 +38,11 @@ describe('GitHub Enterprise slug routing boundaries', () => {
   })
 
   it('uses URL-host fallback for TaskPage reviewer and merge mutations', () => {
-    const reviewSection = componentSource('task-page/github/pr-review-cell.tsx')
-    const mergeSection = componentSource('task-page/github/pr-merge-cell.tsx')
+    const source = componentSource('TaskPage.tsx')
+    const reviewSection = sourceBetween(source, 'function PRReviewCell', 'function PRChecksCell')
+    // Why: the end sentinel just bounds PRMergeCell's body — getPageNumbers moved out to
+    // task-page-pagination-page-numbers.ts, so the next declaration is the boundary now.
+    const mergeSection = sourceBetween(source, 'function PRMergeCell', 'function PaginationBar')
 
     expect(reviewSection).toContain('resolveTaskPullRequestRepo(item)')
     expect(reviewSection.match(/prRepo: reviewRepo/g)).toHaveLength(4)

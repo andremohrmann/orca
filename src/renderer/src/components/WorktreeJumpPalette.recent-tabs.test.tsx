@@ -419,7 +419,7 @@ describe('WorktreeJumpPalette recent chats & terminals', () => {
     // mount one row per workspace.
     expect(getTabRowIds()).toEqual([])
     expect(getWorktreeRows()).toHaveLength(10)
-    expect(testContainer.textContent).toContain('4 more')
+    expect(testContainer.textContent).toContain('Type to see all 14 worktrees')
   })
 
   it('captures the order when tabs hydrate after the palette is already open', async () => {
@@ -827,10 +827,11 @@ describe('WorktreeJumpPalette recent chats & terminals', () => {
     })
     await flushEffects()
 
-    // Why: a frozen row must retain its live badge while staying in its original slot.
+    // Why: the row stays where the frozen order put it, and its badge must keep resolving — row
+    // data covers every open tab, so inclusion dropping it can't blank the pip mid-open.
     expect(getTabRowIds()).toContain('tab-alpha')
     expect(testContainer.textContent).toContain('Alpha chat')
-    expect(document.querySelector('[data-slot=tooltip-trigger]')?.textContent).toContain('Working')
+    expect(testContainer.querySelector('[title="Working"]')).not.toBeNull()
   })
 
   it('keeps a frozen current row listed when its agent finishes mid-open', async () => {
@@ -858,9 +859,10 @@ describe('WorktreeJumpPalette recent chats & terminals', () => {
     })
     await flushEffects()
 
-    // Why: completion changes the frozen row's badge without removing its reserved slot.
+    // Why: `done` gates entry, not rendering — a row already in the frozen order keeps its slot and
+    // flips to the completed check rather than blanking under the cursor.
     expect(getTabRowIds()).toContain('tab-alpha')
-    expect(document.querySelector('[data-slot=tooltip-trigger]')?.textContent).toContain('Done')
+    expect(testContainer.querySelector('[title="Done"]')).not.toBeNull()
   })
 
   it('activates the row a digit chord addresses while open', async () => {
@@ -918,7 +920,8 @@ describe('WorktreeJumpPalette recent chats & terminals', () => {
       })
     )
 
-    // Why: require the setter so this cannot silently exercise the empty-query section.
+    // Why not optional-call: a skipped setter would leave the empty-query Recent section standing
+    // and the assertions below would pass without the query path ever running.
     const applyQuery = setCommandQuery
     if (!applyQuery) {
       throw new Error('CommandInput never installed a query setter')
@@ -934,7 +937,7 @@ describe('WorktreeJumpPalette recent chats & terminals', () => {
     const alphaRow = testContainer.querySelector<HTMLElement>(
       '[data-command-item="workspace-tab:tab-alpha"]'
     )
-    expect(alphaRow?.querySelector('[data-slot=tooltip-trigger]')?.textContent).toContain('Working')
+    expect(alphaRow?.querySelector('[title="Working"]')).not.toBeNull()
   })
 
   it('keeps create-worktree below the matches it would otherwise outrank', async () => {

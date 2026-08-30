@@ -2,7 +2,6 @@ import type { ProjectHostSetup } from '../../../shared/project-types'
 import { toSshExecutionHostId } from '../../../shared/execution-host'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import {
-  migrateFolderWorkspaceHostSshTargetId,
   migrateUiHostScopeSshTargetId,
   migrateWorkspaceSessionSshTargetId
 } from '../../ssh/ssh-target-id-migration'
@@ -12,12 +11,6 @@ import {
   migrateRetirementNamespaceHostIdentity,
   sshHostIdentity
 } from '../../worktree-retirement-namespace'
-import {
-  migrateAutomationHostFilterSshTargetId,
-  migrateAutomationsForSshReadoption
-} from '../../automations/automation-ssh-readoption-migration'
-import { automationIdsPinnedToSshTarget } from '../scheduling-automations/automation-owner-projection'
-import { reassignCanonicalWorktreeMetadataHost } from './canonical-worktree-host-reassignment'
 
 export type SshTargetReassignmentOperations = {
   state: PersistedState
@@ -81,16 +74,10 @@ export function reassignSshTargetId(
     }
     repoIds.add(repo.id)
   }
-  // Legacy locator rows cannot recover canonical-only metadata after target readoption.
-  const identityResult = reassignCanonicalWorktreeMetadataHost(
-    operations.state,
-    oldHostId,
-    newHostId
-  )
-  // Re-point legacy rows unless a conflicting destination kept their canonical source in place.
+  // Re-point worktree metas whose hostId pointed at the old SSH host.
   let metaChanged = false
-  for (const [worktreeId, meta] of Object.entries(operations.state.worktreeMeta)) {
-    if (meta.hostId === oldHostId && !identityResult.preservedWorktreeIds.has(worktreeId)) {
+  for (const meta of Object.values(operations.state.worktreeMeta)) {
+    if (meta.hostId === oldHostId) {
       meta.hostId = newHostId
       metaChanged = true
     }
@@ -118,27 +105,6 @@ export function reassignSshTargetId(
     carrierChanged = true
   }
   if (migrateRetirementNamespaces(operations.state, oldTargetId, newTargetId)) {
-    carrierChanged = true
-  }
-  const workspacePinnedAutomationIds = automationIdsPinnedToSshTarget(operations.state, oldTargetId)
-  if (migrateFolderWorkspaceHostSshTargetId(operations.state, oldTargetId, newTargetId)) {
-    carrierChanged = true
-  }
-  if (
-    migrateAutomationsForSshReadoption({
-      automations: operations.state.automations ?? [],
-      automationRuns: operations.state.automationRuns ?? [],
-      oldTargetId,
-      newTargetId,
-      workspacePinnedAutomationIds,
-      newTargetGeneration: (operations.state.sshTargets ?? []).find(
-        (target) => target.id === newTargetId
-      )?.generation
-    })
-  ) {
-    carrierChanged = true
-  }
-  if (migrateAutomationHostFilterSshTargetId(operations.state.ui, oldTargetId, newTargetId)) {
     carrierChanged = true
   }
   for (const lease of operations.state.sshRemotePtyLeases ?? []) {
@@ -182,18 +148,7 @@ export function reassignSshTargetId(
   if (repoIds.size > 0 || setupsChanged) {
     operations.syncProjectHostSetupCompatibilityState()
   }
-  if (
-    repoIds.size > 0 ||
-    metaChanged ||
-    carrierChanged ||
-    setupsChanged ||
-    identityResult.changed
-  ) {
-    // The rewrites above patch rows in place; the list projection caches on array
-    // identity, so a same-identity array would keep serving pre-readoption owners.
-    operations.state.repos = [...operations.state.repos]
-    operations.state.automations = [...(operations.state.automations ?? [])]
-    operations.state.automationRuns = [...(operations.state.automationRuns ?? [])]
+  if (repoIds.size > 0 || metaChanged || carrierChanged || setupsChanged) {
     operations.scheduleSave()
   }
   return [...repoIds]

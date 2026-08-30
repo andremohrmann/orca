@@ -2,7 +2,6 @@ import React from 'react'
 import { ListFilter, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -19,7 +18,6 @@ import {
 import { AgentIcon, getAgentCatalog } from '@/lib/agent-catalog'
 import { searchAgentPickerEntries } from '@/lib/agent-picker-search'
 import { translate } from '@/i18n/i18n'
-import type { AutomationHostCatalogEntry } from './automation-host-catalog-types'
 import {
   countAutomationListFilters,
   EMPTY_AUTOMATION_LIST_FILTER,
@@ -40,14 +38,7 @@ function FilterPill({
   return (
     <span className="inline-flex h-6 items-center gap-1 rounded-full border border-border/60 bg-muted/50 pl-2 pr-1 text-[11px] text-foreground">
       <span className="text-muted-foreground">{label}:</span>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="max-w-[140px] truncate font-medium">{value}</span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={6} className="max-w-72 break-words">
-          {value}
-        </TooltipContent>
-      </Tooltip>
+      <span className="max-w-[140px] truncate font-medium">{value}</span>
       <button
         type="button"
         aria-label={translate(
@@ -66,15 +57,10 @@ function FilterPill({
 
 export function AutomationListFilterPills({
   filter,
-  onChange,
-  hostLabel,
-  onClearHost
+  onChange
 }: {
   filter: AutomationListFilter
   onChange: (next: AutomationListFilter) => void
-  /** Label of the selected host filter, when one is active and clearable here. */
-  hostLabel?: string | null
-  onClearHost?: () => void
 }): React.JSX.Element | null {
   const statusLabel = translate('auto.components.automations.AutomationsPage.tableStatus', 'Status')
   const lastRunLabel = translate(
@@ -100,19 +86,11 @@ export function AutomationListFilterPills({
         .map((agentId) => getAgentCatalog().find((agent) => agent.id === agentId)?.label ?? agentId)
         .join(', ')
     : null
-  const hostPillLabel = onClearHost ? (hostLabel ?? null) : null
-  if (!statusValueLabel && !lastRunValueLabel && !agentValueLabel && !hostPillLabel) {
+  if (!statusValueLabel && !lastRunValueLabel && !agentValueLabel) {
     return null
   }
   return (
     <>
-      {hostPillLabel && onClearHost ? (
-        <FilterPill
-          label={translate('auto.components.automations.AutomationsPage.tableHost', 'Host')}
-          value={hostPillLabel}
-          onClear={onClearHost}
-        />
-      ) : null}
       {statusValueLabel ? (
         <FilterPill
           label={statusLabel}
@@ -140,23 +118,12 @@ export function AutomationListFilterPills({
 
 export function AutomationListFilterMenu({
   filter,
-  onChange,
-  hostEntries
+  onChange
 }: {
   filter: AutomationListFilter
   onChange: (next: AutomationListFilter) => void
-  /** Reuses the host catalog so this menu can never disagree with the row data. */
-  hostEntries?: readonly AutomationHostCatalogEntry[]
 }): React.JSX.Element {
   const activeCount = countAutomationListFilters(filter)
-  const selectedHostKeys = filter.hostStableKeys ?? []
-
-  const toggleHost = (stableKey: string): void => {
-    const nextHostKeys = selectedHostKeys.includes(stableKey)
-      ? selectedHostKeys.filter((selectedKey) => selectedKey !== stableKey)
-      : [...selectedHostKeys, stableKey]
-    onChange({ ...filter, hostStableKeys: nextHostKeys })
-  }
   const statusLabel = translate('auto.components.automations.AutomationsPage.tableStatus', 'Status')
   const lastRunLabel = translate(
     'auto.components.automations.AutomationListFilterMenu.lastRun',
@@ -197,35 +164,6 @@ export function AutomationListFilterMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        {hostEntries ? (
-          <>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                {translate('auto.components.automations.AutomationsPage.tableHost', 'Host')}
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="max-h-80 overflow-y-auto scrollbar-sleek">
-                <DropdownMenuCheckboxItem
-                  checked={selectedHostKeys.length === 0}
-                  onCheckedChange={() => onChange({ ...filter, hostStableKeys: [] })}
-                  onSelect={(event) => event.preventDefault()}
-                >
-                  {translate('auto.components.automations.hostPicker.allHosts', 'All hosts')}
-                </DropdownMenuCheckboxItem>
-                {hostEntries.map((entry) => (
-                  <DropdownMenuCheckboxItem
-                    key={entry.stableKey}
-                    checked={selectedHostKeys.includes(entry.stableKey)}
-                    onCheckedChange={() => toggleHost(entry.stableKey)}
-                    onSelect={(event) => event.preventDefault()}
-                  >
-                    {entry.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-          </>
-        ) : null}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>{statusLabel}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>

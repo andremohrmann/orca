@@ -4,22 +4,15 @@ import type { Repo } from '../shared/repo-types'
 import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../shared/execution-host'
 import { isFolderRepo } from '../shared/repo-kind'
 import { computeWorkspaceRoot, getWorktreePathSettings } from './ipc/worktree-logic'
-import { getWorktreeMirrorDistro } from './project-runtime-git-options'
-import type { ProjectRuntimeResolutionStore } from './local-project-runtime-resolution'
 
-// `localWindowsRuntimeDefault` is listed because the mirror distro is resolved
-// from it plus the project catalog: a store that omits it prepares a different
-// root than the create path uses.
-type WorktreeRootPreparationSettings = Pick<GlobalSettings, 'workspaceDir' | 'nestWorkspaces'> &
-  Partial<Pick<GlobalSettings, 'localWindowsRuntimeDefault'>>
+type WorktreeRootPreparationSettings = Pick<GlobalSettings, 'workspaceDir' | 'nestWorkspaces'>
 type WorktreeRootPreparationStore = {
   getSettings: () => WorktreeRootPreparationSettings
   getRepos: () => Repo[]
-  getProjects?: ProjectRuntimeResolutionStore['getProjects']
 }
 
 export async function prepareLocalWorktreeRootForRepo(
-  store: Pick<WorktreeRootPreparationStore, 'getSettings' | 'getProjects'>,
+  store: Pick<WorktreeRootPreparationStore, 'getSettings'>,
   repo: Repo
 ): Promise<void> {
   if (getRepoExecutionHostId(repo) !== LOCAL_EXECUTION_HOST_ID || isFolderRepo(repo)) {
@@ -27,10 +20,7 @@ export async function prepareLocalWorktreeRootForRepo(
   }
 
   try {
-    const root = computeWorkspaceRoot(
-      repo.path,
-      getWorktreePathSettings(repo, store.getSettings(), getWorktreeMirrorDistro(store, repo))
-    )
+    const root = computeWorkspaceRoot(repo.path, getWorktreePathSettings(repo, store.getSettings()))
     // Why: mkdir touches the current root to preflight macOS TCC, while
     // access remains scoped by recomputed settings instead of a permanent grant.
     await mkdir(root, { recursive: true })

@@ -43,9 +43,7 @@ export function CreateFromPicker({
   triggerClassName?: string
   onValueChange: (baseBranch: string) => void
 }): React.JSX.Element {
-  // Per-repo evidence, not the ambient active-runtime setting; the base-ref helpers
-  // just take a settings-shaped object, so it is synthesized at each call below.
-  const repoRuntimeEnvironmentId = useAppStore((state) =>
+  const activeRuntimeEnvironmentId = useAppStore((state) =>
     getRuntimeEnvironmentIdForRepo(state, repoId)
   )
   const repo = repoMap.get(repoId)
@@ -118,10 +116,7 @@ export function CreateFromPicker({
     }
     let stale = false
     setDefaultBaseRef(null)
-    void getRuntimeRepoBaseRefDefault(
-      { activeRuntimeEnvironmentId: repoRuntimeEnvironmentId },
-      repoId
-    )
+    void getRuntimeRepoBaseRefDefault({ activeRuntimeEnvironmentId }, repoId)
       .then((result) => {
         if (!stale) {
           setDefaultBaseRef(result.defaultBaseRef)
@@ -135,7 +130,7 @@ export function CreateFromPicker({
     return () => {
       stale = true
     }
-  }, [repoRuntimeEnvironmentId, repoId])
+  }, [activeRuntimeEnvironmentId, repoId])
 
   React.useEffect(() => {
     if (!isRuntimeRepoRefSearchQueryWithinLimit(query)) {
@@ -153,12 +148,7 @@ export function CreateFromPicker({
     let stale = false
     setIsSearching(true)
     const timer = window.setTimeout(() => {
-      void searchRuntimeRepoBaseRefs(
-        { activeRuntimeEnvironmentId: repoRuntimeEnvironmentId },
-        repoId,
-        trimmedQuery,
-        30
-      )
+      void searchRuntimeRepoBaseRefs({ activeRuntimeEnvironmentId }, repoId, trimmedQuery, 30)
         .then((results) => {
           if (!stale) {
             setSearchResults(results)
@@ -180,7 +170,7 @@ export function CreateFromPicker({
       stale = true
       window.clearTimeout(timer)
     }
-  }, [repoRuntimeEnvironmentId, open, query, repoId])
+  }, [activeRuntimeEnvironmentId, open, query, repoId])
 
   return (
     <div className="space-y-2">

@@ -9,10 +9,6 @@ import {
   type SessionTabsStreamSource
 } from './mobile-session-tabs-stream-health'
 import { PendingTerminalHandleRecoveryBudget } from './pending-terminal-handle-recovery'
-import {
-  useMobileTerminalInventoryRecovery,
-  type MobileTerminalInventoryRefreshOptions
-} from './use-mobile-terminal-inventory-recovery'
 
 type Params<Result, Tab> = {
   client: RpcClient | null
@@ -24,8 +20,7 @@ type Params<Result, Tab> = {
     effectiveTabs: readonly Tab[],
     source: SessionTabsStreamSource
   ) => void
-  fetchTerminals: (options?: MobileTerminalInventoryRefreshOptions) => Promise<boolean>
-  terminalInventoryRecoveryScopeKey: string
+  fetchTerminals: () => Promise<void>
   hasRecoveryNeed: () => boolean
   pendingTerminalRecoveryContextKey?: string | null
   getPendingTerminalRecoveryContextKey?: () => string | null
@@ -42,11 +37,9 @@ type ResultActions = {
   ensureSessionTabs: () => Promise<void>
   fetchPendingBrowserSessionTabs: () => Promise<void>
   retryPendingTerminalRecovery: () => Promise<void>
-  requestTerminalInventoryRecovery: () => void
 }
 
 const resolved = Promise.resolve()
-const RECONCILIATION_INTERVAL_MS = 2000
 
 export function useMobileSessionTabsReconciliation<Result, Tab>({
   client,
@@ -55,7 +48,6 @@ export function useMobileSessionTabsReconciliation<Result, Tab>({
   applySessionTabs,
   consumeAcceptedSessionTabs,
   fetchTerminals,
-  terminalInventoryRecoveryScopeKey,
   hasRecoveryNeed,
   pendingTerminalRecoveryContextKey,
   getPendingTerminalRecoveryContextKey,
@@ -130,27 +122,11 @@ export function useMobileSessionTabsReconciliation<Result, Tab>({
     ]
   )
 
-  const {
-    activateTerminalInventoryRecovery,
-    isCertifiedTerminalSweepDue,
-    refreshTerminalInventory,
-    requestTerminalInventoryRecovery,
-    resetCertifiedTerminalSweep,
-    resumePendingTerminalInventoryRecovery,
-    suspendTerminalInventoryRecovery
-  } = useMobileTerminalInventoryRecovery({
-    client,
-    connState,
-    fetchTerminals,
-    scopeKey: terminalInventoryRecoveryScopeKey
-  })
-
   useEffect(
     () => () => {
-      suspendTerminalInventoryRecovery(true)
       controller?.dispose()
     },
-    [controller, suspendTerminalInventoryRecovery]
+    [controller]
   )
 
   useEffect(() => {
@@ -173,57 +149,38 @@ export function useMobileSessionTabsReconciliation<Result, Tab>({
   useFocusEffect(
     useCallback(() => {
       if (!controller || connState !== 'connected') {
-        suspendTerminalInventoryRecovery(true)
         return
       }
-      activateTerminalInventoryRecovery()
-      resetCertifiedTerminalSweep()
       const refresh = (forceTabs: boolean): void => {
         if (AppState.currentState !== 'active') {
-          suspendTerminalInventoryRecovery(true)
           controller.setReconciliationActive(false)
           return
         }
-        activateTerminalInventoryRecovery()
         controller.setReconciliationActive(true)
-        const tabsRequest = forceTabs ? controller.requestReconciliation() : controller.poll()
-        const now = Date.now()
-        // Why: healthy tab streams own liveness; retain only a slow inventory sweep for stale handles and metadata.
-        if (forceTabs || tabsRequest !== null || isCertifiedTerminalSweepDue(now)) {
-          void refreshTerminalInventory()
+        if (forceTabs) {
+          void controller.requestReconciliation()
+        } else {
+          void controller.poll()
         }
-        resumePendingTerminalInventoryRecovery()
+        void fetchTerminals()
       }
       const appStateSubscription = AppState.addEventListener('change', (state) => {
         if (state === 'active') {
-          activateTerminalInventoryRecovery()
           resetPendingTerminalRecovery()
           refresh(true)
         } else {
-          suspendTerminalInventoryRecovery(true)
           controller.setReconciliationActive(false)
         }
       })
-      const interval = setInterval(() => refresh(false), RECONCILIATION_INTERVAL_MS)
+      const interval = setInterval(() => refresh(false), 2000)
       resetPendingTerminalRecovery()
       refresh(true)
       return () => {
-        suspendTerminalInventoryRecovery(true)
         controller.setReconciliationActive(false)
         clearInterval(interval)
         appStateSubscription.remove()
       }
-    }, [
-      activateTerminalInventoryRecovery,
-      connState,
-      controller,
-      isCertifiedTerminalSweepDue,
-      refreshTerminalInventory,
-      resetPendingTerminalRecovery,
-      resetCertifiedTerminalSweep,
-      resumePendingTerminalInventoryRecovery,
-      suspendTerminalInventoryRecovery
-    ])
+    }, [connState, controller, fetchTerminals, resetPendingTerminalRecovery])
   )
 
   return {
@@ -242,7 +199,6 @@ export function useMobileSessionTabsReconciliation<Result, Tab>({
     retryPendingTerminalRecovery: useCallback(() => {
       resetPendingTerminalRecovery()
       return controller?.retryReconciliation() ?? resolved
-    }, [controller, resetPendingTerminalRecovery]),
-    requestTerminalInventoryRecovery
+    }, [controller, resetPendingTerminalRecovery])
   }
 }

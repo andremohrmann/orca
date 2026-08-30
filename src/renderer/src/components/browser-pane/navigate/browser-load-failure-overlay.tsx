@@ -31,10 +31,6 @@ type BrowserLoadFailureOverlayProps = {
   certificateFailure?: BrowserCertificateFailure | null
   expectedBrowserPageId?: string | null
   onProceedCertificate?: (challengeId: string) => Promise<BrowserCertificateProceedResult>
-  /** Set for SSH-routed pages: connection failures usually mean the SSH host cannot reach the site. */
-  sshRoutedHint?: boolean
-  /** Set when the page's SSH host carries a persisted "Try anyway": undoes it so the connection check runs again. */
-  onRecheckSshRoute?: (() => void) | null
 }
 
 type CertificateProceedAttempt = {
@@ -128,9 +124,7 @@ export function BrowserLoadFailureOverlay({
   onOpenExternal,
   certificateFailure,
   expectedBrowserPageId,
-  onProceedCertificate,
-  sshRoutedHint,
-  onRecheckSshRoute
+  onProceedCertificate
 }: BrowserLoadFailureOverlayProps): React.JSX.Element {
   const connectingTimerRef = useRef<{
     challengeId: string
@@ -289,29 +283,6 @@ export function BrowserLoadFailureOverlay({
           </p>
         ) : null}
         {recoveryHint ? <p className="mt-2 text-xs text-muted-foreground">{recoveryHint}</p> : null}
-        {sshRoutedHint ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {translate(
-              'browser.loadFailure.sshRoutedHint',
-              "This page browses through the workspace's SSH host — the host may be disconnected or unable to reach this site."
-            )}
-            {onRecheckSshRoute ? (
-              <>
-                {' '}
-                <Button
-                  type="button"
-                  variant="link"
-                  size="xs"
-                  className="h-auto px-0 align-baseline"
-                  data-testid="browser-load-failure-recheck-ssh-route"
-                  onClick={onRecheckSshRoute}
-                >
-                  {translate('browser.loadFailure.recheckSshRoute', 'Run connection check')}
-                </Button>
-              </>
-            ) : null}
-          </p>
-        ) : null}
         {activeProceedAttempt?.state === 'failed' && activeProceedAttempt.reason ? (
           <p role="alert" className="mt-3 text-xs text-destructive">
             {formatCertificateProceedFailure(activeProceedAttempt.reason)}

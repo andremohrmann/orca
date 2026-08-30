@@ -320,7 +320,6 @@ describe('DashboardAgentRow', () => {
     // on the response line so it does not compete with the user's prompt.
     expect(markup).toContain('data-slot="tooltip-trigger"')
     expect(markup).toContain('aria-label="Interrupted by user"')
-    expect(markup).not.toContain('title="Interrupted"')
     expect(markup).toContain('bg-red-500')
     expect(markup).not.toContain('data-slot="badge"')
     expect(interruptedIndex).toBeGreaterThan(promptIndex)
@@ -363,7 +362,7 @@ describe('DashboardAgentRow', () => {
     )
 
     expect(markup).toContain('Monitoring background tasks')
-    expect(markup).toContain('lucide-activity')
+    expect(markup).toContain('lucide-radio')
     expect(classTokens(markup)).toContain('text-yellow-500')
     expect(markup).not.toContain('data-agent-spinner')
     expect(markup).not.toContain('data-agent-row-tool-slot')

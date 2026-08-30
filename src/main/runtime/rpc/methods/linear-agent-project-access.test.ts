@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../orca-runtime'
-import type * as LinearIssueMutationsModule from '../../../linear/linear-issue-mutations'
+import type * as LinearIssuesModule from '../../../linear/issues'
 
 type LinearProjectResolverTester = {
   resolveLinearCreateProject(
@@ -223,8 +223,8 @@ describe('Linear agent project access helpers', () => {
       parent: null,
       project: { id: 'project-1', name: 'Launch' }
     })
-    vi.doMock('../../../linear/linear-issue-mutations', async (importOriginal) => {
-      const actual = await importOriginal<typeof LinearIssueMutationsModule>()
+    vi.doMock('../../../linear/issues', async (importOriginal) => {
+      const actual = await importOriginal<typeof LinearIssuesModule>()
       return { ...actual, createIssueForAgent }
     })
     try {
@@ -262,7 +262,7 @@ describe('Linear agent project access helpers', () => {
         })
       )
     } finally {
-      vi.doUnmock('../../../linear/linear-issue-mutations')
+      vi.doUnmock('../../../linear/issues')
       vi.resetModules()
     }
   })

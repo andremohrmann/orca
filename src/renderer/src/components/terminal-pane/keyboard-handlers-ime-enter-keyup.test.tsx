@@ -28,10 +28,9 @@ function keyboardEvent(
   return event
 }
 
-function createHarness(options: { staleActivePane?: boolean } = {}): {
+function createHarness(): {
   deps: KeyboardHandlersDeps
   sendInput: ReturnType<typeof vi.fn>
-  setActivePane: ReturnType<typeof vi.fn>
   startComposition: () => void
   terminalInput: HTMLTextAreaElement
   dispose: () => void
@@ -41,8 +40,7 @@ function createHarness(options: { staleActivePane?: boolean } = {}): {
   const terminalInput = document.createElement('textarea')
   terminalInput.className = 'xterm-helper-textarea'
   terminalElement.append(terminalInput)
-  const staleTerminalElement = document.createElement('div')
-  scope.append(staleTerminalElement, terminalElement)
+  scope.append(terminalElement)
   document.body.append(scope)
 
   const sendInput = vi.fn(() => true)
@@ -51,7 +49,7 @@ function createHarness(options: { staleActivePane?: boolean } = {}): {
     sendInput
   } as unknown as PtyTransport
   const pane = {
-    id: options.staleActivePane ? 2 : 1,
+    id: 1,
     leafId: '00000000-0000-4000-8000-000000000001',
     terminal: {
       element: terminalElement,
@@ -59,24 +57,9 @@ function createHarness(options: { staleActivePane?: boolean } = {}): {
       getSelection: vi.fn(() => '')
     }
   }
-  const stalePane = {
-    id: 1,
-    leafId: '00000000-0000-4000-8000-000000000002',
-    terminal: {
-      element: staleTerminalElement,
-      focus: vi.fn(),
-      getSelection: vi.fn(() => '')
-    }
-  }
-  let activePane = options.staleActivePane ? stalePane : pane
-  const panes = options.staleActivePane ? [stalePane, pane] : [pane]
-  const setActivePane = vi.fn((paneId: number) => {
-    activePane = panes.find((candidate) => candidate.id === paneId) ?? activePane
-  })
   const manager = {
-    getActivePane: () => activePane,
-    getPanes: () => panes,
-    setActivePane
+    getActivePane: () => pane,
+    getPanes: () => [pane]
   } as unknown as PaneManager
   const route = installTerminalImeCompositionRoute({
     terminalElement,
@@ -113,7 +96,6 @@ function createHarness(options: { staleActivePane?: boolean } = {}): {
   return {
     deps,
     sendInput,
-    setActivePane,
     terminalInput,
     startComposition: () => {
       terminalElement.dispatchEvent(
@@ -350,29 +332,6 @@ describe('Windows IME Enter-keyup press-time evidence', () => {
     vi.runAllTimers()
 
     expect(harness.sendInput).toHaveBeenCalledTimes(1)
-    expect(harness.sendInput).toHaveBeenCalledWith('\x1b\r')
-    hook.unmount()
-    harness.dispose()
-  })
-
-  it('routes a swallowed Enter keydown fallback to the focused pane and repairs stale active state', () => {
-    const harness = createHarness({ staleActivePane: true })
-    const hook = renderHook(() => useTerminalKeyboardShortcuts(harness.deps))
-    harness.startComposition()
-
-    harness.terminalInput.dispatchEvent(
-      keyboardEvent('keyup', {
-        key: 'Enter',
-        code: 'Enter',
-        keyCode: 13,
-        timeStamp: 30,
-        shiftKey: true
-      })
-    )
-    vi.runAllTimers()
-
-    expect(harness.setActivePane).toHaveBeenCalledWith(2, { focus: false })
-    expect(harness.sendInput).toHaveBeenCalledOnce()
     expect(harness.sendInput).toHaveBeenCalledWith('\x1b\r')
     hook.unmount()
     harness.dispose()

@@ -176,7 +176,7 @@ describe('sendMobileNativeChatMessage', () => {
     ).resolves.toBe('rejected')
   })
 
-  it('never bundles terminal controls into the submitted body', async () => {
+  it('prepends the input-line clear byte when clearInputFirst is set', async () => {
     const client = clientWithResponse({
       id: 'request',
       ok: true,
@@ -187,13 +187,14 @@ describe('sendMobileNativeChatMessage', () => {
     await sendMobileNativeChatMessage({
       client,
       terminal: 'term',
-      text: 'hello'
+      text: 'hello',
+      clearInputFirst: true
     })
     expect(client.sendRequest).toHaveBeenCalledWith(
       'terminal.send',
       {
         terminal: 'term',
-        text: 'hello',
+        text: '\x15hello',
         enter: true
       },
       { timeoutMs: MOBILE_NATIVE_CHAT_SEND_TIMEOUT_MS, budgetSpansConnect: true }
@@ -213,7 +214,8 @@ describe('sendMobileNativeChatMessage', () => {
     await sendMobileNativeChatMessage({
       client,
       terminal: 'term',
-      text: 'what is this'
+      text: 'what is this',
+      clearInputFirst: false
     })
     const sent = vi.mocked(client.sendRequest).mock.calls[0]?.[1] as { text: string }
     expect(sent.text).toBe('what is this')
@@ -394,5 +396,38 @@ describe('clearMobileNativeChatInput', () => {
       })
     ).resolves.toBe(false)
     expect(client.sendRequest).not.toHaveBeenCalled()
+  })
+})
+
+describe('the body write never carries a multi-line burst', () => {
+  const accepted = {
+    id: 'request',
+    ok: true,
+    result: { send: { accepted: true } },
+    _meta: { runtimeId: 'runtime' }
+  }
+  const sentText = (client: RpcClient): string =>
+    (vi.mocked(client.sendRequest).mock.calls[0]![1] as { text: string }).text
+
+  it('still prefixes only a single Ctrl+U when asked to clear first', async () => {
+    const client = clientWithResponse(accepted)
+    await sendMobileNativeChatMessage({
+      client,
+      terminal: 'term',
+      text: 'hello',
+      clearInputFirst: true
+    })
+    expect(sentText(client)).toBe('\x15hello')
+  })
+
+  it('never prefixes a clear when the caller already pasted (image sends)', async () => {
+    const client = clientWithResponse(accepted)
+    await sendMobileNativeChatMessage({
+      client,
+      terminal: 'term',
+      text: 'caption',
+      clearInputFirst: false
+    })
+    expect(sentText(client)).toBe('caption')
   })
 })

@@ -120,7 +120,6 @@ function appState(overrides: Record<string, unknown> = {}): AppState {
     hydrateEditorSession: vi.fn(),
     hydrateBrowserSession: vi.fn(),
     markRemoteWorkspaceHydrated: vi.fn(),
-    clearRemoteWorkspaceHydrated: vi.fn(),
     setRemoteWorkspaceSyncStatus: vi.fn(),
     reconnectPersistedTerminals: vi.fn(async () => {}),
     ...overrides

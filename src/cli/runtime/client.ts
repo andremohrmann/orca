@@ -11,7 +11,6 @@ import { getDefaultUserDataPath, readMetadata } from './metadata'
 import { getCliStatus, projectRemoteAppStatus } from './status'
 import { sendRequest } from './transport'
 import { RuntimeClientError, RuntimeRpcFailureError, type RuntimeRpcSuccess } from './types'
-import { attachMutationRecovery } from './client-error-recovery'
 import { markEnvironmentUsed, resolveEnvironmentPairingOffer } from './environments'
 import {
   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
@@ -20,16 +19,6 @@ import {
 import { RemoteRuntimeCompatGate } from './remote-runtime-compat-gate'
 import { createOrchestrationCompatibilityEnvelope } from './orchestration-compatibility-envelope'
 import { getTimeoutMsParam, isWaitingCheck } from './runtime-request-timeout'
-import {
-  isWorkerStartTimeoutWithinTimerLimit,
-  resolveWorkerStartClientTimeoutMs,
-  resolveWorkerStartReadinessTimeoutMs
-} from '../../shared/orchestration-timing-budgets'
-import { MAX_TIMER_DELAY_MS } from '../../shared/timer-delay'
-import {
-  buildOrchestrationRecoveryCommand,
-  resolveOrchestrationCliExecutable
-} from './orchestration-recovery-command'
 
 // Why: for long-poll methods the caller's method-level
 // `params.timeoutMs` is the inner waiter budget; we extend the client-side
@@ -51,8 +40,6 @@ export class RuntimeClient {
   private readonly requestTimeoutMs: number
   private readonly remotePairing: PairingOffer | null
   private readonly environmentSelector: string | null
-  private readonly cliExecutable: string
-  private readonly originalArgs: readonly string[] | undefined
   private readonly remoteCompat: RemoteRuntimeCompatGate
   private orchestrationContractCheck: Promise<void> | null = null
   private readonly orchestrationCompatibility = createOrchestrationCompatibilityEnvelope(
@@ -66,15 +53,11 @@ export class RuntimeClient {
     userDataPath = getDefaultUserDataPath(),
     requestTimeoutMs = 60_000,
     remotePairingCode = process.env.ORCA_PAIRING_CODE ?? process.env.ORCA_REMOTE_PAIRING ?? null,
-    environmentSelector = process.env.ORCA_ENVIRONMENT ?? null,
-    cliExecutable = resolveOrchestrationCliExecutable(),
-    originalArgs?: readonly string[]
+    environmentSelector = process.env.ORCA_ENVIRONMENT ?? null
   ) {
     this.userDataPath = userDataPath
     this.requestTimeoutMs = requestTimeoutMs
     this.environmentSelector = environmentSelector
-    this.cliExecutable = cliExecutable
-    this.originalArgs = originalArgs ? [...originalArgs] : undefined
     this.remotePairing = resolveRemotePairing(userDataPath, remotePairingCode, environmentSelector)
     this.remoteCompat = new RemoteRuntimeCompatGate(userDataPath, environmentSelector)
   }
@@ -95,9 +78,6 @@ export class RuntimeClient {
     }
     const orchestrationRequestId = orchestrationMutation
       ? (options?.orchestrationRequestId ?? randomUUID())
-      : undefined
-    const originalCommand = orchestrationMutation
-      ? buildOrchestrationRecoveryCommand(method, params, this.cliExecutable, this.originalArgs)
       : undefined
     const compatibilityEnvelope = method.startsWith('orchestration.')
       ? {
@@ -127,14 +107,10 @@ export class RuntimeClient {
           envelope
         })
       } catch (error) {
-        throw attachMutationRecovery(error, orchestrationRequestId, originalCommand)
+        throw attachMutationRecovery(error, orchestrationRequestId)
       }
       if (response.ok === false) {
-        throw attachMutationRecovery(
-          new RuntimeRpcFailureError(response),
-          orchestrationRequestId,
-          originalCommand
-        )
+        throw new RuntimeRpcFailureError(response)
       }
       if (this.environmentSelector) {
         markEnvironmentUsed(this.userDataPath, this.environmentSelector, {
@@ -148,14 +124,10 @@ export class RuntimeClient {
     try {
       response = await sendRequest<TResult>(metadata, method, params, effectiveTimeoutMs, envelope)
     } catch (error) {
-      throw attachMutationRecovery(error, orchestrationRequestId, originalCommand)
+      throw attachMutationRecovery(error, orchestrationRequestId)
     }
     if (response.ok === false) {
-      throw attachMutationRecovery(
-        new RuntimeRpcFailureError(response),
-        orchestrationRequestId,
-        originalCommand
-      )
+      throw new RuntimeRpcFailureError(response)
     }
     return response
   }
@@ -166,18 +138,6 @@ export class RuntimeClient {
   // to resolve. Without this, a 5 min wait would still die at the 60 s default.
   // See design doc §3.1.
   private resolveMethodTimeoutMs(method: string, params?: unknown): number {
-    if (method === 'orchestration.workerStart') {
-      const requestedValue = getTimeoutMsParam(params)
-      const requested = typeof requestedValue === 'number' ? requestedValue : Number(requestedValue)
-      if (!isWorkerStartTimeoutWithinTimerLimit(requested)) {
-        throw new RuntimeClientError(
-          'invalid_argument',
-          `--timeout-ms is too large for worker-start transport grace; the derived timeout must be <= ${MAX_TIMER_DELAY_MS}ms.`
-        )
-      }
-      const readiness = resolveWorkerStartReadinessTimeoutMs(requested)
-      return Math.max(resolveWorkerStartClientTimeoutMs(readiness), this.requestTimeoutMs)
-    }
     if (
       (method === 'orchestration.check' && isWaitingCheck(params)) ||
       method === 'terminal.wait'
@@ -279,6 +239,20 @@ export class RuntimeClient {
       'Timed out waiting for an Orca desktop window. The runtime may still be running headlessly.'
     )
   }
+}
+
+function attachMutationRecovery(error: unknown, requestId: string | undefined): unknown {
+  if (!requestId || !(error instanceof RuntimeClientError)) {
+    return error
+  }
+  return new RuntimeClientError(
+    error.code,
+    `${error.message} Orchestration mutation request ID: ${requestId}.`,
+    {
+      ...(error.data && typeof error.data === 'object' ? error.data : {}),
+      orchestrationRequestId: requestId
+    }
+  )
 }
 
 function throwDesktopActivationBlocked(): never {

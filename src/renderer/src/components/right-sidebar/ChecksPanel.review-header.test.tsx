@@ -20,12 +20,6 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   }) => <div data-disabled={disabled ? 'true' : undefined}>{children}</div>
 }))
 
-vi.mock('@/components/ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
-}))
-
 beforeEach(() => {
   vi.stubGlobal('navigator', { userAgent: 'Macintosh' })
 })
@@ -35,11 +29,11 @@ afterEach(() => {
 })
 
 function renderHeader({
-  canUnlinkReview = true,
+  canUnlinkPullRequest = true,
   provider = 'github',
   modifierHintDestination = 'system-browser'
 }: {
-  canUnlinkReview?: boolean
+  canUnlinkPullRequest?: boolean
   provider?: 'github' | 'gitlab'
   modifierHintDestination?: ChecksPanelHostedReviewModifierDestination
 } = {}): string {
@@ -59,12 +53,12 @@ function renderHeader({
         mergeable: 'UNKNOWN'
       }}
       isRefreshing={false}
-      canUnlinkReview={canUnlinkReview}
+      canUnlinkPullRequest={canUnlinkPullRequest}
       modifierHintDestination={modifierHintDestination}
       onRefresh={vi.fn()}
       onOpenReview={vi.fn()}
-      onUnlinkReview={vi.fn()}
-      onLinkAnotherReview={vi.fn()}
+      onUnlinkPullRequest={vi.fn()}
+      onLinkAnotherPullRequest={vi.fn()}
     />
   )
 }
@@ -80,10 +74,7 @@ describe('ChecksPanelReviewHeader', () => {
     expect(markup).toContain('#2964')
     expect(markup).toContain('underline decoration-border underline-offset-2')
     expect(markup).toContain('More PR actions')
-    expect(markup).toContain('Unlink PR from workspace')
-    expect(markup).toContain(
-      'Orca will hide PR #2964 details for this workspace. The PR and branch on GitHub won’t be changed.'
-    )
+    expect(markup).toContain('unlink PR')
     expect(markup).toContain('Link another PR')
     expect(markup).toContain('lucide-ellipsis')
     expect(markup).not.toContain('lucide-external-link')
@@ -117,23 +108,20 @@ describe('ChecksPanelReviewHeader', () => {
     expect(markup).not.toContain('Ctrl+click to open')
   })
 
-  it('enables unlinking for a displayed auto-detected PR', () => {
-    const markup = renderHeader({ canUnlinkReview: true })
+  it('disables unlinking when the displayed PR is not manually linked', () => {
+    const markup = renderHeader({ canUnlinkPullRequest: false })
 
-    expect(markup).not.toContain('data-disabled="true"')
-    expect(markup).toContain('Unlink PR from workspace')
+    expect(markup).toContain('data-disabled="true"')
+    expect(markup).toContain('unlink PR')
   })
 
-  it('shows GitLab MR identity with provider-appropriate link management actions', () => {
+  it('shows GitLab MR identity without GitHub-only link management actions', () => {
     const markup = renderHeader({ provider: 'gitlab' })
 
     expect(markup).toContain('Open on GitLab')
     expect(markup).toContain('!31')
-    expect(markup).toContain('More MR actions')
-    expect(markup).toContain('Unlink MR from workspace')
-    expect(markup).toContain(
-      'Orca will hide MR !31 details for this workspace. The MR and branch on GitLab won’t be changed.'
-    )
-    expect(markup).toContain('Link another MR')
+    expect(markup).not.toContain('More PR actions')
+    expect(markup).not.toContain('unlink PR')
+    expect(markup).not.toContain('Link another PR')
   })
 })

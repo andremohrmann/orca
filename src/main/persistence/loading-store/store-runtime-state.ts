@@ -15,22 +15,13 @@ import type { RepoOrderPersistenceOperations } from '../tracking-repos/repo-orde
 import type { ProjectHostPersistenceOperations } from '../tracking-repos/project-host-operations'
 import type { RepoUpdatePersistenceOperations } from '../tracking-repos/repo-update-operations'
 import type { ProjectHostSetupPersistenceOperations } from '../tracking-repos/project-host-setup-update'
-import type {
-  AutomationListProjectionCache,
-  AutomationStorageAuthority
-} from '../scheduling-automations/automation-owner-projection'
 
-export type StoreRuntimeOptions = {
-  dataFile?: string
-  storageAuthority?: AutomationStorageAuthority
-}
+export type StoreRuntimeOptions = { dataFile?: string }
 
 /** Mutable coordination state shared only with this Store's private collaborators. */
 export class StoreRuntimeState {
   state!: PersistedState
   readonly dataFile: string
-  readonly storageAuthority: AutomationStorageAuthority
-  automationListProjectionCache: AutomationListProjectionCache | null = null
   activeViewPreference!: ActiveViewPreference
   readonly terminalScrollbackSnapshotStorage: TerminalScrollbackSnapshotStorage
   writeTimer: ReturnType<typeof setTimeout> | null = null
@@ -71,7 +62,6 @@ export class StoreRuntimeState {
 
   constructor(options: StoreRuntimeOptions = {}) {
     this.dataFile = options.dataFile ?? getDataFile()
-    this.storageAuthority = options.storageAuthority ?? 'desktop'
     this.staleTempCleanup = removeStaleDurableWriteTempFiles(this.dataFile, {
       minimumAgeMs: STALE_DURABLE_WRITE_TEMP_AGE_MS
     })

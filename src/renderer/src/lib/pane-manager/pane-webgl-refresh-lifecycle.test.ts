@@ -23,7 +23,6 @@ function createPane(
       buffer: { active: { type: 'normal', viewportY: 0, baseY: 0 } },
       refresh: vi.fn(),
       resize: vi.fn(),
-      blur: vi.fn(),
       dispose: vi.fn()
     } as never,
     container: {

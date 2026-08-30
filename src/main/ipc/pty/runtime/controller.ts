@@ -12,7 +12,6 @@ import {
   attachPtyFromRuntimeController,
   clearBufferFromRuntimeController,
   confirmForegroundProcessFromRuntimeController,
-  confirmShellForegroundFromRuntimeController,
   getCwdFromRuntimeController,
   getForegroundProcessFromRuntimeController,
   getRendererSerializerGenerationFromRuntimeController,
@@ -27,7 +26,6 @@ import {
   resizePtyFromRuntimeController,
   serializeProviderBufferFromRuntimeController,
   waitForRendererSerializerFromRuntimeController,
-  writePtyAgentSessionProofFromRuntimeController,
   writePtyFromRuntimeController
 } from './operations'
 
@@ -42,9 +40,7 @@ export function installPtyRuntimeController(deps: PtyRuntimeControllerDeps): voi
     },
     adoptStablePane,
     spawn: async (args) => spawnPtyFromRuntimeController(deps, args),
-    write: (ptyId, data) => writePtyFromRuntimeController(deps, ptyId, data),
-    writeAgentSessionProof: (ptyId, data, authority) =>
-      writePtyAgentSessionProofFromRuntimeController(ptyId, data, authority),
+    write: (ptyId, data) => writePtyFromRuntimeController(ptyId, data),
     probePtyLiveness: (ptyId) => probePtyLivenessFromRuntimeController(deps, ptyId),
     // Why: subscriber-driven ingestion for daemon sessions no renderer pane
     // ever attached. Local daemon sessions only — SSH panes have their own
@@ -59,11 +55,10 @@ export function installPtyRuntimeController(deps: PtyRuntimeControllerDeps): voi
     getForegroundProcess: (ptyId) => getForegroundProcessFromRuntimeController(ptyId),
     inspectProcess: (ptyId) => inspectProcessFromRuntimeController(ptyId),
     confirmForegroundProcess: (ptyId) => confirmForegroundProcessFromRuntimeController(ptyId),
-    confirmShellForeground: (ptyId) => confirmShellForegroundFromRuntimeController(ptyId),
     getCwd: (ptyId) => getCwdFromRuntimeController(ptyId),
     hasChildProcesses: (ptyId) => hasChildProcessesFromRuntimeController(ptyId),
     clearBuffer: (ptyId) => clearBufferFromRuntimeController(deps, ptyId),
-    hasPty: (ptyId) => hasPtyFromRuntimeController(deps, ptyId),
+    hasPty: (ptyId) => hasPtyFromRuntimeController(ptyId),
     listProcesses: (connectionId, opts) =>
       listProcessesFromRuntimeController(deps, connectionId, opts),
     listProcessesWithHostScope: (opts) =>

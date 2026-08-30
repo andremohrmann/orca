@@ -85,21 +85,23 @@ export async function scanAiVaultSessions(
     const candidates = dedupeCodexRolloutFileAliases(
       discoveries
         .flatMap((discovery) =>
-          discovery.files.map((file): SessionFileCandidate => ({
-            agent: discovery.agent,
-            file,
-            codexHome:
-              discovery.agent === 'codex'
-                ? codexHomeForSessionsDir(
-                    discovery.rootDir,
-                    options.defaultCodexHomeDir ?? DEFAULT_CODEX_HOME_DIR
-                  )
-                : null,
-            antigravityHistoryPath:
-              discovery.agent === 'antigravity'
-                ? antigravityHistoryPathForBrainDir(discovery.rootDir)
-                : undefined
-          }))
+          discovery.files.map(
+            (file): SessionFileCandidate => ({
+              agent: discovery.agent,
+              file,
+              codexHome:
+                discovery.agent === 'codex'
+                  ? codexHomeForSessionsDir(
+                      discovery.rootDir,
+                      options.defaultCodexHomeDir ?? DEFAULT_CODEX_HOME_DIR
+                    )
+                  : null,
+              antigravityHistoryPath:
+                discovery.agent === 'antigravity'
+                  ? antigravityHistoryPathForBrainDir(discovery.rootDir)
+                  : undefined
+            })
+          )
         )
         .sort((left, right) => right.file.mtimeMs - left.file.mtimeMs),
       {
@@ -201,11 +203,9 @@ async function scanInScopeSessions(args: {
     excludedFilePaths: args.alreadyParsedFilePaths,
     issues: args.issues
   })
-  const candidates = files.map((file): SessionFileCandidate => ({
-    agent: 'claude',
-    file,
-    codexHome: null
-  }))
+  const candidates = files.map(
+    (file): SessionFileCandidate => ({ agent: 'claude', file, codexHome: null })
+  )
   if (candidates.length === 0) {
     return []
   }

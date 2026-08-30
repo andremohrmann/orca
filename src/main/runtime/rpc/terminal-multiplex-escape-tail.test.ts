@@ -47,11 +47,8 @@ describe('terminal.multiplex pending-escape-tail threading (#7329)', () => {
           data: 'user@host:~$ ',
           cols: 80,
           rows: 24,
-          seq: 7,
           // The dangling partial the emulator could not serialize.
-          pendingEscapeTailAnsi: '\x1b[3',
-          alternateScreen: false,
-          terminalOwner: 'shell'
+          pendingEscapeTailAnsi: '\x1b[3'
         }),
         getTerminalSize: vi.fn().mockReturnValue({ cols: 80, rows: 24 }),
         getMobileDisplayMode: vi.fn().mockReturnValue('auto'),
@@ -122,9 +119,7 @@ describe('terminal.multiplex pending-escape-tail threading (#7329)', () => {
         .map((frame) => decodeTerminalStreamFrame(frame))
         .find((frame) => frame?.opcode === TerminalStreamOpcode.SnapshotStart)!
       expect(decodeTerminalStreamJson(snapshotStart.payload)).toMatchObject({
-        pendingEscapeTailAnsi: '\x1b[3',
-        alternateScreen: false,
-        terminalOwner: 'shell'
+        pendingEscapeTailAnsi: '\x1b[3'
       })
 
       runtime.cleanupSubscription('terminal-multiplex:conn-1')

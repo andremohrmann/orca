@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type Database from '../../sqlite/sync-database'
 import { OrchestrationDb } from './db'
-import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 type DatabaseHarness = {
   db: OrchestrationDb
@@ -32,7 +31,7 @@ describe('Task/Dispatch invariant transactions', () => {
       const { db } = createDatabase()
       const task = db.createTask({ spec: 'atomic work' })
       const dependent = db.createTask({ spec: 'dependent work', deps: [task.id] })
-      const dispatch = createRootDispatch(db, task.id, 'term_worker')
+      const dispatch = db.createDispatchContext(task.id, 'term_worker')
       const capability = db.mintDispatchCapability({
         dispatchId: dispatch.id,
         paneKey: 'tab_worker:leaf_worker',
@@ -75,7 +74,7 @@ describe('Task/Dispatch invariant transactions', () => {
   it('does not commit a caller-owned transaction', () => {
     const { db } = createDatabase()
     const task = db.createTask({ spec: 'outer transaction work' })
-    const dispatch = createRootDispatch(db, task.id, 'term_worker')
+    const dispatch = db.createDispatchContext(task.id, 'term_worker')
     const sqlite = sqliteFor(db)
 
     sqlite.exec('BEGIN IMMEDIATE')
@@ -102,7 +101,7 @@ describe('Task/Dispatch invariant transactions', () => {
     const sqlite = sqliteFor(db)
 
     sqlite.exec('BEGIN IMMEDIATE')
-    const dispatch = createRootDispatch(db, task.id, 'term_worker')
+    const dispatch = db.createDispatchContext(task.id, 'term_worker')
     expect(db.getTask(task.id)?.status).toBe('dispatched')
     expect(db.getDispatchContextById(dispatch.id)?.status).toBe('dispatched')
     sqlite.exec('ROLLBACK')
@@ -116,9 +115,9 @@ describe('Task/Dispatch invariant transactions', () => {
     (status) => {
       const { db } = createDatabase()
       const task = db.createTask({ spec: 'legacy split work' })
-      const first = createRootDispatch(db, task.id, 'term_first')
+      const first = db.createDispatchContext(task.id, 'term_first')
       sqliteFor(db).prepare("UPDATE tasks SET status = 'ready' WHERE id = ?").run(task.id)
-      const second = createRootDispatch(db, task.id, 'term_second')
+      const second = db.createDispatchContext(task.id, 'term_second')
 
       db.updateTaskStatus(task.id, status, 'terminal result')
 
@@ -132,10 +131,10 @@ describe('Task/Dispatch invariant transactions', () => {
       expect(db.getActiveDispatchForTerminal('term_first')).toBeUndefined()
       expect(db.getActiveDispatchForTerminal('term_second')).toBeUndefined()
       expect(() =>
-        createRootDispatch(db, db.createTask({ spec: 'first later work' }).id, 'term_first')
+        db.createDispatchContext(db.createTask({ spec: 'first later work' }).id, 'term_first')
       ).not.toThrow()
       expect(() =>
-        createRootDispatch(db, db.createTask({ spec: 'second later work' }).id, 'term_second')
+        db.createDispatchContext(db.createTask({ spec: 'second later work' }).id, 'term_second')
       ).not.toThrow()
     }
   )
@@ -143,9 +142,9 @@ describe('Task/Dispatch invariant transactions', () => {
   it('does not requeue a legacy split Task while another Dispatch remains active', () => {
     const { db } = createDatabase()
     const task = db.createTask({ spec: 'legacy split retry' })
-    const first = createRootDispatch(db, task.id, 'term_first')
+    const first = db.createDispatchContext(task.id, 'term_first')
     sqliteFor(db).prepare("UPDATE tasks SET status = 'ready' WHERE id = ?").run(task.id)
-    const second = createRootDispatch(db, task.id, 'term_second')
+    const second = db.createDispatchContext(task.id, 'term_second')
 
     db.failDispatch(second.id, 'targeted failure')
 
@@ -157,9 +156,9 @@ describe('Task/Dispatch invariant transactions', () => {
   it('does not block a legacy split Task while another Dispatch remains active', () => {
     const { db } = createDatabase()
     const task = db.createTask({ spec: 'legacy split release' })
-    const first = createRootDispatch(db, task.id, 'term_first')
+    const first = db.createDispatchContext(task.id, 'term_first')
     sqliteFor(db).prepare("UPDATE tasks SET status = 'ready' WHERE id = ?").run(task.id)
-    const second = createRootDispatch(db, task.id, 'term_second')
+    const second = db.createDispatchContext(task.id, 'term_second')
 
     expect(db.beginWorkerStop(second.id, 'runtime_test')).toMatchObject({
       disposition: 'context_only',
@@ -175,7 +174,7 @@ describe('Task/Dispatch invariant transactions', () => {
     (status) => {
       const { db } = createDatabase()
       const task = db.createTask({ spec: 'guarded work' })
-      const dispatch = createRootDispatch(db, task.id, 'term_worker')
+      const dispatch = db.createDispatchContext(task.id, 'term_worker')
 
       expect(() => db.updateTaskStatus(task.id, status, 'must not persist')).toThrowError(
         expect.objectContaining({
@@ -216,7 +215,7 @@ describe('Task/Dispatch invariant transactions', () => {
       return prepare(sql)
     })
 
-    expect(() => createRootDispatch(first.db, task.id, 'term_worker')).toThrow(
+    expect(() => first.db.createDispatchContext(task.id, 'term_worker')).toThrow(
       `Task ${task.id} is failed; only ready tasks can be dispatched`
     )
     expect(injected).toBe(true)
@@ -234,8 +233,7 @@ describe('Task/Dispatch invariant transactions', () => {
     let winnerId: string | undefined
     vi.spyOn(sqlite, 'prepare').mockImplementation((sql) => {
       if (!winnerId && sql.includes('INSERT INTO dispatch_contexts')) {
-        winnerId = createRootDispatch(
-          concurrent.db,
+        winnerId = concurrent.db.createDispatchContext(
           secondTask.id,
           'term_reminted',
           'tab_new:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -245,8 +243,7 @@ describe('Task/Dispatch invariant transactions', () => {
     })
 
     expect(() =>
-      createRootDispatch(
-        first.db,
+      first.db.createDispatchContext(
         firstTask.id,
         'term_worker',
         'tab_old:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -267,16 +264,13 @@ describe('Task/Dispatch invariant transactions', () => {
   it('rejects worker authority when another Dispatch owns the pane', () => {
     const { db } = createDatabase()
     const ownerTask = db.createTask({ spec: 'current pane owner' })
-    const owner = createRootDispatch(
-      db,
+    const owner = db.createDispatchContext(
       ownerTask.id,
       'term_owner',
       'tab_old:cccccccc-cccc-4ccc-8ccc-cccccccccccc'
     )
     const workerTask = db.createTask({ spec: 'competing supervised worker' })
     const started = db.createStartingWorkerDispatch({
-      creator: { kind: 'system' },
-      maxDepth: Number.MAX_SAFE_INTEGER,
       taskId: workerTask.id,
       startOptions: {}
     })
@@ -310,12 +304,7 @@ describe('Task/Dispatch invariant transactions', () => {
     (status) => {
       const { db } = createDatabase()
       const task = db.createTask({ spec: 'supervised lifecycle' })
-      const started = db.createStartingWorkerDispatch({
-        creator: { kind: 'system' },
-        maxDepth: Number.MAX_SAFE_INTEGER,
-        taskId: task.id,
-        startOptions: {}
-      })
+      const started = db.createStartingWorkerDispatch({ taskId: task.id, startOptions: {} })
       const capability = db.prepareStartingWorkerAuthority({
         dispatchId: started.dispatch.id,
         handle: 'term_worker',
@@ -359,8 +348,6 @@ describe('Task/Dispatch invariant transactions', () => {
     const { db } = createDatabase()
     const task = db.createTask({ spec: 'federated lifecycle' })
     const started = db.createStartingWorkerDispatch({
-      creator: { kind: 'system' },
-      maxDepth: Number.MAX_SAFE_INTEGER,
       taskId: task.id,
       startOptions: {},
       federation: {

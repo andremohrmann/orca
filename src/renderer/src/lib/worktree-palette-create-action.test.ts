@@ -182,7 +182,7 @@ describe('worktree-palette-create-action', () => {
     })
   })
 
-  it('derives selection ids from rendered entries while skipping headers', () => {
+  it('derives selection ids from rendered entries while skipping headers and hints', () => {
     expect(
       getWorktreePaletteSelectionItemIds([
         { id: '__header_worktrees__', type: 'section-header' },
@@ -198,7 +198,6 @@ describe('worktree-palette-create-action', () => {
     ).toEqual([
       'worktree:one',
       CREATE_WORKTREE_ITEM_ID,
-      '__hint_worktree_cap__',
       'settings:ai-provider-accounts',
       'quick-action:new-terminal',
       'browser-page:one'

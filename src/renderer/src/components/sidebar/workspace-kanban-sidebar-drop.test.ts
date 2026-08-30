@@ -566,17 +566,13 @@ describe('workspace kanban sidebar drop updates', () => {
         { key: 'doing', worktreeIds: ['doing-a'] }
       ],
       worktreeById,
-      allWorktreeIds: [...worktreeById.keys()],
-      rankByWorktreeId: new Map(),
       workspaceStatuses,
       sortBy: 'recent',
       now: 10_000
     })
 
     expect(result.shouldSwitchToManual).toBe(false)
-    expect(result.updates).toEqual([
-      { worktreeId: 'todo-a', updates: { workspaceStatus: 'doing' }, executionHostId: 'local' }
-    ])
+    expect(Array.from(result.updates)).toEqual([['todo-a', { workspaceStatus: 'doing' }]])
   })
 
   it('keeps the dropped board position when Manual sort is active', () => {
@@ -595,85 +591,15 @@ describe('workspace kanban sidebar drop updates', () => {
         { key: 'doing', worktreeIds: ['doing-a', 'doing-b'] }
       ],
       worktreeById,
-      allWorktreeIds: [...worktreeById.keys()],
-      rankByWorktreeId: new Map(),
       workspaceStatuses,
       sortBy: 'manual',
       now: 10_000
     })
 
     expect(result.shouldSwitchToManual).toBe(true)
-    expect(result.updates.find((entry) => entry.worktreeId === 'todo-a')?.updates).toEqual({
+    expect(result.updates.get('todo-a')).toEqual({
       workspaceStatus: 'doing',
-      manualOrder: 9000
+      manualOrder: 1500
     })
-    expect(result.updates.find((entry) => entry.worktreeId === 'doing-a')?.updates).toEqual({
-      manualOrder: 10_000
-    })
-    expect(result.updates.find((entry) => entry.worktreeId === 'doing-b')?.updates).toEqual({
-      manualOrder: 8000
-    })
-  })
-
-  it('keeps board drops sparse when filtered rows already have durable ranks', () => {
-    const worktreeById = new Map([
-      [
-        'todo-a',
-        worktree({
-          id: 'todo-a',
-          workspaceStatus: 'todo',
-          sortOrder: 4000,
-          manualOrder: 4000
-        })
-      ],
-      [
-        'doing-a',
-        worktree({
-          id: 'doing-a',
-          workspaceStatus: 'doing',
-          sortOrder: 2000,
-          manualOrder: 2000
-        })
-      ],
-      [
-        'doing-b',
-        worktree({
-          id: 'doing-b',
-          workspaceStatus: 'doing',
-          sortOrder: 1000,
-          manualOrder: 1000
-        })
-      ]
-    ])
-    const rankByWorktreeId = new Map([
-      ['todo-a', 4000],
-      ['filtered', 3000],
-      ['doing-a', 2000],
-      ['doing-b', 1000]
-    ])
-
-    const result = buildWorkspaceKanbanSidebarDropUpdates({
-      worktreeIds: ['todo-a'],
-      status: 'doing',
-      dropIndex: 1,
-      groups: [
-        { key: 'todo', worktreeIds: ['todo-a'] },
-        { key: 'doing', worktreeIds: ['doing-a', 'doing-b'] }
-      ],
-      worktreeById,
-      allWorktreeIds: ['todo-a', 'filtered', 'doing-a', 'doing-b'],
-      rankByWorktreeId,
-      workspaceStatuses,
-      sortBy: 'manual',
-      now: 10_000
-    })
-
-    expect(result.updates).toEqual([
-      {
-        worktreeId: 'todo-a',
-        updates: { workspaceStatus: 'doing', manualOrder: 1500 },
-        executionHostId: 'local'
-      }
-    ])
   })
 })

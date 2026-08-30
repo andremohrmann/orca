@@ -30,23 +30,18 @@ function keyEvent(init: {
   key: string
   keyCode: number
   ctrlKey?: boolean
-  metaKey?: boolean
-  shiftKey?: boolean
-  altKey?: boolean
   isComposing?: boolean
-  preventDefault?: () => void
-  stopPropagation?: () => void
 }): never {
   return {
     key: init.key,
     keyCode: init.keyCode,
     ctrlKey: init.ctrlKey ?? false,
-    altKey: init.altKey ?? false,
-    metaKey: init.metaKey ?? false,
-    shiftKey: init.shiftKey ?? false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
     nativeEvent: { isComposing: init.isComposing ?? false },
-    preventDefault: init.preventDefault ?? (() => {}),
-    stopPropagation: init.stopPropagation ?? (() => {})
+    preventDefault: () => {},
+    stopPropagation: () => {}
   } as never
 }
 
@@ -70,25 +65,6 @@ describe('useTabBarQuickCommandSearchInput IME Enter ownership', () => {
     result.current.onKeyDown(keyEvent({ key: 'ArrowDown', keyCode: 40 }))
 
     expect(onCommandValueChange).toHaveBeenCalledWith(entries[1].key)
-  })
-
-  it('lets the native select-all behavior run in the search input', () => {
-    const { result } = setup()
-    const stopPropagation = vi.fn()
-    const preventDefault = vi.fn()
-
-    result.result.current.onKeyDown(
-      keyEvent({
-        key: 'a',
-        keyCode: 65,
-        ctrlKey: true,
-        stopPropagation,
-        preventDefault
-      })
-    )
-
-    expect(stopPropagation).toHaveBeenCalledOnce()
-    expect(preventDefault).not.toHaveBeenCalled()
   })
 
   it('does not run the command on the bare redispatch after a confirm', () => {

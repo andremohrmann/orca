@@ -40,23 +40,6 @@ export async function queryWindowsProcessDescendants(
   rootPid: number,
   options: { fresh?: boolean } = {}
 ): Promise<WindowsProcessCandidate[] | null> {
-  return (await queryWindowsPaneProcessInventory(rootPid, options))?.candidates ?? null
-}
-
-export type WindowsPaneProcessInventory = {
-  candidates: WindowsProcessCandidate[]
-  /**
-   * Full-table row for `anchorPid`. From the whole snapshot, not the ppid
-   * projection: a pane-job member whose creator exited is orphaned out of the
-   * descendant walk yet can still hold a recycled anchor pid.
-   */
-  anchorRow: WindowsProcessRow | null
-}
-
-export async function queryWindowsPaneProcessInventory(
-  rootPid: number,
-  options: { fresh?: boolean; anchorPid?: number } = {}
-): Promise<WindowsPaneProcessInventory | null> {
   let rows: WindowsProcessRow[]
   try {
     const native =
@@ -72,13 +55,7 @@ export async function queryWindowsPaneProcessInventory(
   if (!rows.some((row) => row.pid === rootPid)) {
     return null
   }
-  return {
-    candidates: collectDescendants(rows, rootPid).sort((a, b) => b.depth - a.depth),
-    anchorRow:
-      options.anchorPid !== undefined
-        ? (rows.find((row) => row.pid === options.anchorPid) ?? null)
-        : null
-  }
+  return collectDescendants(rows, rootPid).sort((a, b) => b.depth - a.depth)
 }
 
 /** Test-only: clear the shared snapshot so one case's rows never serve the next. */

@@ -1938,14 +1938,16 @@ export class RateLimitService {
             allowPtyFallback: this.shouldAllowCodexPtyFallback(),
             signal
           })
-    ).catch((err): ProviderRateLimits => ({
-      provider: 'codex',
-      session: null,
-      weekly: null,
-      updatedAt: Date.now(),
-      error: err instanceof Error ? err.message : 'Unknown error',
-      status: 'error'
-    }))
+    ).catch(
+      (err): ProviderRateLimits => ({
+        provider: 'codex',
+        session: null,
+        weekly: null,
+        updatedAt: Date.now(),
+        error: err instanceof Error ? err.message : 'Unknown error',
+        status: 'error'
+      })
+    )
 
     if (signal.aborted) {
       return
@@ -2006,14 +2008,16 @@ export class RateLimitService {
       allowUsagePanelSupplement: this.shouldAllowClaudeUsagePanelSupplement(),
       networkProxySettings: this.networkProxySettingsResolver?.(),
       signal
-    }).catch((err): ProviderRateLimits => ({
-      provider: 'claude',
-      session: null,
-      weekly: null,
-      updatedAt: Date.now(),
-      error: err instanceof Error ? err.message : 'Unknown error',
-      status: 'error'
-    }))
+    }).catch(
+      (err): ProviderRateLimits => ({
+        provider: 'claude',
+        session: null,
+        weekly: null,
+        updatedAt: Date.now(),
+        error: err instanceof Error ? err.message : 'Unknown error',
+        status: 'error'
+      })
+    )
 
     if (signal.aborted) {
       return
@@ -2056,14 +2060,16 @@ export class RateLimitService {
     const grok = await fetchGrokRateLimits({
       signal,
       authReadResult: grokAuthReadResult
-    }).catch((err): ProviderRateLimits => ({
-      provider: 'grok',
-      session: null,
-      weekly: null,
-      updatedAt: Date.now(),
-      error: err instanceof Error ? err.message : 'Unknown error',
-      status: 'error'
-    }))
+    }).catch(
+      (err): ProviderRateLimits => ({
+        provider: 'grok',
+        session: null,
+        weekly: null,
+        updatedAt: Date.now(),
+        error: err instanceof Error ? err.message : 'Unknown error',
+        status: 'error'
+      })
+    )
 
     if (signal.aborted) {
       return

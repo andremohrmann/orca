@@ -3,11 +3,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
 import { getDefaultPersistedState, getDefaultWorkspaceSession } from '../../shared/constants'
+import type { ExecutionHostId } from '../../shared/execution-host'
 import { projectHostSetupProjectionFromRepos } from '../../shared/project-host-setup-projection'
-import {
-  normalizeProjectHostSetupRows,
-  normalizeProjectRows
-} from '../../shared/project-catalog-row-normalization'
 import { carryProjectStateThroughIdentityChange } from '../../shared/project-identity-succession'
 import type { PersistedState } from '../../shared/persisted-state-types'
 import type { Project, ProjectHostSetup } from '../../shared/project-types'
@@ -19,16 +16,16 @@ import { getOrcaProfileDataFile } from './profile-index-store'
 
 export type TransferProfileState = PersistedState
 
-function isRecord<T>(value: unknown): value is Record<string, T> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function arrayOrEmpty<T>(value: unknown): T[] {
-  return Array.isArray(value) ? value : []
+  return Array.isArray(value) ? (value as T[]) : []
 }
 
 function recordOrEmpty<T>(value: unknown): Record<string, T> {
-  return isRecord<T>(value) ? value : {}
+  return isRecord(value) ? (value as Record<string, T>) : {}
 }
 
 export function readProfileState(profileId: string, userDataPath: string): TransferProfileState {
@@ -37,17 +34,13 @@ export function readProfileState(profileId: string, userDataPath: string): Trans
   if (!existsSync(dataFile)) {
     return structuredClone(defaults)
   }
-  const parsed: Partial<PersistedState> = JSON.parse(readFileSync(dataFile, 'utf-8'))
+  const parsed = JSON.parse(readFileSync(dataFile, 'utf-8')) as Partial<PersistedState>
   return rebuildRepoBackedProjectState({
     ...defaults,
     ...parsed,
     repos: arrayOrEmpty<Repo>(parsed.repos),
-    // Why normalize: another profile's file is untrusted JSON, and a null repoId/path here would be
-    // carried straight into the importing app's state.
-    projects: normalizeProjectRows(arrayOrEmpty<Project>(parsed.projects)),
-    projectHostSetups: normalizeProjectHostSetupRows(
-      arrayOrEmpty<ProjectHostSetup>(parsed.projectHostSetups)
-    ),
+    projects: arrayOrEmpty<Project>(parsed.projects),
+    projectHostSetups: arrayOrEmpty<ProjectHostSetup>(parsed.projectHostSetups),
     projectGroups: arrayOrEmpty(parsed.projectGroups),
     folderWorkspaces: arrayOrEmpty(parsed.folderWorkspaces),
     sparsePresetsByRepo: recordOrEmpty<SparsePreset[]>(parsed.sparsePresetsByRepo),
@@ -66,15 +59,17 @@ export function readProfileState(profileId: string, userDataPath: string): Trans
     ui: isRecord(parsed.ui) ? { ...defaults.ui, ...parsed.ui } : defaults.ui,
     githubCache: isRecord(parsed.githubCache)
       ? {
-          pr: recordOrEmpty(parsed.githubCache.pr),
-          issue: recordOrEmpty(parsed.githubCache.issue)
+          pr: recordOrEmpty((parsed.githubCache as PersistedState['githubCache']).pr),
+          issue: recordOrEmpty((parsed.githubCache as PersistedState['githubCache']).issue)
         }
       : defaults.githubCache,
     workspaceSession: isRecord(parsed.workspaceSession)
       ? { ...getDefaultWorkspaceSession(), ...parsed.workspaceSession }
       : defaults.workspaceSession,
-    workspaceSessionsByHostId: isRecord<WorkspaceSessionState>(parsed.workspaceSessionsByHostId)
-      ? parsed.workspaceSessionsByHostId
+    workspaceSessionsByHostId: isRecord(parsed.workspaceSessionsByHostId)
+      ? (parsed.workspaceSessionsByHostId as Partial<
+          Record<ExecutionHostId, WorkspaceSessionState>
+        >)
       : {},
     sshTargets: arrayOrEmpty(parsed.sshTargets),
     sshRemotePtyLeases: arrayOrEmpty(parsed.sshRemotePtyLeases),

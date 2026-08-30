@@ -3,7 +3,6 @@ import { isPtyIncarnationId, type PtyIncarnationId } from '../../shared/pty-inca
 import {
   SSH_PTY_IDENTITY_MISMATCH_ERROR,
   SSH_SESSION_EXPIRED_ERROR,
-  SshPtyAbsentFromRelayError,
   isSshPtyIdentityMismatchError,
   isSshPtyNotFoundError
 } from './ssh-pty-errors'
@@ -226,16 +225,10 @@ export async function reattachSshPtySession(args: {
     // Why: an expired relay lease must be surfaced distinctly so the renderer clears its binding.
     console.warn(`[ssh-pty] pty.attach FAILED for ${args.sessionId}:`, error)
     if (isSshPtyNotFoundError(error)) {
-      if (isSshPtyIdentityMismatchError(error)) {
-        // The id names a LIVE PTY owned by another pane, so this is not evidence of absence.
-        throw new Error(
-          `${SSH_SESSION_EXPIRED_ERROR}: ${relaySessionId} ${SSH_PTY_IDENTITY_MISMATCH_ERROR}`
-        )
-      }
-      // Why the class: the relay answered for this exact id, so callers holding a pane binding may
-      // retire it and spawn fresh. Plain `SSH_SESSION_EXPIRED` cannot say that — a restarted relay
-      // renumbers from pty-1, so the message alone is indistinguishable from a lost link.
-      throw new SshPtyAbsentFromRelayError(`${SSH_SESSION_EXPIRED_ERROR}: ${relaySessionId}`)
+      const mismatchMarker = isSshPtyIdentityMismatchError(error)
+        ? ` ${SSH_PTY_IDENTITY_MISMATCH_ERROR}`
+        : ''
+      throw new Error(`${SSH_SESSION_EXPIRED_ERROR}: ${relaySessionId}${mismatchMarker}`)
     }
     throw error
   }

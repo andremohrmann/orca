@@ -7,7 +7,6 @@ import type { RpcContext, RpcRequest } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { ORCHESTRATION_METHODS } from './orchestration'
 import { createOrchestrationRpcHarness } from './orchestration-rpc-test-harness'
-import { createRootDispatch } from '../../orchestration/db/root-dispatch-test-fixture'
 
 type SendWarning = { code: string; recipient: string; message: string }
 type SendResult = {
@@ -171,7 +170,7 @@ describe('orchestration recipient routing oracle', () => {
   it('normalizes an active Dispatch owner even when no pane is live', async () => {
     setup()
     const task = db.createTask({ spec: 'detached worker' })
-    const dispatch = createRootDispatch(db, task.id, 'term_detached', 'tab_gone:leaf_gone')
+    const dispatch = db.createDispatchContext(task.id, 'term_detached', 'tab_gone:leaf_gone')
 
     const result = (await call({
       from: 'term_coord',
@@ -195,7 +194,7 @@ describe('orchestration recipient routing oracle', () => {
       coordinatorPaneKey: 'tab_foreign:leaf_coord'
     })
     const task = db.createTask({ spec: 'detached foreign worker', runId: foreignRun.id })
-    createRootDispatch(db, task.id, 'term_detached_foreign', 'tab_gone:leaf_gone')
+    db.createDispatchContext(task.id, 'term_detached_foreign', 'tab_gone:leaf_gone')
 
     await expect(
       call({
@@ -212,7 +211,7 @@ describe('orchestration recipient routing oracle', () => {
     setup()
     const overlapPane = 'tab_overlap:leaf_overlap'
     const task = db.createTask({ spec: 'overlapped worker' })
-    createRootDispatch(db, task.id, 'term_overlap', overlapPane)
+    db.createDispatchContext(task.id, 'term_overlap', overlapPane)
     const recipientRun = db.createRun({
       objective: 'Overlapping coordinator',
       coordinatorHandle: 'term_overlap',

@@ -17,12 +17,7 @@ export let rendererGateResetLoadHandler: (() => void) | null = null
 export let rendererGateResetGoneHandler: (() => void) | null = null
 export let rendererGateResetWebContents: WebContents | null = null
 // Why: the backgrounded-delivery dedupe map lives in the registerPtyHandlers closure but teardown funnels through module-scope clearProviderPtyState.
-// Why null-init + wrapper fn: see delivery/debug.ts — rolldown const-folds `export let fn = noop` bridges (STA-5661).
-let clearBackgroundedDeliverySyncForPtyImpl: ((id: string) => void) | null = null
-
-export function clearBackgroundedDeliverySyncForPty(id: string): void {
-  clearBackgroundedDeliverySyncForPtyImpl?.(id)
-}
+export let clearBackgroundedDeliverySyncForPty: (id: string) => void = () => {}
 
 export type RendererNavigationDetails = {
   isMainFrame: boolean
@@ -47,7 +42,7 @@ export function setRebindProviderListeners(fn: (() => void) | null): void {
 }
 
 export function setClearBackgroundedDeliverySyncForPty(fn: (id: string) => void): void {
-  clearBackgroundedDeliverySyncForPtyImpl = fn
+  clearBackgroundedDeliverySyncForPty = fn
 }
 
 export function setSshOutputIntakeCleanup(fn: (() => void) | null): void {

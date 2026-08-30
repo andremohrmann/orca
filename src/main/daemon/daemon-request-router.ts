@@ -113,10 +113,6 @@ export class DaemonRequestRouter {
             request.payload.sessionId
           )
         }
-      case 'confirmShellForeground':
-        return {
-          confirmed: await this.options.host.confirmShellForeground(request.payload.sessionId)
-        }
       case 'clearScrollback':
         this.options.host.clearScrollback(request.payload.sessionId)
         return {}
@@ -217,13 +213,13 @@ export class DaemonRequestRouter {
     return { retiring }
   }
 
-  private async getSnapshot(sessionId: string, requestedRows: unknown): Promise<unknown> {
+  private getSnapshot(sessionId: string, requestedRows: unknown): unknown {
     const startedAt = performance.now()
     const scrollbackRows =
       typeof requestedRows === 'number' && Number.isFinite(requestedRows)
         ? Math.max(0, Math.min(50_000, Math.floor(requestedRows)))
         : undefined
-    const snapshot = await this.options.host.getSettledSnapshot(sessionId, { scrollbackRows })
+    const snapshot = this.options.host.getSnapshot(sessionId, { scrollbackRows })
     const snapshotMs = performance.now() - startedAt
     if (snapshotMs >= 25) {
       recordDaemonStreamBacklogEvent('slowGetSnapshot', {

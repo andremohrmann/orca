@@ -1,4 +1,4 @@
-import { getHostedReviewCacheKey } from '@/store/slices/hosted-review-cache-identity'
+import { getHostedReviewCacheKey } from '@/store/slices/hosted-review'
 import type { AppState } from '@/store/types'
 import { translate } from '@/i18n/i18n'
 import { getRepoExecutionHostId } from '../../../../shared/execution-host'
@@ -6,7 +6,6 @@ import type { HostedReviewInfo, HostedReviewProvider } from '../../../../shared/
 import type { Repo } from '../../../../shared/repo-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { WorkspaceCleanupCandidate } from '../../../../shared/workspace-cleanup'
-import { isGitHubPRSuppressed } from '../../../../shared/worktree/github-pr-suppression'
 import { getWorkspaceCleanupCandidateHostId } from './workspace-cleanup-host-identity'
 
 export type WorkspaceCleanupSortKey = 'activity' | 'name' | 'repo' | 'review' | 'git'
@@ -62,13 +61,7 @@ export function getWorkspaceCleanupReviewInfo(
 ): WorkspaceCleanupReviewInfo {
   const repo = findCandidateRepo(candidate, lookup)
   const worktree = findCandidateWorktree(candidate, repo, lookup)
-  const cachedHostedReview = getCachedHostedReview(candidate, worktree, repo, state)
-  const hostedReview =
-    cachedHostedReview?.provider === 'github' &&
-    worktree &&
-    isGitHubPRSuppressed(worktree, cachedHostedReview.number)
-      ? null
-      : cachedHostedReview
+  const hostedReview = getCachedHostedReview(candidate, worktree, repo, state)
   if (hostedReview) {
     return {
       hasReview: true,

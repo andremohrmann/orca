@@ -32,8 +32,6 @@ export function createCloseFileAction(
         delete newEditorDrafts[fileId]
         const newMarkdownViewMode = { ...s.markdownViewMode }
         delete newMarkdownViewMode[fileId]
-        const newMarkdownRichModeSizeOverride = { ...s.markdownRichModeSizeOverride }
-        delete newMarkdownRichModeSizeOverride[fileId]
         const newEditorViewMode = { ...s.editorViewMode }
         delete newEditorViewMode[fileId]
         const markdownVisibilityKeys = new Set([fileId])
@@ -181,7 +179,6 @@ export function createCloseFileAction(
           activeFileIdByWorktree: newActiveFileIdByWorktree,
           activeTabTypeByWorktree: newActiveTabTypeByWorktree,
           markdownViewMode: newMarkdownViewMode,
-          markdownRichModeSizeOverride: newMarkdownRichModeSizeOverride,
           editorViewMode: newEditorViewMode,
           markdownFrontmatterVisible: newMarkdownFrontmatterVisible,
           markdownTableOfContentsVisible: newMarkdownTableOfContentsVisible,

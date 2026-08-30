@@ -37,22 +37,13 @@ export type TerminalUrlOpenHintOptions = {
   showActions?: boolean
 }
 
-function canSourceOwnerOpenInOrca(
-  sourceOwner: HttpLinkSourceOwner,
-  canOpenOwnedBrowser: boolean
-): boolean {
-  return (
-    sourceOwner.kind === 'local' ||
-    ((sourceOwner.kind === 'runtime' || sourceOwner.kind === 'ssh') && canOpenOwnedBrowser)
-  )
-}
-
 export function terminalHttpLinkActionDestinationsFor(
   settings: { openLinksInApp?: boolean } | null | undefined,
   sourceOwner: HttpLinkSourceOwner,
-  canOpenOwnedBrowser: boolean
+  canOpenRuntimeBrowser: boolean
 ): TerminalHttpLinkActionDestinations {
-  const canOpenInOrca = canSourceOwnerOpenInOrca(sourceOwner, canOpenOwnedBrowser)
+  const canOpenInOrca =
+    sourceOwner.kind === 'local' || (sourceOwner.kind === 'runtime' && canOpenRuntimeBrowser)
   if (!canOpenInOrca) {
     return { primary: 'system' }
   }
@@ -61,7 +52,7 @@ export function terminalHttpLinkActionDestinationsFor(
     : { primary: 'system', alternate: 'orca' }
 }
 
-// Why: remote owners advertise Orca only when their existing browser route is eligible.
+// Why: only a capability-verified runtime can advertise the in-app destination.
 export function terminalUrlOpenHintOptionsFor(
   settings:
     | {
@@ -72,10 +63,10 @@ export function terminalUrlOpenHintOptionsFor(
     | null
     | undefined,
   sourceOwner?: HttpLinkSourceOwner,
-  canOpenOwnedBrowser = false
+  canOpenRuntimeBrowser = false
 ): TerminalUrlOpenHintOptions {
   const sourceCanOpenInOrca = sourceOwner
-    ? canSourceOwnerOpenInOrca(sourceOwner, canOpenOwnedBrowser)
+    ? sourceOwner.kind === 'local' || (sourceOwner.kind === 'runtime' && canOpenRuntimeBrowser)
     : !settings?.activeRuntimeEnvironmentId?.trim()
   return {
     openLinksInApp: settings?.openLinksInApp === true,

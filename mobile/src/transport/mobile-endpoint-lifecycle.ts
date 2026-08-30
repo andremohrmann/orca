@@ -93,8 +93,7 @@ function createSupervisor(
         resumeCredentialVersion: credential.version,
         resumeConfirmReqId: confirmReqId,
         deviceToken: host.deviceToken,
-        desktopPublicKeyB64: host.publicKeyB64,
-        onLog
+        desktopPublicKeyB64: host.publicKeyB64
       }),
     resolveRelay: resolveMobileRelayEndpoint,
     readBundle: readMobileRelayCredentialBundle,

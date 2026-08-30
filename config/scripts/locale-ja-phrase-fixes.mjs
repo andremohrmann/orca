@@ -37,13 +37,7 @@ const RELOCALIZED_GENERIC_TERMS = [
 
 export const JA_PHRASE_FIXES = [
   ...RELOCALIZED_GENERIC_TERMS,
-  {
-    pattern: /エージェント/g,
-    replacement: 'Agent',
-    whenEnIncludes: 'agent',
-    // Skills filters and metadata are Japanese UI labels, not agent product prose.
-    skipKeyPrefixes: ['auto.components.skills.']
-  },
+  { pattern: /エージェント/g, replacement: 'Agent', whenEnIncludes: 'agent' },
   { pattern: /解雇/g, replacement: '閉じる', whenEnIncludes: 'Dismiss' },
   { pattern: /却下/g, replacement: '閉じる', whenEnIncludes: 'Dismiss' },
   { pattern: /代理人/g, replacement: 'Agent', whenEnIncludes: 'agent' },

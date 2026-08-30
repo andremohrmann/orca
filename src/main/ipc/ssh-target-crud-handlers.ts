@@ -1,10 +1,5 @@
 import { ipcMain } from 'electron'
-import type {
-  SshConfigHostListArgs,
-  SshRepoReadoption,
-  SshTargetCreateInput,
-  SshTargetUpdateInput
-} from '../../shared/ssh-types'
+import type { SshConfigHostListArgs, SshRepoReadoption, SshTarget } from '../../shared/ssh-types'
 import {
   listUserSshConfigHostSummaries,
   resolveUserSshConfigHost
@@ -34,11 +29,6 @@ function takeRepoReadoptions(): SshRepoReadoption[] {
   return repoReadoptions
 }
 
-function omitRendererSshTargetGeneration<T extends object>(value: T): Omit<T, 'generation'> {
-  const { generation: _generation, ...rest } = value as T & { generation?: unknown }
-  return rest
-}
-
 export function registerSshTargetCrudHandlers(): void {
   ipcMain.handle('ssh:listTargets', () => {
     return getSshTargetRegistryStore()!.listTargets()
@@ -48,10 +38,8 @@ export function registerSshTargetCrudHandlers(): void {
     return getSshTargetRegistryStore()!.listRemovedTargetLabels()
   })
 
-  ipcMain.handle('ssh:addTarget', (_event, args: { target: SshTargetCreateInput }) => {
-    const target = getSshTargetRegistryStore()!.addTarget(
-      omitRendererSshTargetGeneration(args.target)
-    )
+  ipcMain.handle('ssh:addTarget', (_event, args: { target: Omit<SshTarget, 'id'> }) => {
+    const target = getSshTargetRegistryStore()!.addTarget(args.target)
     // Why: re-adding a removed host can re-adopt orphaned workspaces; refresh the renderer's repo list so they move back onto the live host.
     const repoReadoptions = takeRepoReadoptions()
     return { target, repoReadoptions }
@@ -59,11 +47,8 @@ export function registerSshTargetCrudHandlers(): void {
 
   ipcMain.handle(
     'ssh:updateTarget',
-    (_event, args: { id: string; updates: SshTargetUpdateInput }) => {
-      return getSshTargetRegistryStore()!.updateTarget(
-        args.id,
-        omitRendererSshTargetGeneration(args.updates)
-      )
+    (_event, args: { id: string; updates: Partial<Omit<SshTarget, 'id'>> }) => {
+      return getSshTargetRegistryStore()!.updateTarget(args.id, args.updates)
     }
   )
 

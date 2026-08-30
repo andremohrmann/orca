@@ -35,10 +35,6 @@ type LiveDashboardCard = DashboardCard & { ptyId: string }
 
 const LIVE_GRID_PANE_MIME = 'application/x-orca-live-pane-key'
 
-function markLivePaneRestored(restoredAtByPaneKey: Map<string, number>, paneKey: string): void {
-  restoredAtByPaneKey.set(paneKey, Date.now())
-}
-
 function getInitialContainerSize(): { width: number; height: number } {
   if (typeof window === 'undefined') {
     return { width: 0, height: 0 }
@@ -220,7 +216,7 @@ export function AgentLiveGrid({
   }
   const toggleSetValue = (key: 'minimized' | 'hidden', paneKey: string, present: boolean): void => {
     if (key === 'minimized' && !present) {
-      markLivePaneRestored(restoredAtByPaneKeyRef.current, paneKey)
+      restoredAtByPaneKeyRef.current.set(paneKey, Date.now())
     }
     saveLayout((current) => {
       const next = new Set(current[key] ?? [])

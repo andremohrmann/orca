@@ -14,7 +14,6 @@ export async function discoverFiles(args: {
   issues: AiVaultScanIssue[]
   extensions: string[]
   filePredicate?: (path: string) => boolean
-  contentDependencyPath?: (path: string) => string
   directoryPredicate?: (name: string, depth: number) => boolean
 }): Promise<SessionFileDiscovery> {
   let paths: string[]
@@ -42,13 +41,11 @@ export async function discoverFiles(args: {
   for (const path of paths) {
     try {
       const fileStat = await wslGatedStat(path, 'scan')
-      const dependencyStat = await optionalContentDependencyStat(args.contentDependencyPath?.(path))
-      const mtimeMs = Math.max(fileStat.mtimeMs, dependencyStat?.mtimeMs ?? 0)
       files.push({
         path,
-        mtimeMs,
-        modifiedAt: new Date(mtimeMs).toISOString(),
-        sizeBytes: fileStat.size + (dependencyStat?.size ?? 0),
+        mtimeMs: fileStat.mtimeMs,
+        modifiedAt: fileStat.mtime.toISOString(),
+        sizeBytes: fileStat.size,
         dev: fileStat.dev,
         ino: fileStat.ino,
         nlink: fileStat.nlink
@@ -65,23 +62,6 @@ export async function discoverFiles(args: {
     agent: args.agent,
     rootDir: args.rootDir,
     files: files.sort((left, right) => right.mtimeMs - left.mtimeMs).slice(0, args.limit)
-  }
-}
-
-async function optionalContentDependencyStat(
-  filePath: string | undefined
-): Promise<{ mtimeMs: number; size: number } | null> {
-  if (!filePath) {
-    return null
-  }
-  try {
-    const fileStat = await wslGatedStat(filePath, 'scan')
-    return { mtimeMs: fileStat.mtimeMs, size: fileStat.size }
-  } catch (error) {
-    if (error instanceof WslTranscriptFsError) {
-      throw error
-    }
-    return null
   }
 }
 

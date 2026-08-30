@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { CircleDot, Copy, Ellipsis, ExternalLink, Globe, MonitorUp, Pencil } from 'lucide-react'
+import { CircleDot, Copy, Ellipsis, ExternalLink, MonitorUp, Pencil } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import {
   WorktreeCardDetailSection,
@@ -22,7 +22,6 @@ type WorktreeCardIssueDetailSectionProps = {
   issueMenuOpen: boolean
   onIssueMenuOpenChange: (open: boolean) => void
   onCopyIssueLink?: () => void
-  onOpenIssueInBrowser?: (url: string) => void
   onEditIssue?: (event: React.MouseEvent) => void
   onOpenGitHubIssueInOrca?: (event: React.MouseEvent) => void
 }
@@ -32,7 +31,6 @@ export function WorktreeCardIssueDetailSection({
   issueMenuOpen,
   onIssueMenuOpenChange,
   onCopyIssueLink,
-  onOpenIssueInBrowser,
   onEditIssue,
   onOpenGitHubIssueInOrca
 }: WorktreeCardIssueDetailSectionProps): React.JSX.Element | null {
@@ -73,7 +71,7 @@ export function WorktreeCardIssueDetailSection({
         )}
         actions={
           <>
-            {issue.url && (onCopyIssueLink || onOpenIssueInBrowser) && (
+            {issue.url && onCopyIssueLink && (
               <DropdownMenu modal={false} open={issueMenuOpen} onOpenChange={onIssueMenuOpenChange}>
                 {issueMenuOpen ? (
                   moreActionsTrigger
@@ -86,25 +84,10 @@ export function WorktreeCardIssueDetailSection({
                   </Tooltip>
                 )}
                 <DropdownMenuContent align="end" className="w-40">
-                  {onOpenIssueInBrowser && (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        onOpenIssueInBrowser(issue.url!)
-                      }}
-                    >
-                      <Globe className="size-3.5" />
-                      {translate(
-                        'auto.components.sidebar.WorktreeCardMeta.openInOrcaBrowser',
-                        'Open in Orca browser'
-                      )}
-                    </DropdownMenuItem>
-                  )}
-                  {onCopyIssueLink && (
-                    <DropdownMenuItem onSelect={onCopyIssueLink}>
-                      <Copy className="size-3.5" />
-                      {translate('auto.components.sidebar.WorktreeCardMeta.copyLink', 'Copy link')}
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem onSelect={onCopyIssueLink}>
+                    <Copy className="size-3.5" />
+                    {translate('auto.components.sidebar.WorktreeCardMeta.copyLink', 'Copy link')}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

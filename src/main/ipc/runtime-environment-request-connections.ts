@@ -1,5 +1,4 @@
 import type { PairingOffer } from '../../shared/pairing'
-import { ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES } from '../../shared/protocol-version'
 import type {
   RuntimeOrchestrationEnvelope,
   RuntimeRpcResponse
@@ -38,10 +37,7 @@ export function sendRemoteRuntimeConnectionRequest<TResult>(
     cached?.connection.close()
     cached = {
       pairingKey,
-      connection: new RemoteRuntimeRequestConnection(
-        pairing,
-        ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
-      )
+      connection: new RemoteRuntimeRequestConnection(pairing)
     }
     requestConnections.set(environmentId, cached)
   }
@@ -126,10 +122,7 @@ function getSharedControlConnection(
     cached?.connection.close()
     cached = {
       pairingKey,
-      connection: new RemoteRuntimeSharedControlConnection(pairing, {
-        environmentId,
-        clientCapabilities: ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
-      })
+      connection: new RemoteRuntimeSharedControlConnection(pairing, { environmentId })
     }
     sharedControlConnections.set(environmentId, cached)
   }

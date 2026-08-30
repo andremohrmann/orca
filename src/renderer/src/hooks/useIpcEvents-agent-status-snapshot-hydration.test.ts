@@ -201,9 +201,7 @@ describe('useIpcEvents agent status snapshot integration', () => {
           onBrowserDriverChanged: (listener: MobileBrowserDriverListener) => {
             refs.browserDriver = listener
             return unsubscribeBrowserDriver
-          },
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          }
         }
       })
     )
@@ -486,15 +484,17 @@ describe('useIpcEvents agent status snapshot integration', () => {
         return tabId
       }
     })
-    const snapshot = leafIds.map((leafId, index): AgentStatusSetData => ({
-      paneKey: makePaneKey(tabId, leafId),
-      worktreeId,
-      state: 'working',
-      prompt: `indexed prompt ${index}`,
-      agentType: 'claude',
-      receivedAt: 1_700_000_000_000 + index,
-      stateStartedAt: 1_700_000_000_000 + index
-    }))
+    const snapshot = leafIds.map(
+      (leafId, index): AgentStatusSetData => ({
+        paneKey: makePaneKey(tabId, leafId),
+        worktreeId,
+        state: 'working',
+        prompt: `indexed prompt ${index}`,
+        agentType: 'claude',
+        receivedAt: 1_700_000_000_000 + index,
+        stateStartedAt: 1_700_000_000_000 + index
+      })
+    )
     let resolveSnapshot!: (entries: AgentStatusSetData[]) => void
     const getSnapshot = vi.fn(
       () =>

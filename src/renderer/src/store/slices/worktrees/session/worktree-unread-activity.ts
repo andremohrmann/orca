@@ -3,7 +3,7 @@ import type { WorktreeSliceGet, WorktreeSliceSet } from '../listing/worktree-sli
 import { parseWorkspaceKey } from '../../../../../../shared/workspace-scope'
 import { applyWorktreeUpdates, getRepoIdFromWorktreeId } from '../../worktree-helpers'
 import { branchName } from '@/lib/git-utils'
-import { refreshHostedReviewCard } from '../../hosted-review-card-refresh'
+import { refreshHostedReviewCard } from '../../hosted-review'
 import {
   applyDetectedWorktreeUpdates,
   findKnownWorktreeById
@@ -16,7 +16,6 @@ import {
 } from '../listing/worktree-owner-settings'
 import { persistWorktreeMeta } from '../metadata/worktree-meta-persist'
 import { isRuntimeSelectorNotFoundError } from '../listing/runtime-worktree-rpc-errors'
-import { isGitHubPRSuppressed } from '../../../../../../shared/worktree/github-pr-suppression'
 
 export function createMarkWorktreeUnread(
   set: WorktreeSliceSet,
@@ -111,10 +110,7 @@ export function createObserveTerminalGitHubPullRequestLink(
     if (!repo || (repo.kind && repo.kind !== 'git')) {
       return
     }
-    if (
-      isGitHubPRSuppressed(worktree, link.number) ||
-      (typeof worktree.linkedPR === 'number' && worktree.linkedPR !== link.number)
-    ) {
+    if (typeof worktree.linkedPR === 'number' && worktree.linkedPR !== link.number) {
       return
     }
 
@@ -143,7 +139,6 @@ export function createObserveTerminalGitHubPullRequestLink(
                   currentWorktree &&
                   !currentWorktree.isBare &&
                   !currentWorktree.isArchived &&
-                  !isGitHubPRSuppressed(currentWorktree, link.number) &&
                   (currentWorktree.linkedPR == null || currentWorktree.linkedPR === link.number)
                 )
             }

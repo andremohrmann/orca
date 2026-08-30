@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect } from 'react'
 import { installWindowVisibilityTimeoutPoller } from '@/lib/window-visibility-timeout-poller'
 import { gitLabPipelineJobsToPRChecks } from '../../../../../shared/gitlab-pipeline-checks'
 import {
@@ -17,7 +17,6 @@ type ChecksPanelPollingInput = Pick<
   Pick<
     ChecksPanelControllerState,
     | 'asyncResultKeyRef'
-    | 'activeWorktree'
     | 'branch'
     | 'fetchPRChecks'
     | 'isPanelVisible'
@@ -35,7 +34,6 @@ type ChecksPanelPollingInput = Pick<
 
 export function useChecksPanelPolling(model: ChecksPanelPollingInput) {
   const {
-    activeWorktree,
     activeGitLabReview,
     asyncResultKeyRef,
     branch,
@@ -56,7 +54,6 @@ export function useChecksPanelPolling(model: ChecksPanelPollingInput) {
     setCommentsLoading,
     gitLabProjectRefRef
   } = model
-  const gitLabDetailsLoadingGenerationRef = useRef(0)
   // Fetch checks via cached store method
   const fetchChecks = useCallback(
     async ({
@@ -139,19 +136,14 @@ export function useChecksPanelPolling(model: ChecksPanelPollingInput) {
     async ({
       mrNumberOverride,
       headShaOverride,
-      commitAsCurrent = false,
-      settingsOverride,
-      isRequestCurrent
+      commitAsCurrent = false
     }: {
       mrNumberOverride?: number | null
       headShaOverride?: string | null
       commitAsCurrent?: boolean
-      settingsOverride?: ChecksPanelControllerState['settings']
-      isRequestCurrent?: () => boolean
     } = {}) => {
       const targetMRNumber = mrNumberOverride ?? activeGitLabReview?.number ?? null
-      const targetHeadSha =
-        headShaOverride === undefined ? (activeGitLabReview?.headSha ?? null) : headShaOverride
+      const targetHeadSha = headShaOverride ?? activeGitLabReview?.headSha ?? null
       if (!repo || !targetMRNumber) {
         return
       }
@@ -162,25 +154,19 @@ export function useChecksPanelPolling(model: ChecksPanelPollingInput) {
         targetMRNumber,
         targetHeadSha
       )
-      if (isRequestCurrent?.() === false) {
-        return
-      }
       if (commitAsCurrent) {
         asyncResultKeyRef.current = requestKey
       }
-      const loadingGeneration = gitLabDetailsLoadingGenerationRef.current + 1
-      gitLabDetailsLoadingGenerationRef.current = loadingGeneration
       setChecksLoading(true)
       setCommentsLoading(true)
       try {
         const details = await fetchGitLabMRDetailsForChecks({
           repoPath: repo.path,
           repoId: repo.id,
-          settings: settingsOverride ?? settings,
-          iid: targetMRNumber,
-          repoOwnerExecutionHostId: activeWorktree?.hostId
+          settings,
+          iid: targetMRNumber
         })
-        if (isRequestCurrent?.() === false || !isCurrentAsyncResult(requestKey)) {
+        if (!isCurrentAsyncResult(requestKey)) {
           return
         }
         gitLabProjectRefRef.current = details?.item.projectRef ?? null
@@ -194,17 +180,14 @@ export function useChecksPanelPolling(model: ChecksPanelPollingInput) {
             : 30_000
         prevChecksRef.current = signature
       } catch (err) {
-        if (isRequestCurrent?.() === false || !isCurrentAsyncResult(requestKey)) {
+        if (!isCurrentAsyncResult(requestKey)) {
           return
         }
         console.warn('Failed to fetch GitLab MR checks:', err)
         setChecks([])
         setComments([])
       } finally {
-        if (
-          gitLabDetailsLoadingGenerationRef.current === loadingGeneration &&
-          isCurrentAsyncResult(requestKey)
-        ) {
+        if (isCurrentAsyncResult(requestKey)) {
           setChecksLoading(false)
           setCommentsLoading(false)
         }
@@ -213,7 +196,6 @@ export function useChecksPanelPolling(model: ChecksPanelPollingInput) {
     [
       activeGitLabReview?.headSha,
       activeGitLabReview?.number,
-      activeWorktree?.hostId,
       branch,
       hostedReviewCacheKey,
       isCurrentAsyncResult,

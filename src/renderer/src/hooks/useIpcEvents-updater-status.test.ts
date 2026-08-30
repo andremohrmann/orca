@@ -89,7 +89,6 @@ describe('useIpcEvents updater integration', () => {
     vi.stubGlobal('window', {
       api: {
         repos: { onChanged: () => () => {} },
-        automations: { onChanged: () => () => {} },
         worktrees: {
           onChanged: () => () => {},
           onBaseStatus: () => () => {},
@@ -179,9 +178,7 @@ describe('useIpcEvents updater integration', () => {
           getBrowserDrivers: () => Promise.resolve([]),
           onTerminalFitOverrideChanged: () => () => {},
           onTerminalDriverChanged: () => () => {},
-          onBrowserDriverChanged: () => () => {},
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          onBrowserDriverChanged: () => () => {}
         },
         ssh: {
           listTargets: () => Promise.resolve([]),
@@ -290,7 +287,6 @@ describe('useIpcEvents updater integration', () => {
     vi.stubGlobal('window', {
       api: {
         repos: makeEvents(),
-        automations: makeEvents(),
         worktrees: makeEvents(),
         keybindings: makeEvents(),
         settings: makeEvents(),
@@ -310,9 +306,7 @@ describe('useIpcEvents updater integration', () => {
           getBrowserDrivers: () => Promise.resolve([]),
           onTerminalFitOverrideChanged: () => () => {},
           onTerminalDriverChanged: () => () => {},
-          onBrowserDriverChanged: () => () => {},
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          onBrowserDriverChanged: () => () => {}
         },
         ssh: {
           listTargets: () => Promise.resolve([]),

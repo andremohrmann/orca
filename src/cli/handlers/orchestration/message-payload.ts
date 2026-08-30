@@ -1,10 +1,10 @@
-import { getOptionalJsonFlag, getOptionalStringFlag } from '../../flags'
+import { getOptionalStringFlag } from '../../flags'
 import { RuntimeClientError } from '../../runtime-client'
 
 export function getOptionalStructuredMessagePayload(
   flags: Map<string, string | boolean>
 ): string | undefined {
-  const rawPayload = getOptionalJsonFlag(flags, 'payload')
+  const rawPayload = getOptionalStringFlag(flags, 'payload')
   const taskId = getOptionalStringFlag(flags, 'task-id')
   const dispatchId = getOptionalStringFlag(flags, 'dispatch-id')
   const outcome = getOptionalStringFlag(flags, 'outcome')

@@ -57,13 +57,11 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
     handleEditIssue,
     handleEditComment,
     handleOpenGitHubIssueInOrca,
-    handleOpenIssueInBrowser,
     handleOpenLinearIssueInOrca,
     handleOpenReviewInOrca,
-    handleOpenReviewInBrowser,
     handleOpenAutomation,
     handleOpenAutomationRun,
-    canUnlinkReview,
+    hasExplicitLinkedReview,
     handleUnlinkReview,
     detailsHoverControl,
     showDeleteQuickAction
@@ -155,6 +153,7 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
             comment={metaComment}
             automationProvenance={metaAutomationProvenance}
             cliProvenance={metaCliProvenance}
+            automationHostId={worktree.hostId}
             branchName={showBranchIdentityHover ? branch : undefined}
             workspaceTitle={worktree.displayName}
             identityOrder="branch-first"
@@ -169,22 +168,18 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
                 ? handleOpenGitHubIssueInOrca
                 : undefined
             }
-            onOpenIssueInBrowser={
-              metaIssue && 'url' in metaIssue && metaIssue.url
-                ? handleOpenIssueInBrowser
-                : undefined
-            }
             onOpenLinearIssueInOrca={linearIssue?.url ? handleOpenLinearIssueInOrca : undefined}
             onOpenReviewInOrca={
               metaReview?.url && metaReview.provider === 'github'
                 ? handleOpenReviewInOrca
                 : undefined
             }
-            onOpenReviewInBrowser={metaReview?.url ? handleOpenReviewInBrowser : undefined}
             onOpenAutomation={affiliateListMode ? undefined : handleOpenAutomation}
             onOpenAutomationRun={affiliateListMode ? undefined : handleOpenAutomationRun}
-            // Why: compact mode hides the metadata badge row, so title hover carries the review affordance.
-            onUnlinkReview={!affiliateListMode && canUnlinkReview ? handleUnlinkReview : undefined}
+            // Why: compact mode hides the metadata badge row, so title hover carries the explicit-link affordance.
+            onUnlinkReview={
+              !affiliateListMode && hasExplicitLinkedReview ? handleUnlinkReview : undefined
+            }
           >
             {title}
           </WorktreeCardDetailsHover>
@@ -230,6 +225,7 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
         comment={metaComment}
         automationProvenance={metaAutomationProvenance}
         cliProvenance={metaCliProvenance}
+        automationHostId={worktree.hostId}
         detailsAfter={hasPorts ? <WorktreeCardPortsDetails ports={workspacePorts} /> : null}
         hoverControl={detailsHoverControl}
         onEditIssue={affiliateListMode ? undefined : handleEditIssue}
@@ -237,17 +233,16 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
         onOpenGitHubIssueInOrca={
           metaIssue && 'url' in metaIssue && metaIssue.url ? handleOpenGitHubIssueInOrca : undefined
         }
-        onOpenIssueInBrowser={
-          metaIssue && 'url' in metaIssue && metaIssue.url ? handleOpenIssueInBrowser : undefined
-        }
         onOpenLinearIssueInOrca={linearIssue?.url ? handleOpenLinearIssueInOrca : undefined}
         onOpenReviewInOrca={
           metaReview?.url && metaReview.provider === 'github' ? handleOpenReviewInOrca : undefined
         }
-        onOpenReviewInBrowser={metaReview?.url ? handleOpenReviewInBrowser : undefined}
         onOpenAutomation={affiliateListMode ? undefined : handleOpenAutomation}
         onOpenAutomationRun={affiliateListMode ? undefined : handleOpenAutomationRun}
-        onUnlinkReview={!affiliateListMode && canUnlinkReview ? handleUnlinkReview : undefined}
+        // Why: branch lookup can surface a review without persisted metadata; only unlink when explicitly linked.
+        onUnlinkReview={
+          !affiliateListMode && hasExplicitLinkedReview ? handleUnlinkReview : undefined
+        }
       >
         {detailsAndPortsContent}
       </WorktreeCardDetailsHover>

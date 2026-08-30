@@ -1,5 +1,4 @@
 import type { App, BrowserWindow } from 'electron'
-import { isBackgroundLaunch, showWindowWithoutStealingFocus } from './foreground-activation-policy'
 
 type FocusTimer = (callback: () => void, ms: number) => unknown
 
@@ -15,11 +14,6 @@ export type FocusExistingMainWindowOptions = {
 }
 
 function safelyFocusApp(app: Pick<App, 'focus'>): void {
-  // Why: stealing the foreground is the whole point of this path for a real
-  // second-instance launch, and exactly what an automated run must never do.
-  if (isBackgroundLaunch()) {
-    return
-  }
   try {
     app.focus({ steal: true })
   } catch {
@@ -38,10 +32,8 @@ export function safelyRevealWindow(window: BrowserWindow): void {
   if (window.isMinimized()) {
     window.restore()
   }
-  showWindowWithoutStealingFocus(window)
-  if (!isBackgroundLaunch()) {
-    window.focus()
-  }
+  window.show()
+  window.focus()
 }
 
 function pulseAlwaysOnTop(window: BrowserWindow, setTimer: FocusTimer): void {
@@ -82,9 +74,7 @@ function activateWindow(
 ): void {
   safelyFocusApp(app)
   safelyRevealWindow(window)
-  // Why: moveTop/always-on-top/refocus are foreground reinforcement; in a
-  // background launch they would drag the window over the developer's work.
-  if (platform === 'win32' && !isBackgroundLaunch()) {
+  if (platform === 'win32') {
     try {
       window.moveTop()
     } catch {

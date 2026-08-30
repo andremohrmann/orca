@@ -90,11 +90,7 @@ export function useWorkspaceKanbanStatusActions(args: {
       recordInteraction()
       for (const worktree of args.allWorktrees) {
         if (getWorkspaceStatus(worktree, args.workspaceStatuses) === statusId) {
-          void args.updateWorktreeMeta(
-            worktree.id,
-            { workspaceStatus: fallbackStatus },
-            { executionHostId: worktree.hostId ?? 'local' }
-          )
+          void args.updateWorktreeMeta(worktree.id, { workspaceStatus: fallbackStatus })
         }
       }
     },

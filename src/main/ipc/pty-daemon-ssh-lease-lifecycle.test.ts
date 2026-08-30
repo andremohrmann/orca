@@ -72,8 +72,7 @@ describe('registerPtyHandlers', () => {
           )
         })
         const store = {
-          markSshRemotePtyLease: vi.fn(),
-          clearSshRemotePtyKillIntent: vi.fn()
+          markSshRemotePtyLease: vi.fn()
         }
         registerSshPtyProvider('ssh-1', {
           spawn: sshSpawn,
@@ -137,8 +136,7 @@ describe('registerPtyHandlers', () => {
       })
       it('does not tombstone an SSH lease when explicit kill shutdown fails transiently', async () => {
         const store = {
-          markSshRemotePtyLease: vi.fn(),
-          clearSshRemotePtyKillIntent: vi.fn()
+          markSshRemotePtyLease: vi.fn()
         }
         registerSshPtyProvider('ssh-1', {
           spawn: vi.fn(),
@@ -190,8 +188,7 @@ describe('registerPtyHandlers', () => {
       it('marks an SSH lease terminated after runtime controller kill succeeds', async () => {
         const shutdown = vi.fn(async () => undefined)
         const store = {
-          markSshRemotePtyLease: vi.fn(),
-          clearSshRemotePtyKillIntent: vi.fn()
+          markSshRemotePtyLease: vi.fn()
         }
         const runtime = {
           setPtyController: vi.fn(),
@@ -411,8 +408,7 @@ describe('registerPtyHandlers', () => {
         vi.useFakeTimers()
         const shutdown = vi.fn(async () => undefined)
         const store = {
-          markSshRemotePtyLease: vi.fn(),
-          clearSshRemotePtyKillIntent: vi.fn()
+          markSshRemotePtyLease: vi.fn()
         }
         const runtime = {
           setPtyController: vi.fn(),

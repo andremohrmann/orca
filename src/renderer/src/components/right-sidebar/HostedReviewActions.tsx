@@ -21,7 +21,6 @@ import { getDeleteStateForWorktreeHost } from '../sidebar/worktree-delete-state-
 import { presentGitLabMRMergeState } from './gitlab-mr-merge-state'
 import {
   ClosedReviewActions,
-  DraftReviewActions,
   HostedReviewActionError,
   MergedReviewActions
 } from './HostedReviewStateActions'
@@ -124,12 +123,10 @@ export default function HostedReviewActions({
   )
   const {
     merging,
-    readying,
     stateUpdating,
     actionError,
     handleMerge,
     handleAutoMerge,
-    handleMarkReadyForReview,
     handleCloseReview,
     handleReopenReview
   } = useHostedReviewActions({
@@ -157,21 +154,6 @@ export default function HostedReviewActions({
     // skip-confirm, main-worktree, and child-workspace safeguards cannot drift.
     runWorktreeDelete(worktree.id, worktree.hostId ? { expectedHostId: worktree.hostId } : {})
   }, [worktree.hostId, worktree.id])
-
-  if (review.state === 'draft' && (review.provider === 'github' || review.provider === 'gitlab')) {
-    return (
-      <DraftReviewActions
-        shortLabel={shortLabel}
-        reviewLabel={reviewLabel}
-        isGitLab={isGitLab}
-        readying={readying}
-        stateUpdating={stateUpdating}
-        actionError={actionError}
-        onMarkReadyForReview={() => void handleMarkReadyForReview()}
-        onCloseReview={() => void handleCloseReview()}
-      />
-    )
-  }
 
   if (review.state === 'open') {
     return (

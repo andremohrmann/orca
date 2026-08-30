@@ -36,7 +36,6 @@ describe('useIpcEvents browser tab close routing', () => {
     await useIpcEventsForCloseRouting({
       closeSessionTabListenerRef,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeFile,
         closeUnifiedTab,
         browserTabsByWorktree: {},
@@ -64,7 +63,6 @@ describe('useIpcEvents browser tab close routing', () => {
     await useIpcEventsForCloseRouting({
       closeSessionTabListenerRef,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeFile,
         closeUnifiedTab,
         browserTabsByWorktree: {},
@@ -174,7 +172,6 @@ describe('useIpcEvents browser tab close routing', () => {
     await useIpcEventsForCloseRouting({
       closeActiveTabListenerRef,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeBrowserTab,
         requestPinnedTabCloseConfirm,
         unifiedTabsByWorktree: {
@@ -201,7 +198,7 @@ describe('useIpcEvents browser tab close routing', () => {
     const { onConfirm } = requestPinnedTabCloseConfirm.mock.calls[0][0] as { onConfirm: () => void }
     onConfirm()
 
-    expect(closeBrowserTab).toHaveBeenCalledWith('workspace-1', undefined)
+    expect(closeBrowserTab).toHaveBeenCalledWith('workspace-1')
   })
 
   it('confirms CLI workspace browser closes and replies after confirmation', async () => {
@@ -216,7 +213,6 @@ describe('useIpcEvents browser tab close routing', () => {
       requestTabCloseListenerRef,
       replyTabClose,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeBrowserTab,
         requestPinnedTabCloseConfirm,
         unifiedTabsByWorktree: {
@@ -260,7 +256,6 @@ describe('useIpcEvents browser tab close routing', () => {
       requestTabCloseListenerRef,
       replyTabClose,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeBrowserTab,
         requestPinnedTabCloseConfirm,
         unifiedTabsByWorktree: {
@@ -303,7 +298,6 @@ describe('useIpcEvents browser tab close routing', () => {
       requestTabCloseListenerRef,
       replyTabClose,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeBrowserTab,
         requestPinnedTabCloseConfirm,
         settings: {
@@ -345,7 +339,6 @@ describe('useIpcEvents browser tab close routing', () => {
       requestTabCloseListenerRef,
       replyTabClose,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeBrowserTab,
         closeBrowserPage,
         requestPinnedTabCloseConfirm,
@@ -387,7 +380,6 @@ describe('useIpcEvents browser tab close routing', () => {
       requestTabCloseListenerRef,
       replyTabClose,
       getState: () => ({
-        recordClientHostedBrowserCloseIntents: vi.fn(),
         closeBrowserTab,
         closeBrowserPage,
         browserTabsByWorktree: {

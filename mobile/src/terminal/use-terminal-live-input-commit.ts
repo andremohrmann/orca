@@ -68,7 +68,6 @@ export function useTerminalLiveInputCommit<TTabType extends string>({
     clearPendingLiveInputCommit,
     flushPendingLiveInputText,
     heldLiveInputTextRef,
-    liveInputComposingRef,
     pendingLiveInputHandleRef,
     sentLiveInputTextRef,
     waitForPendingLiveInputFlush
@@ -133,7 +132,7 @@ export function useTerminalLiveInputCommit<TTabType extends string>({
       // that differs from the native field text, so the controlled capture must
       // echo the field verbatim; only the PTY mirror sees normalized text.
       setLiveInputCapture(nativeEvent.text)
-      void applyLiveInputMirror(
+      applyLiveInputMirror(
         activeHandle,
         normalizeTerminalTextInput(nativeEvent.text),
         nativeEvent.isComposing
@@ -197,7 +196,6 @@ export function useTerminalLiveInputCommit<TTabType extends string>({
     clearPendingLiveInputCommit,
     flushPendingLiveInputText,
     heldLiveInputTextRef,
-    liveInputComposingRef,
     liveInputRef,
     liveInputTerminalHandles,
     pendingLiveInputHandleRef,

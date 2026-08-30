@@ -4,7 +4,7 @@ import type { WorkspacePortScanResult } from '../../../shared/workspace-ports'
 import {
   openHttpLink,
   registerHttpLinkStoreAccessor,
-  registerWorkspaceHttpLinkBrowserOpener,
+  registerRuntimeHttpLinkBrowserOpener,
   resolveLocalhostHttpLinkDisplayUrl
 } from './http-link-routing'
 
@@ -48,7 +48,7 @@ beforeEach(() => {
   storeState.settings = undefined
   storeState.workspacePortScansByKey = {}
   registerHttpLinkStoreAccessor(() => storeState)
-  registerWorkspaceHttpLinkBrowserOpener(openRuntimeBrowserTabMock)
+  registerRuntimeHttpLinkBrowserOpener(openRuntimeBrowserTabMock)
   vi.stubGlobal('window', {
     api: {
       shell: {
@@ -62,7 +62,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  registerWorkspaceHttpLinkBrowserOpener(null)
+  registerRuntimeHttpLinkBrowserOpener(null)
   vi.unstubAllGlobals()
 })
 
@@ -163,33 +163,26 @@ describe('openHttpLink', () => {
     expect(openUrlMock).not.toHaveBeenCalled()
   })
 
-  it('routes runtime and SSH document owners through their workspace browsers', () => {
+  it('routes runtime and SSH document owners to their distinct destinations', () => {
     storeState.settings = { openLinksInApp: true, localhostWorktreeLabelsEnabled: true }
 
     openHttpLink('http://localhost:5180/runtime', {
-      allowRemoteInApp: true,
+      allowRuntimeInApp: true,
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'runtime', runtimeEnvironmentId: 'env-1' }
     })
     openHttpLink('http://localhost:5180/ssh', {
-      allowRemoteInApp: true,
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'ssh', connectionId: 'ssh-1' }
     })
 
-    expect(openRuntimeBrowserTabMock).toHaveBeenNthCalledWith(1, {
+    expect(openRuntimeBrowserTabMock).toHaveBeenCalledWith({
       workspaceId: 'wt-1',
       url: 'http://localhost:5180/runtime',
       intent: { kind: 'url' },
       expectedRuntimeEnvironmentId: 'env-1'
     })
-    expect(openRuntimeBrowserTabMock).toHaveBeenNthCalledWith(2, {
-      workspaceId: 'wt-1',
-      url: 'http://localhost:5180/ssh',
-      intent: { kind: 'url' },
-      expectedSshConnectionId: 'ssh-1'
-    })
-    expect(openUrlMock).not.toHaveBeenCalled()
+    expect(openUrlMock).toHaveBeenCalledWith('http://localhost:5180/ssh')
     expect(createBrowserTabMock).not.toHaveBeenCalled()
     expect(registerLocalhostLabelMock).not.toHaveBeenCalled()
   })
@@ -200,7 +193,7 @@ describe('openHttpLink', () => {
     storeState.settings = { openLinksInApp: true, activeRuntimeEnvironmentId: null }
 
     openHttpLink('https://example.com/', {
-      allowRemoteInApp: true,
+      allowRuntimeInApp: true,
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'runtime', runtimeEnvironmentId: 'env-1' }
     })
@@ -218,7 +211,7 @@ describe('openHttpLink', () => {
     openRuntimeBrowserTabMock.mockRejectedValueOnce(new Error('runtime unavailable'))
 
     openHttpLink('https://example.com/', {
-      allowRemoteInApp: true,
+      allowRuntimeInApp: true,
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'runtime', runtimeEnvironmentId: 'env-1' }
     })

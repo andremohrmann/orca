@@ -6,47 +6,70 @@ import {
   type TranscriptFileVersion
 } from './transcript-file-version'
 import {
-  createIncrementalTranscriptState,
   readIncrementalTranscriptMessages,
-  resetIncrementalTranscriptState
+  resetIncrementalTranscriptState,
+  type IncrementalTranscriptState
 } from './transcript-incremental-reader'
+import { createTranscriptNativeWatcher } from './transcript-native-watcher'
 import { readNativeChatTranscriptTailFile } from './transcript-tail-reader'
-import { emitTranscriptUnavailableSnapshot } from './transcript-unavailable-snapshot'
-import { transcriptWatcherPathIsInstallable } from './transcript-watcher-install-probe'
 import { nativeChatTurnLifecycleDecoderForAgent } from './transcript-turn-lifecycle'
 import type {
   NativeChatTranscriptSubscription,
   SubscribeNativeChatTranscriptArgs
 } from './transcript-watch-contract'
 import { createTranscriptWatchScheduler } from './transcript-watch-scheduler'
+import { wslGatedStat } from './wsl-transcript-fs-access'
 import { WslTranscriptFsError } from './wsl-transcript-fs-gate'
-import {
-  createRunningGuardedTranscriptNativeWatcher,
-  isWslTranscriptWatcherPath,
-  transcriptWatcherPathIsRunning
-} from './wsl-transcript-watcher-running-guard'
-import { observeWslTranscriptRunningState } from './wsl-transcript-running-observer'
-import { trackActiveNativeChatWatcher } from './transcript-watcher-count'
 
-/** Install a live tail, or return null when the resolved file is not readable yet. */
+const ROTATION_RETRY_MS = 25
+const MAX_ROTATION_RETRY_MS = 2_000
+let activeWatcherCount = 0
+
+export function getActiveNativeChatWatcherCount(): number {
+  return activeWatcherCount
+}
+
+/**
+ * Install the live-tail engine on an already-resolved file path. Returns null
+ * when the file doesn't exist yet, so the caller falls back to resolve-polling.
+ * A failed native watch still installs a reconciliation-only subscription: some
+ * remote filesystems allow stat/read while rejecting fs.watch entirely.
+ */
 export async function installTranscriptWatcher(
   filePath: string,
   decode: (line: string, fallbackId: string) => NativeChatMessage | null,
   args: SubscribeNativeChatTranscriptArgs,
+  /** Cancels the install probe so an unsubscribe during it detaches the gate
+   *  waiter immediately instead of at the 30s deadline. */
   signal?: AbortSignal
 ): Promise<NativeChatTranscriptSubscription | null> {
-  const isWslPath = isWslTranscriptWatcherPath(filePath)
-  if (!(await transcriptWatcherPathIsInstallable(filePath, signal))) {
+  try {
+    await wslGatedStat(filePath, 'exact', signal)
+  } catch (error) {
+    // Why: "not flushed yet" degrades to resolve-polling, but a stalled distro
+    // must reach the caller so it can surface a retryable message instead of
+    // stranding the client at `loading`.
+    if (error instanceof WslTranscriptFsError) {
+      throw error
+    }
     return null
   }
   const { onAppend, onInitialSnapshot, onReplace, initialLimit } = args
   const decodeLifecycle = nativeChatTurnLifecycleDecoderForAgent(args.agent)
 
-  const state = createIncrementalTranscriptState()
+  const state: IncrementalTranscriptState = {
+    offset: 0,
+    pendingChunks: [],
+    pendingStart: 0,
+    pendingBytes: 0,
+    droppingOversizedRecord: false
+  }
   let watchedVersion: TranscriptFileVersion | null = null
   let watchedBoundary = ''
-  let initialDrain = true,
-    initialErrorEmitted = false
+  let initialDrain = true
+  // Guards the one-time error snapshot emitted when the initial drain throws, so
+  // a persistently-failing retry loop can't spam the subscriber with error frames.
+  let initialErrorEmitted = false
   let closed = false
   // Why: every gated call on the drain path must detach the moment we
   // unsubscribe, instead of holding a waiter until its 30s deadline, and an
@@ -61,7 +84,10 @@ export async function installTranscriptWatcher(
     if (closed) {
       return
     }
-    const retryDelay = Math.min(25 * 2 ** Math.min(rotationRetryCount, 7), 2_000)
+    const retryDelay = Math.min(
+      ROTATION_RETRY_MS * 2 ** Math.min(rotationRetryCount, 7),
+      MAX_ROTATION_RETRY_MS
+    )
     if (scheduler.scheduleRetry(retryDelay)) {
       rotationRetryCount += 1
     }
@@ -107,9 +133,7 @@ export async function installTranscriptWatcher(
       rotationRetryCount = 0
       return
     }
-    if (!isWslPath) {
-      scheduleRotationRetry()
-    }
+    scheduleRotationRetry()
   }
 
   async function drainOnce(): Promise<void> {
@@ -222,14 +246,8 @@ export async function installTranscriptWatcher(
     await finishSuccessfulDrain(current)
   }
 
-  async function drain(runningChecked = false): Promise<void> {
+  async function drain(): Promise<void> {
     if (closed) {
-      return
-    }
-    if (isWslPath && !runningChecked && !(await transcriptWatcherPathIsRunning(filePath))) {
-      nativeWatcher.invalidate()
-      initialErrorEmitted ||=
-        !closed && initialDrain && emitTranscriptUnavailableSnapshot(onInitialSnapshot)
       return
     }
     if (reading) {
@@ -248,16 +266,16 @@ export async function installTranscriptWatcher(
           // A still-pending initial drain also surfaces one error snapshot so a
           // watching client isn't stranded at 'loading' when the read keeps
           // throwing; initialDrain stays true so a recovered read can still win.
-          initialErrorEmitted ||=
-            !closed &&
-            initialDrain &&
-            emitTranscriptUnavailableSnapshot(
-              onInitialSnapshot,
+          if (!closed && initialDrain && onInitialSnapshot && !initialErrorEmitted) {
+            initialErrorEmitted = true
+            onInitialSnapshot(
+              [],
+              false,
+              0,
               error instanceof WslTranscriptFsError ? error.message : 'Transcript unavailable'
             )
-          if (!isWslPath) {
-            scheduleRotationRetry()
           }
+          scheduleRotationRetry()
           break
         }
       } while (pendingReadRequested && !closed)
@@ -266,7 +284,7 @@ export async function installTranscriptWatcher(
     }
   }
 
-  async function reconcileKnownRunning(): Promise<void> {
+  async function reconcile(): Promise<void> {
     if (closed) {
       return
     }
@@ -278,11 +296,12 @@ export async function installTranscriptWatcher(
       const versionChanged =
         watchedVersion === null || transcriptFileVersionChanged(current, watchedVersion)
       if (versionChanged || current.size !== state.offset || nativeWatcher.needsRebind()) {
-        await drain(true)
+        await drain()
       }
     } catch {
-      // WSL retries wait for the next shared running-state observation.
-      await (isWslPath ? undefined : drain())
+      // Why: a missing/replaced path needs the existing capped rotation retry,
+      // even when fs.watch stayed silent about the transition.
+      await drain()
     }
   }
 
@@ -290,26 +309,17 @@ export async function installTranscriptWatcher(
     debounceMs: args.debounceMs,
     reconciliationIntervalMs: args.reconciliationIntervalMs,
     drain: () => void drain(),
-    reconcile: reconcileKnownRunning
+    reconcile
   })
-  const nativeWatcher = createRunningGuardedTranscriptNativeWatcher(
+  const nativeWatcher = createTranscriptNativeWatcher(
     filePath,
     () => scheduler.scheduleEventDrain(),
     scheduleRotationRetry
   )
 
   nativeWatcher.bind()
-  const stopWslObservation = isWslPath
-    ? observeWslTranscriptRunningState(
-        filePath,
-        () => reconcileKnownRunning(),
-        () => nativeWatcher.invalidate()
-      )
-    : () => {}
-  trackActiveNativeChatWatcher(1)
-  if (!isWslPath) {
-    scheduler.startReconciliation()
-  }
+  activeWatcherCount++
+  scheduler.startReconciliation()
   scheduler.scheduleEventDrain()
 
   return {
@@ -321,9 +331,8 @@ export async function installTranscriptWatcher(
       closed = true
       gateAbort.abort(new Error('Native Chat transcript watcher unsubscribed'))
       scheduler.dispose()
-      stopWslObservation()
       nativeWatcher.dispose()
-      trackActiveNativeChatWatcher(-1)
+      activeWatcherCount--
     }
   }
 }

@@ -3,14 +3,6 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const TASK_PAGE_SOURCE = readFileSync(join(__dirname, 'TaskPage.tsx'), 'utf8')
-const USE_ITEM_ACTIONS_SOURCE = readFileSync(
-  join(__dirname, 'task-page/hooks/use-task-page-use-item-actions.ts'),
-  'utf8'
-)
-const LINEAR_ACTIONS_SOURCE = readFileSync(
-  join(__dirname, 'task-page/hooks/use-task-page-linear-actions.ts'),
-  'utf8'
-)
 const PROJECT_VIEW_SOURCE = readFileSync(
   join(__dirname, 'github-project', 'ProjectViewWrapper.tsx'),
   'utf8'
@@ -32,7 +24,7 @@ function sourceBetween(source: string, startPattern: string, endPattern: string)
 describe('TaskPage workspace creation source boundaries', () => {
   it('prefills the workspace composer for GitHub issues and pull requests', () => {
     const section = sourceBetween(
-      USE_ITEM_ACTIONS_SOURCE,
+      TASK_PAGE_SOURCE,
       'const openComposerForItem = useCallback(',
       'const handleUseWorkItem = useCallback('
     )
@@ -69,7 +61,7 @@ describe('TaskPage workspace creation source boundaries', () => {
 
   it('routes TaskPage GitHub starts directly to the composer', () => {
     const section = sourceBetween(
-      USE_ITEM_ACTIONS_SOURCE,
+      TASK_PAGE_SOURCE,
       'const handleUseWorkItem = useCallback(',
       'const handleOpenOrUseGitHubWorkItem = useCallback('
     )
@@ -77,18 +69,17 @@ describe('TaskPage workspace creation source boundaries', () => {
     expect(section).toContain("recordFeatureInteraction('github-tasks')")
     expect(section).toContain('openComposerForItem(item)')
     expect(section).not.toContain('createGitHubWorkItemWorkspaceInBackground')
-    expect(USE_ITEM_ACTIONS_SOURCE).not.toContain('@/lib/github-work-item-background-create')
     expect(TASK_PAGE_SOURCE).not.toContain('@/lib/github-work-item-background-create')
   })
 
   it('routes TaskPage Linear starts directly to the composer', () => {
     const composerSection = sourceBetween(
-      LINEAR_ACTIONS_SOURCE,
+      TASK_PAGE_SOURCE,
       'const openComposerForLinearItem = useCallback(',
       'const handleUseLinearItem = useCallback('
     )
     const handlerSection = sourceBetween(
-      LINEAR_ACTIONS_SOURCE,
+      TASK_PAGE_SOURCE,
       'const handleUseLinearItem = useCallback(',
       'const handleOpenOrUseLinearItem = useCallback('
     )
@@ -104,7 +95,7 @@ describe('TaskPage workspace creation source boundaries', () => {
 
   it('resumes an attachment from the primary action and composes when none exists', () => {
     const section = sourceBetween(
-      USE_ITEM_ACTIONS_SOURCE,
+      TASK_PAGE_SOURCE,
       'const handleOpenOrUseGitHubWorkItem = useCallback(',
       'const openComposerForGitLabItem = useCallback('
     )
@@ -116,13 +107,10 @@ describe('TaskPage workspace creation source boundaries', () => {
   })
 
   it('uses the shared composer handler from GitHub detail and start-new actions', () => {
-    const detail = readFileSync(join(__dirname, 'task-page/github/github-detail-host.tsx'), 'utf8')
-    const actions = readFileSync(
-      join(__dirname, 'task-page/github/github-work-item-row-actions.tsx'),
-      'utf8'
+    expect(TASK_PAGE_SOURCE.match(/onUse=\{\(item\) => \{/g)).toHaveLength(2)
+    expect(TASK_PAGE_SOURCE.match(/onSelect=\{\(\) => handleUseWorkItem\(item\)\}/g)).toHaveLength(
+      2
     )
-    expect(detail.match(/onUse=\{\(item\) => \{/g)).toHaveLength(2)
-    expect(actions.match(/onSelect=\{\(\) => handleUseWorkItem\(item\)\}/g)).toHaveLength(2)
   })
 
   it('keeps project-view GitHub actions on the direct start-work path for issue #4756', () => {

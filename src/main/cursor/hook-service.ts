@@ -5,9 +5,12 @@ import type { AgentHookInstallState, AgentHookInstallStatus } from '../../shared
 import {
   buildManagedCommandDefinition,
   createManagedCommandMatcher,
+  buildWindowsAgentHookPostCommand,
   getSharedManagedScriptPath,
   readHooksJson,
   removeManagedCommands,
+  wrapPosixHookCommand,
+  wrapWindowsHookCommand,
   writeHooksJson,
   writeManagedScript,
   type HookDefinition
@@ -18,8 +21,24 @@ import {
   writeHooksJsonRemote,
   writeManagedScriptRemote
 } from '../agent-hooks/installer-utils-remote'
-import { CURSOR_EVENTS } from './hook-events'
-import { getManagedCommand, getManagedScript, getPosixManagedCommand } from './hook-script'
+import {
+  buildPosixHookPayloadCapture,
+  buildWindowsHookEnvironmentGuardLines,
+  buildWindowsHookStdinDrainEpilogue
+} from '../agent-hooks/hook-stdin-contract'
+
+// Subscribe only to Cursor hooks needed for spinner and turn detection.
+// Exclude process-boundary session hooks, which can reset the submitted-turn prompt cache.
+const CURSOR_EVENTS = [
+  'beforeSubmitPrompt',
+  'stop',
+  'preToolUse',
+  'postToolUse',
+  'postToolUseFailure',
+  'beforeShellExecution',
+  'beforeMCPExecution',
+  'afterAgentResponse'
+] as const
 
 function getConfigPath(): string {
   return join(homedir(), '.cursor', 'hooks.json')
@@ -33,7 +52,6 @@ function getManagedScriptPath(): string {
   return getSharedManagedScriptPath(getManagedScriptFileName())
 }
 
-/*
 function getManagedCommand(scriptPath: string): string {
   return process.platform === 'win32'
     ? wrapWindowsHookCommand(scriptPath)
@@ -58,13 +76,11 @@ function getManagedScript(target: 'local' | 'posix' = 'local'): string {
   return [
     '#!/bin/sh',
     ...buildPosixHookPayloadCapture(),
-    ...buildPosixHookSpoolLines('cursor'),
     // Why: refresh endpoint coordinates so surviving PTYs keep reporting.
     'if [ -n "$ORCA_AGENT_HOOK_ENDPOINT" ] && [ -r "$ORCA_AGENT_HOOK_ENDPOINT" ]; then',
     '  . "$ORCA_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
     'fi',
     'if [ -z "$ORCA_AGENT_HOOK_PORT" ] || [ -z "$ORCA_AGENT_HOOK_TOKEN" ] || [ -z "$ORCA_PANE_KEY" ]; then',
-    '  spool_hook_event',
     '  exit 0',
     'fi',
     // Why: post form fields because path-bearing worktree IDs are unsafe in hand-built JSON.
@@ -79,12 +95,12 @@ function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     '  --data-urlencode "worktreeId=${ORCA_WORKTREE_ID}" \\',
     '  --data-urlencode "env=${ORCA_AGENT_HOOK_ENV}" \\',
     '  --data-urlencode "version=${ORCA_AGENT_HOOK_VERSION}" \\',
-    '  --data-urlencode "payload@-" >/dev/null 2>&1 || spool_hook_event',
+    '  --data-urlencode "payload@-" >/dev/null 2>&1 || true',
     'exit 0',
     ''
   ].join('\n')
 }
-*/
+
 export class CursorHookService {
   async refreshManagedScripts(): Promise<void> {
     await refreshManagedScriptIfPresent(getManagedScriptPath(), getManagedScript())
@@ -104,10 +120,10 @@ export class CursorHookService {
       }
     }
 
+    const command = getManagedCommand(scriptPath)
     const missing: string[] = []
     let presentCount = 0
     for (const eventName of CURSOR_EVENTS) {
-      const command = getManagedCommand(scriptPath, eventName)
       const definitions = Array.isArray(config.hooks?.[eventName]) ? config.hooks![eventName]! : []
       // Why: Cursor puts command directly on the definition (Claude nests under `hooks`); match both shapes.
       const hasCommand = definitions.some(
@@ -151,6 +167,7 @@ export class CursorHookService {
       }
     }
 
+    const command = getManagedCommand(scriptPath)
     // Why: config.hooks is undefined on a fresh file with no prior hook install.
     const nextHooks = { ...config.hooks }
     const managedEvents = new Set<string>(CURSOR_EVENTS)
@@ -169,7 +186,7 @@ export class CursorHookService {
       const cleaned = removeManagedCommands(definitions, isManagedCommand)
       // Also strip entries with the command at the top level (Cursor schema).
       const strippedCursorShape = cleaned.filter(
-        (definition) => !isManagedCommand(definition.command)
+        (definition) => !isManagedCommand(definition.command as string | undefined)
       )
       if (strippedCursorShape.length === 0) {
         delete nextHooks[eventName]
@@ -179,11 +196,10 @@ export class CursorHookService {
     }
 
     for (const eventName of CURSOR_EVENTS) {
-      const command = getManagedCommand(scriptPath, eventName)
       const current = Array.isArray(nextHooks[eventName]) ? nextHooks[eventName] : []
       // Sweep Claude- and Cursor-shaped variants so installs converge on one entry.
       const cleaned = removeManagedCommands(current, isManagedCommand).filter(
-        (definition) => !isManagedCommand(definition.command)
+        (definition) => !isManagedCommand(definition.command as string | undefined)
       )
       // Why: Cursor's schema puts `command` directly on the definition (not under `hooks`); emit that shape.
       const definition: HookDefinition = buildManagedCommandDefinition(command)
@@ -216,15 +232,15 @@ export class CursorHookService {
         }
       }
 
+      const command = wrapPosixHookCommand(remoteScriptPath)
       const nextHooks = { ...config.hooks }
       const isManagedCommand = createManagedCommandMatcher('cursor-hook.sh')
 
       for (const eventName of CURSOR_EVENTS) {
-        const command = getPosixManagedCommand(remoteScriptPath, eventName)
         const current = Array.isArray(nextHooks[eventName]) ? nextHooks[eventName] : []
         // Why: dual-shape sweep so repeated installs converge on a single managed entry.
         const cleaned = removeManagedCommands(current, isManagedCommand).filter(
-          (definition) => !isManagedCommand(definition.command)
+          (definition) => !isManagedCommand(definition.command as string | undefined)
         )
         const definition: HookDefinition = buildManagedCommandDefinition(command)
         nextHooks[eventName] = [...cleaned, definition]
@@ -278,7 +294,7 @@ export class CursorHookService {
         continue
       }
       const cleaned = removeManagedCommands(definitions, isManagedCommand).filter(
-        (definition) => !isManagedCommand(definition.command)
+        (definition) => !isManagedCommand(definition.command as string | undefined)
       )
       if (cleaned.length === 0) {
         delete nextHooks[eventName]

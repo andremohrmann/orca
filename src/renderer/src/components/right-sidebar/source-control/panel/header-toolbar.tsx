@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { GitPullRequestArrow, Loader2, Search, X } from 'lucide-react'
 import type { GitBranchCompareSummary } from '../../../../../../shared/git-diff-compare-types'
-import type { GitBranchLineTotal } from '../../../../../../shared/git-status-types'
+import type {
+  GitBranchLineTotal,
+  GitUpstreamStatus
+} from '../../../../../../shared/git-status-types'
 import type { SourceControlViewMode } from '../../../../../../shared/ui-chrome-types'
 import type { HostedReviewInfo } from '../../../../../../shared/hosted-review'
 import type { PrimaryAction } from '../../source-control-primary-action'
@@ -26,8 +29,6 @@ type SourceControlHeaderToolbarProps = {
   isCreatingPr: boolean
   onCreatePrHeaderClick: () => void
   onOpenHostedReviewInChecks: () => void
-  suppressedGitHubPRNumber: number | null
-  onRelinkSuppressedGitHubPR: () => void
   sourceControlViewMode: SourceControlViewMode
   viewModeToggleDisabled: boolean
   onToggleViewMode: () => void
@@ -39,6 +40,7 @@ type SourceControlHeaderToolbarProps = {
   branchSummary: GitBranchCompareSummary | null
   compareBaseRef: string | null
   headDisplay?: WorktreeGitIdentityDisplay | null
+  upstreamStatus?: GitUpstreamStatus
   manualReviewUrl?: string | null
   branchLineTotal?: GitBranchLineTotal | null
 }
@@ -107,26 +109,6 @@ function CreatePrHeaderButton({
   )
 }
 
-function SuppressedGitHubPRToolbar({
-  number,
-  onRelink
-}: {
-  number: number
-  onRelink: () => void
-}): React.JSX.Element {
-  return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <span className="truncate text-[11.5px] text-muted-foreground">
-        {translate('sourceControl.unlinkedPr.status', 'PR #{{number}} unlinked', { number })}
-      </span>
-      <Button type="button" variant="outline" size="xs" onClick={onRelink} className="shrink-0">
-        <GitPullRequestArrow className="size-3.5" aria-hidden="true" />
-        {translate('checksPanel.unlinked.relink', 'Link PR #{{number}}', { number })}
-      </Button>
-    </div>
-  )
-}
-
 function renderOverflowMenu(
   props: Pick<
     SourceControlHeaderToolbarProps,
@@ -154,8 +136,6 @@ export function SourceControlHeaderToolbar({
   isCreatingPr,
   onCreatePrHeaderClick,
   onOpenHostedReviewInChecks,
-  suppressedGitHubPRNumber,
-  onRelinkSuppressedGitHubPR,
   sourceControlViewMode,
   viewModeToggleDisabled,
   onToggleViewMode,
@@ -167,6 +147,7 @@ export function SourceControlHeaderToolbar({
   branchSummary,
   compareBaseRef,
   headDisplay = null,
+  upstreamStatus,
   manualReviewUrl,
   branchLineTotal
 }: SourceControlHeaderToolbarProps): React.JSX.Element {
@@ -224,11 +205,6 @@ export function SourceControlHeaderToolbar({
                 review={hostedReview}
                 onOpenHostedReviewInChecks={onOpenHostedReviewInChecks}
               />
-            ) : suppressedGitHubPRNumber !== null ? (
-              <SuppressedGitHubPRToolbar
-                number={suppressedGitHubPRNumber}
-                onRelink={onRelinkSuppressedGitHubPR}
-              />
             ) : visibleCreatePrHeaderAction ? (
               <CreatePrHeaderButton
                 action={visibleCreatePrHeaderAction}
@@ -239,7 +215,7 @@ export function SourceControlHeaderToolbar({
             ) : (
               <span className="min-w-0 flex-1" aria-hidden="true" />
             )}
-            {(visibleCreatePrHeaderAction || suppressedGitHubPRNumber !== null) && !hostedReview ? (
+            {visibleCreatePrHeaderAction && !hostedReview ? (
               // Why: keep filter/overflow pinned right without stretching Create PR.
               <span className="min-w-0 flex-1" aria-hidden="true" />
             ) : null}
@@ -318,6 +294,7 @@ export function SourceControlHeaderToolbar({
             summary={branchSummary}
             compareBaseRef={compareBaseRef}
             headDisplay={headDisplay}
+            upstreamStatus={upstreamStatus}
             manualReviewUrl={manualReviewUrl}
             branchLineTotal={branchLineTotal}
             onChangeBaseRef={onChangeBaseRef}

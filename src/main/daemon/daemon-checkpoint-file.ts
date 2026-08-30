@@ -1,6 +1,5 @@
 import type { TerminalOscLinkRange } from '../../shared/terminal-osc-link-ranges'
 import type { TerminalModes } from './types'
-import type { TerminalOwner } from '../../shared/terminal-owner'
 
 /** On-disk shape of checkpoint.json. Written by history-manager, read by
  *  history-reader — one type so the generation pairing with output.log's
@@ -18,7 +17,6 @@ export type TerminalCheckpointFile = {
   modes: TerminalModes
   scrollbackLines: number
   lastTitle?: string
-  terminalOwner?: TerminalOwner
   /** Ties this checkpoint to the output.log whose header carries the same
    *  generation. Absent on checkpoints written before incremental logs. */
   generation?: number

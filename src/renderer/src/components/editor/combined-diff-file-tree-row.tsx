@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import type React from 'react'
 import { ChevronDown, Folder, FolderOpen } from 'lucide-react'
 import { STATUS_COLORS, STATUS_LABELS } from '@/components/right-sidebar/status-display'
 import type { SourceControlTreeNode } from '@/components/right-sidebar/source-control-tree'
@@ -116,10 +116,7 @@ export function CombinedDiffFileTreeRow({
       }}
       onClick={() => onNavigate(node.entry)}
     >
-      {createElement(FileIcon, {
-        className: 'size-3.5 shrink-0',
-        style: { color: STATUS_COLORS[status] }
-      })}
+      <FileIcon className="size-3.5 shrink-0" style={{ color: STATUS_COLORS[status] }} />
       <span className="min-w-0 flex-1 truncate">
         <span className="text-foreground">{fileName}</span>
         {dirPath && <span className="ml-1.5 text-[11px] text-muted-foreground">{dirPath}</span>}

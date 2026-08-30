@@ -2,7 +2,6 @@ import { app, BrowserWindow, nativeTheme, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { is } from '@electron-toolkit/utils'
 import type { Store } from '../persistence'
-import { isBackgroundLaunch, showWindowWithoutStealingFocus } from './foreground-activation-policy'
 import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
 import { sendToTrustedUIRenderer } from '../ipc/ui'
 import { installPrivilegedWindowNavigationPolicy } from './privileged-window-navigation'
@@ -162,10 +161,8 @@ export function createOrFocusDashboardPopout(
     if (dashboardPopoutWindow.isMinimized()) {
       dashboardPopoutWindow.restore()
     }
-    if (!isBackgroundLaunch()) {
-      dashboardPopoutWindow.maximize()
-      dashboardPopoutWindow.focus()
-    }
+    dashboardPopoutWindow.maximize()
+    dashboardPopoutWindow.focus()
     if (view) {
       dashboardPopoutWindow.webContents.send('dashboard:viewRequested', view)
     }
@@ -198,9 +195,7 @@ export function createOrFocusDashboardPopout(
       // Why: Chromium shares zoom by origin; a separate in-memory session keeps pop-out zoom window-local.
       partition: DASHBOARD_POPOUT_PARTITION,
       // Why: the dashboard is plain DOM — no <webview> guests — so keep the
-      // guest-embedding surface off for this window. For the same reason it is
-      // deliberately not stamped with the browser-host id: no guest of ours can
-      // run here, so every client-placed page is a mirror to this renderer.
+      // guest-embedding surface off for this window.
       webviewTag: false
     }
   })
@@ -263,11 +258,7 @@ export function createOrFocusDashboardPopout(
   })
 
   window.once('ready-to-show', () => {
-    if (isBackgroundLaunch()) {
-      showWindowWithoutStealingFocus(window)
-    } else {
-      showAndMaximizeDashboardPopout(window)
-    }
+    showAndMaximizeDashboardPopout(window)
   })
 
   // Bounds persistence — mirrors the main window's debounced/frozen approach so

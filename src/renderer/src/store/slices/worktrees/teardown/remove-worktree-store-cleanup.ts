@@ -116,10 +116,6 @@ export function applyRemoveWorktreeSuccessState(
     const nextEditorDrafts = removedFileIds.size > 0 ? { ...s.editorDrafts } : s.editorDrafts
     const nextMarkdownViewMode =
       removedFileIds.size > 0 ? { ...s.markdownViewMode } : s.markdownViewMode
-    const nextMarkdownRichModeSizeOverride =
-      removedFileIds.size > 0
-        ? { ...s.markdownRichModeSizeOverride }
-        : s.markdownRichModeSizeOverride
     const nextEditorViewMode = removedFileIds.size > 0 ? { ...s.editorViewMode } : s.editorViewMode
     const nextMarkdownFrontmatterVisible =
       removedFileIds.size > 0 ? { ...s.markdownFrontmatterVisible } : s.markdownFrontmatterVisible
@@ -130,7 +126,6 @@ export function applyRemoveWorktreeSuccessState(
       for (const fileId of removedFileIds) {
         delete nextEditorDrafts[fileId]
         delete nextMarkdownViewMode[fileId]
-        delete nextMarkdownRichModeSizeOverride[fileId]
         delete nextEditorViewMode[fileId]
         delete nextMarkdownFrontmatterVisible[fileId]
         delete nextEditorCursorLine[fileId]
@@ -238,7 +233,6 @@ export function applyRemoveWorktreeSuccessState(
       activeGroupIdByWorktree: nextActiveGroupIdByWorktree,
       editorDrafts: nextEditorDrafts,
       markdownViewMode: nextMarkdownViewMode,
-      markdownRichModeSizeOverride: nextMarkdownRichModeSizeOverride,
       editorViewMode: nextEditorViewMode,
       markdownFrontmatterVisible: nextMarkdownFrontmatterVisible,
       editorCursorLine: nextEditorCursorLine,

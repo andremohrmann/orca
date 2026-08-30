@@ -7,11 +7,6 @@
 // See: docs/ssh-relay-sftp-namespace.md
 
 import { RELAY_REMOTE_DIR } from './relay-protocol'
-import {
-  RELAY_INSTALL_MODEL,
-  remoteInstallDirName,
-  type RemoteInstallModel
-} from './remote-install-model'
 import type { SftpNamespacePathMapping } from './sftp-namespace-resolution'
 import { shellEscape } from './ssh-connection-utils'
 import { RELAY_INSTALL_LOCK_NAME } from './ssh-relay-install-lock'
@@ -42,19 +37,7 @@ export function relayRemoteDirSegments(
   fullVersion: string,
   pathFlavor: RemotePathFlavor
 ): string[] {
-  return remoteInstallDirSegments(RELAY_INSTALL_MODEL, fullVersion, pathFlavor)
-}
-
-/**
- * The model-parameterized form. `relay-<v>` and `orcad-<v>` are permanent siblings under
- * one `.orca-remote/` (see remote-install-model.ts), so the prefix is an argument.
- */
-export function remoteInstallDirSegments(
-  model: RemoteInstallModel,
-  fullVersion: string,
-  pathFlavor: RemotePathFlavor
-): string[] {
-  const segments = [RELAY_REMOTE_DIR, remoteInstallDirName(model, fullVersion)]
+  const segments = [RELAY_REMOTE_DIR, `relay-${fullVersion}`]
   for (const segment of segments) {
     assertSafeRemotePathSegment(segment, pathFlavor)
     // Why: the version reaches logs and diagnostics, where an embedded CR/LF can forge lines.
@@ -66,14 +49,7 @@ export function remoteInstallDirSegments(
 }
 
 export function relayHomeRelativeDir(fullVersion: string): string {
-  return remoteInstallHomeRelativeDir(RELAY_INSTALL_MODEL, fullVersion)
-}
-
-export function remoteInstallHomeRelativeDir(
-  model: RemoteInstallModel,
-  fullVersion: string
-): string {
-  return remoteInstallDirSegments(model, fullVersion, 'posix').join('/')
+  return relayRemoteDirSegments(fullVersion, 'posix').join('/')
 }
 
 export function createRelayInstallNamespace(homeRelativeRelayDir: string): RelayInstallNamespace {

@@ -7,11 +7,8 @@ import type { GitLabJobTraceResult, GitLabProjectRef } from '../../../shared/git
 import type { PRCheckDetail, PRCheckRunDetails } from '../../../shared/github/check-types'
 import { getActiveRuntimeTarget } from './runtime-client-target'
 import { callRuntimeRpc } from './runtime-rpc-client'
-import { withGitLabIpcTimeout } from './gitlab-ipc-timeout'
 
-// Why: job logs run longer than a generic GitLab call, so this sits above main's 60s
-// `glab` timeout — otherwise the caller aborts first and hides main's classified error.
-const JOB_TRACE_TIMEOUT_MS = 65_000
+const JOB_TRACE_TIMEOUT_MS = 30_000
 
 /**
  * Load a GitLab pipeline job log as provider-neutral check details.
@@ -70,14 +67,30 @@ export async function loadGitLabJobLogDetails(args: {
   return gitLabJobTraceToCheckRunDetails(args.check, result.trace, emptyTraceStrings())
 }
 
-// Why: the expanded Checks row needs its own message, not the generic GitLab timeout text.
+/**
+ * Bound the local IPC call the way `callRuntimeRpc` bounds the remote one.
+ *
+ * `glab` runs without a subprocess timeout in main, so an unreachable GitLab host
+ * would otherwise leave the expanded Checks row spinning forever.
+ */
 function withJobTraceTimeout<T>(pending: Promise<T>): Promise<T> {
-  return withGitLabIpcTimeout(pending, {
-    timeoutMs: JOB_TRACE_TIMEOUT_MS,
-    message: translate(
-      'auto.runtime.gitlabJobTraceClient.timedOut',
-      'Timed out loading the GitLab job log.'
-    )
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([
+    pending,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new Error(
+            translate(
+              'auto.runtime.gitlabJobTraceClient.timedOut',
+              'Timed out loading the GitLab job log.'
+            )
+          )
+        )
+      }, JOB_TRACE_TIMEOUT_MS)
+    })
+  ]).finally(() => {
+    clearTimeout(timer)
   })
 }
 

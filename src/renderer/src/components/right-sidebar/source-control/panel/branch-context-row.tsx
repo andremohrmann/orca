@@ -1,7 +1,10 @@
 import React from 'react'
 import { ExternalLink, Loader2, RefreshCw } from 'lucide-react'
 import type { GitBranchCompareSummary } from '../../../../../../shared/git-diff-compare-types'
-import type { GitBranchLineTotal } from '../../../../../../shared/git-status-types'
+import type {
+  GitBranchLineTotal,
+  GitUpstreamStatus
+} from '../../../../../../shared/git-status-types'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -10,10 +13,9 @@ import type { WorktreeGitIdentityDisplay } from '@/lib/worktree-git-identity-dis
 import { SourceControlHeaderIconButton } from './header-icon-button'
 import { SourceControlBranchLineTotalChip } from './branch-line-total-chip'
 import {
-  buildSourceControlCompareBaseStats,
+  buildSourceControlBranchContextStats,
   formatSourceControlRefLabel,
-  resolveSourceControlDisplayedBaseRef,
-  type SourceControlBranchContextStat
+  resolveSourceControlDisplayedBaseRef
 } from './branch-context-stats'
 
 function BaseRefButton({
@@ -45,20 +47,24 @@ function BaseRefButton({
   )
 }
 
-function ContextStat({ stat }: { stat: SourceControlBranchContextStat }): React.JSX.Element {
-  // Why: aria-label on an unfocusable span is never announced, so the ref this
-  // count measures against would exist only for sighted hover users. tabIndex also
-  // lets keyboard users open the tooltip, like HeadIdentity.
+function ContextStat({
+  stat
+}: {
+  stat: ReturnType<typeof buildSourceControlBranchContextStats>[number]
+}): React.JSX.Element {
+  const className = cn(
+    'shrink-0 tabular-nums text-muted-foreground',
+    stat.tone === 'muted' && 'text-muted-foreground/70'
+  )
+
+  if (!stat.title) {
+    return <span className={className}>{stat.label}</span>
+  }
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          className="shrink-0 rounded-sm tabular-nums text-muted-foreground/70 outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          tabIndex={0}
-          aria-label={stat.title}
-        >
-          {stat.label}
-        </span>
+        <span className={className}>{stat.label}</span>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={6}>
         {stat.title}
@@ -280,6 +286,7 @@ export function SourceControlBranchContextRow({
   summary,
   compareBaseRef,
   headDisplay = null,
+  upstreamStatus,
   manualReviewUrl,
   branchLineTotal,
   onChangeBaseRef,
@@ -288,6 +295,7 @@ export function SourceControlBranchContextRow({
   summary: GitBranchCompareSummary | null
   compareBaseRef: string | null
   headDisplay?: WorktreeGitIdentityDisplay | null
+  upstreamStatus?: GitUpstreamStatus
   manualReviewUrl?: string | null
   branchLineTotal?: GitBranchLineTotal | null
   onChangeBaseRef: () => void
@@ -384,8 +392,23 @@ export function SourceControlBranchContextRow({
     )
   }
 
-  const compareStatNodes = buildSourceControlCompareBaseStats(summary, displayedBaseRef).map(
-    (stat) => <ContextStat key={stat.key} stat={stat} />
+  const stats = buildSourceControlBranchContextStats({
+    summary,
+    baseRef: displayedBaseRef,
+    upstreamStatus
+  })
+
+  const trailing = (
+    <>
+      {stats.length > 0 ? (
+        <span className="inline-flex shrink-0 items-center gap-1.5">
+          {stats.map((stat) => (
+            <ContextStat key={stat.key} stat={stat} />
+          ))}
+        </span>
+      ) : null}
+      <ManualReviewLinkButton url={manualReviewUrl} />
+    </>
   )
 
   return (
@@ -396,12 +419,7 @@ export function SourceControlBranchContextRow({
         baseLabel={baseLabel}
         onChangeBaseRef={onChangeBaseRef}
         changeBaseTitle={changeBaseTitle}
-        trailing={
-          <>
-            {compareStatNodes}
-            <ManualReviewLinkButton url={manualReviewUrl} />
-          </>
-        }
+        trailing={trailing}
         headTrailing={<SourceControlBranchLineTotalChip branchLineTotal={branchLineTotal} />}
       />
     </CompareFlowGroup>

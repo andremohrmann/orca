@@ -21,7 +21,6 @@ vi.mock('./mobile-relay-e2ee-link', () => ({
 }))
 
 import { connectMobileRelayRpcSession } from './mobile-relay-rpc-session'
-import type { ConnectionLogSink } from './types'
 
 const relay = {
   v: 1 as const,
@@ -32,7 +31,7 @@ const relay = {
   e2eeFraming: 2 as const
 }
 
-async function authenticateSession(onLog?: ConnectionLogSink) {
+async function authenticateSession() {
   const session = connectMobileRelayRpcSession({
     relay,
     resumeToken: 'resume-secret',
@@ -40,8 +39,7 @@ async function authenticateSession(onLog?: ConnectionLogSink) {
     resumeConfirmReqId: 'confirm-1',
     deviceToken: 'device-token',
     desktopPublicKeyB64: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-    requestTimeoutMs: 30_000,
-    onLog
+    requestTimeoutMs: 30_000
   })
   fakes.linkOptions!.onHello({
     type: 'relay-hello',
@@ -105,8 +103,7 @@ describe('mobile relay RPC session liveness', () => {
   })
 
   it('disconnects after two fair foreground misses', async () => {
-    const onLog = vi.fn<ConnectionLogSink>()
-    const session = await authenticateSession(onLog)
+    const session = await authenticateSession()
 
     session.notifyForeground('focus')
     expect(sentRequests().map(({ method }) => method)).toEqual(['status.get'])
@@ -117,38 +114,6 @@ describe('mobile relay RPC session liveness', () => {
 
     expect(session.getState()).toBe('disconnected')
     expect(fakes.close).toHaveBeenCalledOnce()
-    expect(onLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: 'liveness-timeout',
-        path: 'relay',
-        message: 'Relay health check failed',
-        detail: expect.stringMatching(
-          /^probe-timeout; 2\/2 probes missed; last authenticated activity \d+ms ago$/
-        )
-      })
-    )
-  })
-
-  it('uses distinct liveness evidence IDs for sessions created in the same millisecond', async () => {
-    vi.setSystemTime(1_000)
-    const firstLog = vi.fn<ConnectionLogSink>()
-    const first = await authenticateSession(firstLog)
-    first.notifyForeground('focus')
-    await vi.advanceTimersByTimeAsync(8_000)
-    const firstId = firstLog.mock.calls[0]?.[0].id
-
-    vi.clearAllMocks()
-    fakes.sendText.mockReturnValue(true)
-    vi.setSystemTime(1_000)
-    const secondLog = vi.fn<ConnectionLogSink>()
-    const second = await authenticateSession(secondLog)
-    second.notifyForeground('focus')
-    await vi.advanceTimersByTimeAsync(8_000)
-    const secondId = secondLog.mock.calls[0]?.[0].id
-
-    expect(firstId).toBeTruthy()
-    expect(secondId).toBeTruthy()
-    expect(secondId).not.toBe(firstId)
   })
 
   it('rate-limits foreground sequences without suppressing a retry', async () => {

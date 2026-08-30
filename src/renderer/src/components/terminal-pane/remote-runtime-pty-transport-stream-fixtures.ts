@@ -68,12 +68,12 @@ export function createTerminalStreamFixtures(bindings: {
       })
   }
 
-  function emitOutput(streamId: number, data: string, seq = 1): void {
+  function emitOutput(streamId: number, data: string): void {
     bindings.getCallbacks()?.onBinary?.(
       encodeTerminalStreamFrame({
         opcode: TerminalStreamOpcode.Output,
         streamId,
-        seq,
+        seq: 1,
         payload: encodeTerminalStreamText(data)
       })
     )

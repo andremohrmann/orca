@@ -33,7 +33,6 @@ function stateWithGenerations(): Pick<AppState, 'sshConnectionStates' | 'sshStat
             ]
           ]),
           targets: [],
-          targetGenerations: new Map(),
           targetLabels: new Map(),
           removedTargetLabels: new Map(),
           targetsHydrated: true

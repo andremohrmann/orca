@@ -16,13 +16,21 @@ export class SystemSshPortForwardProvider implements SshPortForwardProvider {
 
   async start(conn: SshConnection, options: PortForwardStartOptions): Promise<StartedPortForward> {
     const target = conn.getTarget()
-    const forward = await startSystemSshPortForwardProcess(
-      target,
-      options.localPort,
-      options.remoteHost,
-      options.remotePort,
-      conn.getSystemSshBuildArgsOptions()
-    )
+    const resolvedConfig = conn.getSystemSshResolvedConfig()
+    const forward = resolvedConfig
+      ? await startSystemSshPortForwardProcess(
+          target,
+          options.localPort,
+          options.remoteHost,
+          options.remotePort,
+          { resolvedConfig }
+        )
+      : await startSystemSshPortForwardProcess(
+          target,
+          options.localPort,
+          options.remoteHost,
+          options.remotePort
+        )
 
     await forward.waitForStartup()
     // Why: this stderr stays attached for the forward's whole lifetime but is

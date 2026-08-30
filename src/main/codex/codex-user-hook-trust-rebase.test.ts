@@ -27,7 +27,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  _internals.setSessionRunner(null)
+  _internals.setSessionRunnerSync(null)
   _internals.resetRetryState()
   codexAppServerCapabilityCache.clear()
   rmSync(root, { recursive: true, force: true })
@@ -38,18 +38,18 @@ function command(command: string): HookCommandConfig {
 }
 
 describe('real-home user hook trust rebasing', () => {
-  it('writes directly without reading config or spawning Codex when user positions stay stable', async () => {
+  it('writes directly without reading config or spawning Codex when user positions stay stable', () => {
     const user = command('user-hook')
     const orca = command('orca-hook')
     const before = { Stop: [{ hooks: [user] }] }
     const after = { Stop: [{ hooks: [user] }, { hooks: [orca] }] }
     let wroteHooks = false
-    _internals.setSessionRunner(() => {
+    _internals.setSessionRunnerSync(() => {
       throw new Error('stable positions must not open an app-server session')
     })
 
     expect(
-      await mutateRealHomeHooksPreservingUserTrust({
+      mutateRealHomeHooksPreservingUserTrust({
         sourcePath: hooksPath,
         runtimeHomePath: root,
         tomlPath: configPath,
@@ -67,7 +67,7 @@ describe('real-home user hook trust rebasing', () => {
     expect(existsSync(configPath)).toBe(false)
   })
 
-  it('finds multiple shifted user hooks, including a handler from a mixed group', async () => {
+  it('finds multiple shifted user hooks, including a handler from a mixed group', () => {
     const orca = command('orca-hook')
     const first = command('first-user')
     const second = command('second-user')
@@ -98,7 +98,7 @@ describe('real-home user hook trust rebasing', () => {
     ])
   })
 
-  it('carries only previously trusted states into the repair request', async () => {
+  it('carries only previously trusted states into the repair request', () => {
     const orca = command('orca-hook')
     const trusted = command('trusted-user')
     const untrusted = command('untrusted-user')
@@ -107,7 +107,7 @@ describe('real-home user hook trust rebasing', () => {
     writeFileSync(hooksPath, `${JSON.stringify({ hooks: before }, null, 2)}\n`)
     writeFileSync(configPath, '# original config\n')
     const requests: CodexUserHookTrustRebaseRequest[] = []
-    _internals.setSessionRunner(async (request) => {
+    _internals.setSessionRunnerSync((request) => {
       requests.push(request)
       if (request.operation === 'inspect-user-hook-trust') {
         return {
@@ -123,7 +123,7 @@ describe('real-home user hook trust rebasing', () => {
       return { outcome: 'repaired', repaired: 1 }
     })
 
-    await mutateRealHomeHooksPreservingUserTrust({
+    mutateRealHomeHooksPreservingUserTrust({
       sourcePath: hooksPath,
       runtimeHomePath: root,
       tomlPath: configPath,
@@ -147,14 +147,14 @@ describe('real-home user hook trust rebasing', () => {
     }
   })
 
-  it('marks the host unsupported and skips further codex sessions', async () => {
+  it('marks the host unsupported and skips further codex sessions', () => {
     const orca = command('orca-hook')
     const user = command('user-hook')
     const before = { Stop: [{ hooks: [orca] }, { hooks: [user] }] }
     const after = { Stop: [{ hooks: [user] }] }
     writeFileSync(configPath, '# config\n')
     let sessions = 0
-    _internals.setSessionRunner(async () => {
+    _internals.setSessionRunnerSync(() => {
       sessions += 1
       throw new CodexAppServerUnsupportedError('unrecognized subcommand app-server')
     })
@@ -172,22 +172,20 @@ describe('real-home user hook trust rebasing', () => {
       }
     }
 
-    await expect(mutateRealHomeHooksPreservingUserTrust(args)).rejects.toThrow(
-      'unrecognized subcommand'
-    )
-    await expect(mutateRealHomeHooksPreservingUserTrust(args)).rejects.toThrow('marked unsupported')
+    expect(() => mutateRealHomeHooksPreservingUserTrust(args)).toThrow('unrecognized subcommand')
+    expect(() => mutateRealHomeHooksPreservingUserTrust(args)).toThrow('marked unsupported')
     expect(sessions).toBe(1)
     expect(codexAppServerCapabilityCache.shouldTry('native')).toBe(false)
   })
 
-  it('cools down after a transient session failure instead of retrying every launch prep', async () => {
+  it('cools down after a transient session failure instead of retrying every launch prep', () => {
     const orca = command('orca-hook')
     const user = command('user-hook')
     const before = { Stop: [{ hooks: [orca] }, { hooks: [user] }] }
     const after = { Stop: [{ hooks: [user] }] }
     writeFileSync(configPath, '# config\n')
     let sessions = 0
-    _internals.setSessionRunner(async () => {
+    _internals.setSessionRunnerSync(() => {
       sessions += 1
       throw new Error('pre-mutation hooks/list reported 0 of 1 moved user hooks')
     })
@@ -205,16 +203,14 @@ describe('real-home user hook trust rebasing', () => {
       }
     }
 
-    await expect(mutateRealHomeHooksPreservingUserTrust(args)).rejects.toThrow(
-      '0 of 1 moved user hooks'
-    )
-    await expect(mutateRealHomeHooksPreservingUserTrust(args)).rejects.toThrow('cooling down')
+    expect(() => mutateRealHomeHooksPreservingUserTrust(args)).toThrow('0 of 1 moved user hooks')
+    expect(() => mutateRealHomeHooksPreservingUserTrust(args)).toThrow('cooling down')
     expect(sessions).toBe(1)
     // Why: a transient failure must not poison the shared capability signal.
     expect(codexAppServerCapabilityCache.shouldTry('native')).toBe(true)
   })
 
-  it('restores both files byte-exactly when post-mutation repair fails', async () => {
+  it('restores both files byte-exactly when post-mutation repair fails', () => {
     const orca = command('orca-hook')
     const user = command('user-hook')
     const before = { Stop: [{ hooks: [orca] }, { hooks: [user] }] }
@@ -224,7 +220,7 @@ describe('real-home user hook trust rebasing', () => {
     const originalConfig = '# user formatting\r\nmodel = "x"\r\n'
     writeFileSync(hooksPath, originalHooks)
     writeFileSync(configPath, originalConfig)
-    _internals.setSessionRunner(async (request) => {
+    _internals.setSessionRunnerSync((request) => {
       if (request.operation === 'inspect-user-hook-trust') {
         return {
           outcome: 'inspected',
@@ -240,7 +236,7 @@ describe('real-home user hook trust rebasing', () => {
       throw new Error('repair transport failed')
     })
 
-    await expect(
+    expect(() =>
       mutateRealHomeHooksPreservingUserTrust({
         sourcePath: hooksPath,
         runtimeHomePath: root,
@@ -250,7 +246,7 @@ describe('real-home user hook trust rebasing', () => {
         writeHooks: () => writeFileSync(hooksPath, `${JSON.stringify({ hooks: after })}\n`),
         restoreHooks: () => writeFileSync(hooksPath, originalHooks)
       })
-    ).rejects.toThrow('repair transport failed')
+    ).toThrow('repair transport failed')
     expect(readFileSync(hooksPath, 'utf-8')).toBe(originalHooks)
     expect(readFileSync(configPath, 'utf-8')).toBe(originalConfig)
   })

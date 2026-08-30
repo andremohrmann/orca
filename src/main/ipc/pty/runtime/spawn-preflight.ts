@@ -171,23 +171,24 @@ export async function prepareRuntimePtySpawn(
   if (args.preAllocatedHandle) {
     ctx.env = { ...ctx.env, ORCA_TERMINAL_HANDLE: args.preAllocatedHandle }
   }
-  const selectLaunchCodexHome = async (): Promise<string | null> =>
-    (await ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
-      workspacePath: ctx.cwd,
-      launchAgent: isTuiAgent(args.launchAgent) ? args.launchAgent : undefined
-    })) ?? null
   ctx.selectedCodexHomePath =
     !ctx.preAdoptedStablePane && !args.connectionId
       ? getCompatibleSelectedCodexHomePath(
           ctx.codexSelectionTarget,
           codexResumeHome
-            ? await ctx.deps.reconcileSharedRuntimeResumeHome(codexResumeHome, async () =>
+            ? ctx.deps.reconcileSharedRuntimeResumeHome(codexResumeHome, () =>
                 getCompatibleSelectedCodexHomePath(
                   ctx.codexSelectionTarget,
-                  await selectLaunchCodexHome()
+                  ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
+                    workspacePath: ctx.cwd,
+                    launchAgent: isTuiAgent(args.launchAgent) ? args.launchAgent : undefined
+                  }) ?? null
                 )
               )
-            : await selectLaunchCodexHome()
+            : (ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
+                workspacePath: ctx.cwd,
+                launchAgent: isTuiAgent(args.launchAgent) ? args.launchAgent : undefined
+              }) ?? null)
         )
       : null
   if (
@@ -200,22 +201,22 @@ export async function prepareRuntimePtySpawn(
       getSettings: () => ctx.deps.getSettings?.(),
       requiredCodexHomePath: codexResumeHome?.codexHomePath,
       target: ctx.codexSelectionTarget,
-      resolveCurrent: async () =>
+      resolveCurrent: () =>
         getCompatibleSelectedCodexHomePath(
           ctx.codexSelectionTarget,
-          (await ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
+          ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
             workspacePath: ctx.cwd,
             launchAgent: 'codex'
-          })) ?? null
+          }) ?? null
         ),
-      resolveAfterUnavailable: async (unavailableManagedHomePath) =>
+      resolveAfterUnavailable: (unavailableManagedHomePath) =>
         getCompatibleSelectedCodexHomePath(
           ctx.codexSelectionTarget,
-          (await ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
+          ctx.deps.getSelectedCodexHomePath?.(ctx.codexSelectionTarget, ctx.env, {
             workspacePath: ctx.cwd,
             launchAgent: 'codex',
             unavailableManagedHomePath
-          })) ?? null
+          }) ?? null
         )
     })
     ctx.selectedCodexHomePath = resolution instanceof Promise ? await resolution : resolution

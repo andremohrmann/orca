@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AdvertisedUrlWatcher } from './advertised-url-watcher'
-import { classifyHost, extractUrlCandidates, stripTerminalControls } from './advertised-url-parsing'
+import {
+  AdvertisedUrlWatcher,
+  classifyHost,
+  extractUrlCandidates,
+  stripTerminalControls
+} from './advertised-url-watcher'
 
 const WORKTREE = 'repo::/repo'
 const PTY = 'pty-1'

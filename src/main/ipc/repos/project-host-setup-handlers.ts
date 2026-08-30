@@ -12,8 +12,10 @@ import type {
   ProjectHostSetupUpdateArgs,
   ProjectHostSetupUpdateResult
 } from '../../../shared/project-types'
-import { getProjectIdForProviderIdentity } from '../../../shared/project-host-setup-projection'
-import { getProjectHostSetupForRepo } from '../../../shared/project-host-setup-lookup'
+import {
+  getProjectHostSetupForRepo,
+  getProjectIdForProviderIdentity
+} from '../../../shared/project-host-setup-projection'
 import { parseExecutionHostId } from '../../../shared/execution-host'
 import { prepareLocalWorktreeRootForRepo } from '../../worktree-root-preparation'
 import { invalidateAuthorizedRootsCache } from '../registered-worktree-roots-cache'

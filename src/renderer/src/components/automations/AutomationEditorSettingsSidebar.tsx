@@ -4,7 +4,7 @@ import { translate } from '@/i18n/i18n'
 import {
   isValidAutomationCronSchedule,
   isValidAutomationSchedule
-} from '../../../../shared/automation-schedule-parsing'
+} from '../../../../shared/automation-schedules'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { OrcaHooks } from '../../../../shared/orca-yaml-hook-types'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
@@ -19,13 +19,9 @@ import { AutomationSchedulePicker } from './AutomationSchedulePicker'
 import { AutomationSessionField } from './AutomationSessionField'
 import { AutomationSetupDecisionField } from './AutomationSetupDecisionField'
 import { AutomationWorkspaceField } from './AutomationWorkspaceField'
-import { AutomationDestinationField } from './AutomationDestinationField'
-import type { AutomationCreateDestinationControl } from './use-automation-create-destination'
 import type { AutomationDraft } from './AutomationEditorDialog'
 
 type AutomationEditorSettingsSidebarProps = {
-  /** The host picker: where a create lands, or the host an edit can move the record to. */
-  destination?: AutomationCreateDestinationControl
   isHermesTarget: boolean
   isHermesCreate: boolean
   repos: readonly Repo[]
@@ -42,13 +38,11 @@ type AutomationEditorSettingsSidebarProps = {
   segmentedItemClassName: string
   onProjectChange: (projectId: string) => void
   getRepoHostLabel?: (repo: Repo) => string | null | undefined
-  allowAddProject?: boolean
   onDraftChange: (updater: (current: AutomationDraft) => AutomationDraft) => void
   onSetupDecisionTouched: () => void
 }
 
 export function AutomationEditorSettingsSidebar({
-  destination,
   isHermesTarget,
   isHermesCreate,
   repos,
@@ -65,7 +59,6 @@ export function AutomationEditorSettingsSidebar({
   segmentedItemClassName,
   onProjectChange,
   getRepoHostLabel,
-  allowAddProject,
   onDraftChange,
   onSetupDecisionTouched
 }: AutomationEditorSettingsSidebarProps): React.JSX.Element {
@@ -112,14 +105,6 @@ export function AutomationEditorSettingsSidebar({
             </div>
           </div>
         </div>
-        {destination && !isHermesTarget ? (
-          <div className="mb-4">
-            <AutomationDestinationField
-              control={destination}
-              labelClassName={AUTOMATION_EDITOR_SECTION_LABEL_CLASS}
-            />
-          </div>
-        ) : null}
         <Field
           className="mb-4"
           labelClassName={AUTOMATION_EDITOR_SECTION_LABEL_CLASS}
@@ -138,7 +123,6 @@ export function AutomationEditorSettingsSidebar({
             )}
             triggerClassName={`h-9 w-full min-w-0 ${pickerTriggerClassName}`}
             getRepoHostLabel={getRepoHostLabel}
-            allowAddProject={allowAddProject}
           />
         </Field>
         <div className="mb-4">

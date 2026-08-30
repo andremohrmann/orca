@@ -10,7 +10,6 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import type * as LocalPtyUtils from '../providers/local-pty-utils'
 const { spawnMock, isPwshAvailableMock, resolveAgentForegroundProcessMock } = vi.hoisted(() => ({
   spawnMock: vi.fn(),
   isPwshAvailableMock: vi.fn(),
@@ -39,14 +38,6 @@ vi.mock('../providers/windows-powershell-executable', () => ({
       : [WINDOWS_POWERSHELL_ABS, CMD_ABS],
   getWindowsCmdPath: () => CMD_ABS
 }))
-
-vi.mock('../providers/local-pty-utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof LocalPtyUtils>()
-  return {
-    ...actual,
-    getNodePtySpawnHelperCandidates: () => [import.meta.filename]
-  }
-})
 
 vi.mock('../providers/agent-foreground-process', () => ({
   resolveAgentForegroundProcessWithAvailability: async (...args: unknown[]) => {

@@ -9,7 +9,7 @@ import {
 import { isRpcResponse } from './rpc-response-shape'
 import { isStaleRpcSocketEvent, logRpcSocketClose } from './rpc-socket-close-evidence'
 import { describeSocketEvent, redactSocketEndpoint } from './socket-event-debug'
-import type { ConnectionLogEmitter, ConnectionState, RpcResponse } from './types'
+import type { ConnectionLogLevel, ConnectionState, RpcResponse } from './types'
 import { websocketPayloadToUint8 } from './websocket-payload-bytes'
 
 const CONNECT_TIMEOUT_MS = 12_000
@@ -24,7 +24,7 @@ type SocketSessionOptions = {
   getState: () => ConnectionState
   getReconnectAttempt: () => number
   isIntentionallyClosed: () => boolean
-  emitLog: ConnectionLogEmitter
+  emitLog: (level: ConnectionLogLevel, message: string, detail?: string) => void
   onHandshakeStarted: () => void
   onAuthenticated: (session: RpcClientSocketSession) => void
   onAuthRejected: (reason: string) => void
@@ -261,8 +261,7 @@ export class RpcClientSocketSession {
         this.options.emitLog(
           'error',
           'WebSocket connect timeout',
-          `No TCP/WS handshake within ${CONNECT_TIMEOUT_MS / 1000}s — endpoint unreachable?`,
-          { code: 'connect-timeout' }
+          `No TCP/WS handshake within ${CONNECT_TIMEOUT_MS / 1000}s — endpoint unreachable?`
         )
         this.options.onForcedClose(this)
       }
@@ -281,8 +280,7 @@ export class RpcClientSocketSession {
       this.options.emitLog(
         'error',
         'Handshake timeout',
-        `No e2ee_ready/e2ee_authenticated within ${HANDSHAKE_TIMEOUT_MS / 1000}s`,
-        { code: 'handshake-timeout' }
+        `No e2ee_ready/e2ee_authenticated within ${HANDSHAKE_TIMEOUT_MS / 1000}s`
       )
       this.options.onForcedClose(this)
     }, HANDSHAKE_TIMEOUT_MS)

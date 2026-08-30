@@ -27,7 +27,6 @@ function checkpointFile(
     modes: snapshot.modes,
     scrollbackLines: snapshot.scrollbackLines,
     ...(snapshot.lastTitle ? { lastTitle: snapshot.lastTitle } : {}),
-    ...(snapshot.terminalOwner ? { terminalOwner: snapshot.terminalOwner } : {}),
     generation: metadata.generation,
     ...(metadata.pendingOutputSeq !== undefined
       ? { pendingOutputSeq: metadata.pendingOutputSeq }
@@ -261,10 +260,7 @@ export async function serializeTerminalCheckpointWithinLimit(
 
   const emulator = await replaySnapshot(snapshot)
   try {
-    // Why carried, not re-derived: trimming rows cannot change who owned the
-    // terminal at this checkpoint's boundary.
-    const ownership = snapshot.terminalOwner ? { terminalOwner: snapshot.terminalOwner } : {}
-    const visibleOnly = { ...emulator.getSnapshot({ scrollbackRows: 0 }), ...ownership }
+    const visibleOnly = emulator.getSnapshot({ scrollbackRows: 0 })
     let bestJson = stringifyWithinLimit(checkpointFile(visibleOnly, metadata), maxBytes)
     if (bestJson === null) {
       throw new Error('Terminal checkpoint metadata exceeds byte limit')
@@ -274,7 +270,7 @@ export async function serializeTerminalCheckpointWithinLimit(
     let high = visibleOnly.scrollbackLines
     while (low <= high) {
       const rows = low + Math.floor((high - low) / 2)
-      const candidate = { ...emulator.getSnapshot({ scrollbackRows: rows }), ...ownership }
+      const candidate = emulator.getSnapshot({ scrollbackRows: rows })
       const candidateJson = stringifyWithinLimit(checkpointFile(candidate, metadata), maxBytes)
       if (candidateJson === null) {
         high = rows - 1

@@ -1,5 +1,4 @@
 import type { Store } from './persistence'
-import type { GlobalSettings } from '../shared/global-settings-types'
 import type { Project } from '../shared/project-types'
 import type { Repo } from '../shared/repo-types'
 import {
@@ -15,42 +14,18 @@ import {
 import { getRepoIdFromWorktreeId } from '../shared/worktree/id'
 import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../shared/execution-host'
 
-/**
- * The slice of the store runtime resolution actually reads. Structural rather
- * than the full `Store` so narrowed stores -- the Orca runtime's `RuntimeStore`,
- * worktree root preparation -- resolve the same runtime the create path does
- * instead of silently falling back to host placement.
- *
- * Members stay optional because those stores declare them optional; the
- * `typeof` guards below are what actually decide whether resolution can run.
- */
-export type ProjectRuntimeResolutionStore = {
-  getProjects?: Store['getProjects']
-  getRepo?: Store['getRepo']
-  getSettings?: () => Partial<Pick<GlobalSettings, 'localWindowsRuntimeDefault'>>
-}
-
-type ResolvableStore = ProjectRuntimeResolutionStore & {
-  getProjects: NonNullable<ProjectRuntimeResolutionStore['getProjects']>
-  getSettings: NonNullable<ProjectRuntimeResolutionStore['getSettings']>
-}
-
-function canResolveProjectRuntimeForRepo(
-  store: ProjectRuntimeResolutionStore
-): store is ResolvableStore {
+function canResolveProjectRuntimeForRepo(store: Store): boolean {
   return typeof store.getProjects === 'function' && typeof store.getSettings === 'function'
 }
 
-function canResolveProjectRuntimeForWorktreeId(
-  store: ProjectRuntimeResolutionStore
-): store is ResolvableStore & { getRepo: NonNullable<ProjectRuntimeResolutionStore['getRepo']> } {
+function canResolveProjectRuntimeForWorktreeId(store: Store): boolean {
   return canResolveProjectRuntimeForRepo(store) && typeof store.getRepo === 'function'
 }
 
 function resolveLocalProjectRuntime(
-  store: ResolvableStore,
+  store: Store,
   project: Project,
-  settings: ReturnType<ResolvableStore['getSettings']> = store.getSettings()
+  settings: ReturnType<Store['getSettings']> = store.getSettings()
 ): ProjectExecutionRuntimeResolution {
   const wslAvailable = hasCachedWslAvailability()
     ? (getCachedWslAvailability() ?? undefined)
@@ -67,7 +42,7 @@ function resolveLocalProjectRuntime(
 }
 
 export function resolveLocalProjectRuntimeForRepo(
-  store: ProjectRuntimeResolutionStore,
+  store: Store,
   repo: Repo
 ): ProjectExecutionRuntimeResolution | undefined {
   if (
@@ -84,7 +59,7 @@ export function resolveLocalProjectRuntimeForRepo(
 }
 
 export function resolveLocalProjectRuntimesForRepos(
-  store: ProjectRuntimeResolutionStore,
+  store: Store,
   repos: readonly Repo[]
 ): ReadonlyMap<string, ProjectExecutionRuntimeResolution> {
   const runtimeByRepoId = new Map<string, ProjectExecutionRuntimeResolution>()
@@ -118,7 +93,7 @@ export function resolveLocalProjectRuntimesForRepos(
 }
 
 export function resolveLocalProjectRuntimeForWorktreeId(
-  store: ProjectRuntimeResolutionStore | undefined,
+  store: Store | undefined,
   worktreeId: string | undefined
 ): ProjectExecutionRuntimeResolution | undefined {
   if (!store || !worktreeId) {

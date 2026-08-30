@@ -136,20 +136,14 @@ export function writeMainThreadDiagnosticMarker(marker: string): void {
   )
 }
 
-export type MainThreadChurnProbeOptions = {
-  /** Extra counters folded into each report line, sampled once per window. */
-  extraStats?: () => Record<string, unknown>
-}
-
 /**
  * Long-running main-process jank probe for benchmarks and field diagnosis of
  * issue #7576. Every 5s emits one `[main-thread] {json}` stderr line with the
- * window's worst event-loop stall, stall counts over 50/250ms, drained subprocess
- * spawn stats, and any counters the caller contributes. Unlike the startup stall
- * probe this never stops: the churn it measures (git status polling, updater
- * retries) is steady-state.
+ * window's worst event-loop stall, stall counts over 50/250ms, and drained
+ * subprocess spawn stats. Unlike the startup stall probe this never stops:
+ * the churn it measures (git status polling, updater retries) is steady-state.
  */
-export function startMainThreadChurnProbe(options: MainThreadChurnProbeOptions = {}): void {
+export function startMainThreadChurnProbe(): void {
   if (!isMainThreadDiagnosticsEnabled()) {
     return
   }
@@ -182,8 +176,7 @@ export function startMainThreadChurnProbe(options: MainThreadChurnProbeOptions =
       gapsOver50Ms,
       gapsOver250Ms,
       spawnCount: Object.values(spawns).reduce((sum, s) => sum + s.count, 0),
-      spawns,
-      ...options.extraStats?.()
+      spawns
     }
     windowMaxGapMs = 0
     gapsOver50Ms = 0

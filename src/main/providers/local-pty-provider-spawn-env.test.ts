@@ -12,7 +12,7 @@ const {
   spawnMock,
   prepareMacosTccLoginShellMock,
   resolveAgentForegroundProcessMock,
-  readWindowsPtyJobProcessIdsMock,
+  readWindowsConptyProcessIdsMock,
   killWithDescendantSweepMock,
   isWslAvailableAsyncMock,
   wslUncDirectoryExistsMock,
@@ -26,7 +26,7 @@ const {
   spawnMock: vi.fn(),
   prepareMacosTccLoginShellMock: vi.fn(),
   resolveAgentForegroundProcessMock: vi.fn(),
-  readWindowsPtyJobProcessIdsMock: vi.fn(),
+  readWindowsConptyProcessIdsMock: vi.fn(),
   killWithDescendantSweepMock: vi.fn(),
   isWslAvailableAsyncMock: vi.fn(),
   wslUncDirectoryExistsMock: vi.fn(),
@@ -86,9 +86,8 @@ vi.mock('./agent-foreground-process', () => ({
     resolveAgentForegroundProcessMock(...args)
 }))
 
-vi.mock('./windows-pty-job-membership', () => ({
-  readWindowsPtyJobProcessIds: (...args: unknown[]) => readWindowsPtyJobProcessIdsMock(...args),
-  isWindowsPtyJobReadable: () => true
+vi.mock('./windows-conpty-process-membership', () => ({
+  readWindowsConptyProcessIds: (...args: unknown[]) => readWindowsConptyProcessIdsMock(...args)
 }))
 
 vi.mock('../wsl', () => ({
@@ -140,7 +139,7 @@ describe('LocalPtyProvider', () => {
       writeFileSyncMock,
       prepareMacosTccLoginShellMock,
       resolveAgentForegroundProcessMock,
-      readWindowsPtyJobProcessIdsMock,
+      readWindowsConptyProcessIdsMock,
       killWithDescendantSweepMock,
       isWslAvailableAsyncMock,
       wslUncDirectoryExistsMock,
@@ -189,22 +188,6 @@ describe('LocalPtyProvider', () => {
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[2].env.CUSTOM_VAR).toBe('custom-value')
-    })
-
-    it('re-reads buildSpawnEnv after a reentrant configuration change', async () => {
-      const initialBuildSpawnEnv = vi.fn((_id: string, env: Record<string, string>) => env)
-      const configuredBuildSpawnEnv = vi.fn((_id: string, env: Record<string, string>) => env)
-      provider.configure({
-        get buildSpawnEnv() {
-          provider.configure({ buildSpawnEnv: configuredBuildSpawnEnv })
-          return initialBuildSpawnEnv
-        }
-      })
-
-      await provider.spawn({ cols: 80, rows: 24 })
-
-      expect(initialBuildSpawnEnv).not.toHaveBeenCalled()
-      expect(configuredBuildSpawnEnv).toHaveBeenCalledOnce()
     })
 
     it.each([

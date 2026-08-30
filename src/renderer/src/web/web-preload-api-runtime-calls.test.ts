@@ -65,7 +65,7 @@ describe('web preload runtime calls', () => {
     ).toMatchObject({ runtimeId: 'runtime-failure' })
   })
 
-  it('unwraps domain failures with their code after persisting failure metadata', async () => {
+  it('unwraps domain failures to their message after persisting failure metadata', async () => {
     vi.doMock('./web-runtime-client', () => ({
       WebRuntimeClient: class {
         call(method: string): Promise<RuntimeRpcResponse<unknown>> {
@@ -96,13 +96,11 @@ describe('web preload runtime calls', () => {
       rejection = error
     }
 
-    expect(rejection).toEqual(
-      Object.assign(new Error('Repository catalog is unavailable'), { code: 'repo_unavailable' })
-    )
+    expect(rejection).toEqual(new Error('Repository catalog is unavailable'))
     if (!(rejection instanceof Error)) {
       throw new Error('Expected a domain Error rejection')
     }
-    expect(Reflect.get(rejection, 'code')).toBe('repo_unavailable')
+    expect(Reflect.get(rejection, 'code')).toBeUndefined()
     expect(
       JSON.parse(globals.storage.getItem('orca.web.runtimeEnvironment.v1') ?? '{}')
     ).toMatchObject({ runtimeId: 'runtime-domain-failure' })

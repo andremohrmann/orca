@@ -13,8 +13,6 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { AgentHookServer } from './server'
 import { WslHookRelayManager } from './wsl-hook-relay-manager'
-import { createManagedHookLocalFilesystem } from './managed-hook-local-filesystem'
-import { codexHookService } from '../codex/hook-service'
 
 const BUNDLE_DIR = join(process.cwd(), 'out', 'relay', 'wsl')
 const BUNDLE_JS = join(BUNDLE_DIR, 'wsl-agent-hook-relay.js')
@@ -76,7 +74,6 @@ describe.skipIf(process.platform === 'win32')(
       const server = orcaServer
 
       const warns: string[] = []
-      const codexHome = join(fakeHome, '.local', 'share', 'orca', 'codex-runtime-home', 'home')
       manager = new WslHookRelayManager({
         platform: () => 'win32',
         remoteHooksEnabled: () => true,
@@ -104,11 +101,6 @@ describe.skipIf(process.platform === 'win32')(
             envelope as Parameters<AgentHookServer['ingestRemote']>[0],
             connectionId
           ),
-        installCodex: (runtimeHomePath) =>
-          codexHookService.installRemote(createManagedHookLocalFilesystem(), fakeHome, {
-            codexHomeDir: runtimeHomePath,
-            deferTrustUntilConfigToml: true
-          }),
         managedHookSettings: () => ({
           agentCmdOverrides: {
             claude: process.execPath,
@@ -119,17 +111,23 @@ describe.skipIf(process.platform === 'win32')(
         transientRetryDelayMs: 1
       })
 
-      manager.ensureForDistro('LiveDistro', codexHome)
+      manager.ensureForDistro('LiveDistro')
 
-      // Waiting on Codex's artifact (not Claude's, which is written first) keeps the
+      // Codex hooks land in the redirected managed runtime home. Waiting on
+      // this artifact (not Claude's, which is written first) keeps the
       // assertions behind the still-running 14-agent installer loop.
-      await vi.waitFor(() => expect(existsSync(join(codexHome, 'hooks.json'))).toBe(true), {
+      const codexRuntimeHome = join(
+        fakeHome,
+        '.local',
+        'share',
+        'orca',
+        'codex-runtime-home',
+        'home'
+      )
+      await vi.waitFor(() => expect(existsSync(join(codexRuntimeHome, 'hooks.json'))).toBe(true), {
         timeout: 15_000
       })
-      await vi.waitFor(
-        () => expect(existsSync(join(fakeHome, '.claude', 'settings.json'))).toBe(true),
-        { timeout: 15_000 }
-      )
+      expect(existsSync(join(fakeHome, '.claude', 'settings.json'))).toBe(true)
       const claudeScript = readFileSync(
         join(fakeHome, '.orca', 'agent-hooks', 'claude-hook.sh'),
         'utf8'
@@ -137,7 +135,7 @@ describe.skipIf(process.platform === 'win32')(
       expect(claudeScript).toContain('/hook/claude')
 
       // Trust TOML is deferred so the launch-path seed is never pre-empted.
-      expect(existsSync(join(codexHome, 'config.toml'))).toBe(false)
+      expect(existsSync(join(codexRuntimeHome, 'config.toml'))).toBe(false)
       expect(existsSync(join(fakeHome, '.codex', 'hooks.json'))).toBe(false)
 
       // Re-coordinate exactly like a hook script: read the relay-written

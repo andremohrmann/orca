@@ -17,8 +17,7 @@ const {
   getRemoteRuntimeSharedControlDiagnosticsMock,
   reconnectRemoteRuntimeSharedControlConnectionMock,
   retryRemoteRuntimeSharedControlConnectionsNowMock,
-  closeRemoteRuntimeRequestConnectionMock,
-  retirePairedRuntimeBrowserClientHostEnvironmentMock
+  closeRemoteRuntimeRequestConnectionMock
 } = vi.hoisted(() => ({
   handleMock: vi.fn(),
   onMock: vi.fn(),
@@ -33,8 +32,7 @@ const {
   getRemoteRuntimeSharedControlDiagnosticsMock: vi.fn(),
   reconnectRemoteRuntimeSharedControlConnectionMock: vi.fn(),
   retryRemoteRuntimeSharedControlConnectionsNowMock: vi.fn(),
-  closeRemoteRuntimeRequestConnectionMock: vi.fn(),
-  retirePairedRuntimeBrowserClientHostEnvironmentMock: vi.fn()
+  closeRemoteRuntimeRequestConnectionMock: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -60,10 +58,6 @@ vi.mock('./runtime-environment-request-connections', () => ({
   reconnectRemoteRuntimeSharedControlConnection: reconnectRemoteRuntimeSharedControlConnectionMock,
   retryRemoteRuntimeSharedControlConnectionsNow: retryRemoteRuntimeSharedControlConnectionsNowMock,
   closeRemoteRuntimeRequestConnection: closeRemoteRuntimeRequestConnectionMock
-}))
-vi.mock('../browser/paired-runtime-browser-client-host-runtime', () => ({
-  retirePairedRuntimeBrowserClientHostEnvironment:
-    retirePairedRuntimeBrowserClientHostEnvironmentMock
 }))
 
 import {
@@ -107,8 +101,6 @@ describe('registerRuntimeEnvironmentHandlers', () => {
     reconnectRemoteRuntimeSharedControlConnectionMock.mockReset()
     retryRemoteRuntimeSharedControlConnectionsNowMock.mockReset()
     closeRemoteRuntimeRequestConnectionMock.mockReset()
-    retirePairedRuntimeBrowserClientHostEnvironmentMock.mockReset()
-    retirePairedRuntimeBrowserClientHostEnvironmentMock.mockResolvedValue(false)
   })
 
   afterEach(() => {
@@ -523,10 +515,6 @@ describe('registerRuntimeEnvironmentHandlers', () => {
     )
 
     invalidateRuntimeEnvironmentTransport(added.environment.id)
-    expect(retirePairedRuntimeBrowserClientHostEnvironmentMock).toHaveBeenCalledWith(
-      added.environment.id,
-      expect.objectContaining({ message: 'Runtime environment transport was invalidated' })
-    )
     senderSend.mockClear()
     // A late frame from the retired socket must not reach the renderer...
     transportCallbacks!.onResponse({

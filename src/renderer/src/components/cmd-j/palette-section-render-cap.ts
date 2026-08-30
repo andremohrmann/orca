@@ -8,9 +8,6 @@
  */
 export const PALETTE_SECTION_RENDER_CAP = 50
 
-/** Number of additional entries to reveal per section on each "See more" click. */
-export const PALETTE_SECTION_EXPAND_STEP = 20
-
 /**
  * First-screen soft split for typed queries when open tabs and worktrees both
  * match. Leading section shows this many rows, then a non-selectable hint, then
@@ -73,7 +70,6 @@ export function softSplitPaletteSection<T>(
  *
  * `leadingMoreCount` is the mid-list soft hint (rest resuming below + hard-cap
  * overflow).
- * `leadingHardOverflowCount` is only rows past the hard cap for the leading remainder.
  * `trailingHardOverflowCount` is only rows past the hard cap — trailing rest is
  * already rendered, so a soft “more” would double-count scrollable rows.
  */
@@ -81,7 +77,6 @@ export type MultiPrimarySectionLayout<T> = {
   leadingPreview: readonly T[]
   leadingRest: readonly T[]
   leadingMoreCount: number
-  leadingHardOverflowCount: number
   trailingFloor: readonly T[]
   trailingRest: readonly T[]
   trailingMoreCount: number
@@ -93,25 +88,20 @@ export function layoutMultiPrimaryPaletteSections<T>({
   trailingItems,
   leadingPreviewCount = TYPED_QUERY_LEADING_PREVIEW,
   trailingFloorCount = TYPED_QUERY_TRAILING_FLOOR,
-  hardCap,
-  leadingHardCap = hardCap ?? PALETTE_SECTION_RENDER_CAP,
-  trailingHardCap = hardCap ?? PALETTE_SECTION_RENDER_CAP
+  hardCap = PALETTE_SECTION_RENDER_CAP
 }: {
   leadingItems: readonly T[]
   trailingItems: readonly T[]
   leadingPreviewCount?: number
   trailingFloorCount?: number
   hardCap?: number
-  leadingHardCap?: number
-  trailingHardCap?: number
 }): MultiPrimarySectionLayout<T> {
-  const leading = softSplitPaletteSection(leadingItems, leadingPreviewCount, leadingHardCap)
-  const trailing = softSplitPaletteSection(trailingItems, trailingFloorCount, trailingHardCap)
+  const leading = softSplitPaletteSection(leadingItems, leadingPreviewCount, hardCap)
+  const trailing = softSplitPaletteSection(trailingItems, trailingFloorCount, hardCap)
   return {
     leadingPreview: leading.preview,
     leadingRest: leading.rest,
     leadingMoreCount: leading.moreCount,
-    leadingHardOverflowCount: Math.max(0, leading.moreCount - leading.rest.length),
     trailingFloor: trailing.preview,
     trailingRest: trailing.rest,
     trailingMoreCount: trailing.moreCount,

@@ -125,9 +125,10 @@ describe('foldToolMessages', () => {
     expect(folded.map((m) => m.id)).toEqual(['a0', 'a2'])
   })
 
-  it('drops a tool message whose call is outside the loaded window', () => {
+  it('keeps a tool message standalone when no assistant precedes it', () => {
     const folded = foldToolMessages([msg('tool', [{ type: 'tool-result', output: 'x' }])])
-    expect(folded).toHaveLength(0)
+    expect(folded).toHaveLength(1)
+    expect(folded[0]!.role).toBe('tool')
   })
 
   it('does not merge across a user message', () => {
@@ -136,18 +137,17 @@ describe('foldToolMessages', () => {
       msg('user', [{ type: 'text', text: 'q' }], 'u'),
       msg('tool', [{ type: 'tool-result', output: 'r' }], 't')
     ])
-    expect(folded.map((m) => m.role)).toEqual(['assistant', 'user'])
+    expect(folded.map((m) => m.role)).toEqual(['assistant', 'user', 'tool'])
   })
 
   it('folds a long tool run without mutating the source assistant', () => {
     const assistant = msg('assistant', [{ type: 'text', text: 'working' }], 'a')
-    const tools = Array.from({ length: 1_000 }, (_unused, index) => [
-      msg('assistant', [{ type: 'tool-call', name: 'Bash', input: {} }], `c-${index}`),
+    const tools = Array.from({ length: 1_000 }, (_unused, index) =>
       msg('tool', [{ type: 'tool-result', output: String(index) }], `t-${index}`)
-    ]).flat()
+    )
     const folded = foldToolMessages([assistant, ...tools])
 
-    expect(folded[0].blocks).toHaveLength(2_001)
+    expect(folded[0].blocks).toHaveLength(1_001)
     expect(assistant.blocks).toHaveLength(1)
   })
 })

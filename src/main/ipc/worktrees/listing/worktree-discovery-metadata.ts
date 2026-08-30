@@ -1,13 +1,7 @@
 import type { Store } from '../../../persistence/loading-store/store'
 import type { Repo } from '../../../../shared/repo-types'
 import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
-import { getProjectHostSetupWorktreeMeta } from '../../../../shared/project-host-setup-lookup'
-import { getRepoExecutionHostId } from '../../../../shared/execution-host'
-import {
-  readWorktreeMetaForHost,
-  writeWorktreeMetaForHost
-} from '../../../persistence/host-qualified-worktree-meta'
-import { getRepoOwnedWorktreeMeta } from '../../../worktree-metadata-ownership'
+import { getProjectHostSetupWorktreeMeta } from '../../../../shared/project-host-setup-projection'
 import { randomUUID } from 'node:crypto'
 
 export function getProjectHostSetupMetaUpdates(
@@ -35,21 +29,9 @@ export function getProjectHostSetupMetaUpdates(
 export function resolveWorktreeMetaWithDiscoveryBackfill(
   store: Store,
   repo: Repo,
-  worktreeId: string,
-  allMetaOverride?: Record<string, WorktreeMeta>,
-  repoOwnerCount = store.getRepos().filter((candidate) => candidate.id === repo.id).length
+  worktreeId: string
 ): WorktreeMeta {
-  const executionHostId = getRepoExecutionHostId(repo)
-  const legacyMeta = store.getWorktreeMeta?.(worktreeId)
-  const allMeta = allMetaOverride ?? store.getAllWorktreeMeta?.()
-  const existing =
-    readWorktreeMetaForHost(store, worktreeId, executionHostId) ??
-    getRepoOwnedWorktreeMeta(
-      repo,
-      worktreeId,
-      allMeta ?? (legacyMeta ? { [worktreeId]: legacyMeta } : {}),
-      repoOwnerCount
-    )
+  const existing = store.getWorktreeMeta(worktreeId)
   const ownershipUpdates = getProjectHostSetupMetaUpdates(store, repo, existing)
   if (existing) {
     const updates = {
@@ -58,11 +40,11 @@ export function resolveWorktreeMetaWithDiscoveryBackfill(
     }
     if (Object.keys(updates).length > 0) {
       // Why: pre-lineage profiles already have WorktreeMeta rows; backfill on discovery so upgraded workspaces get lineage and host routing.
-      return writeWorktreeMetaForHost(store, worktreeId, executionHostId, updates)
+      return store.setWorktreeMeta(worktreeId, updates)
     }
     return existing
   }
-  return writeWorktreeMetaForHost(store, worktreeId, executionHostId, {
+  return store.setWorktreeMeta(worktreeId, {
     lastActivityAt: Date.now(),
     ...ownershipUpdates
   })

@@ -20,7 +20,7 @@ export type WsOutboundBackpressureQueueOptions<TFrame> = {
   /** True when the socket can still accept sends (OPEN and keyed). */
   isWritable: () => boolean
   /** Optional process-wide native-buffer admission check. */
-  canSend?: (frameBytes: number, alreadyRetained: boolean) => boolean
+  canSend?: (frameBytes: number) => boolean
   /**
    * Called once when queued bytes exceed maxQueuedBytes — the link is wedged.
    * The caller should tear the connection down so a fresh subscription can
@@ -37,8 +37,6 @@ export type WsOutboundBackpressureQueueOptions<TFrame> = {
   maxQueuedFrames?: number
   /** Poll interval used to re-check bufferedAmount while parked. */
   drainPollMs?: number
-  /** Maximum frames handed to the native socket in one event-loop turn. */
-  maxDrainFramesPerTurn?: number
   /** Process-wide admission for frames retained in this JavaScript queue. */
   claimQueuedBytes?: (bytes: number) => (() => void) | null
   /** Injectable scheduler for deterministic tests. */
@@ -80,13 +78,6 @@ export function createWsOutboundBackpressureQueue<TFrame>(
   const maxFrameBytes = options.maxFrameBytes ?? maxQueuedBytes
   const maxQueuedFrames = options.maxQueuedFrames ?? DEFAULT_MAX_QUEUED_FRAMES
   const drainPollMs = options.drainPollMs ?? DEFAULT_DRAIN_POLL_MS
-  const configuredDrainFramesPerTurn = options.maxDrainFramesPerTurn
-  const maxDrainFramesPerTurn =
-    typeof configuredDrainFramesPerTurn === 'number' &&
-    Number.isSafeInteger(configuredDrainFramesPerTurn) &&
-    configuredDrainFramesPerTurn > 0
-      ? configuredDrainFramesPerTurn
-      : Number.POSITIVE_INFINITY
   const setTimer = options.setTimer ?? ((cb, ms) => setTimeout(cb, ms))
   const clearTimer = options.clearTimer ?? ((timer) => clearTimeout(timer))
 
@@ -206,12 +197,10 @@ export function createWsOutboundBackpressureQueue<TFrame>(
       return
     }
     advanceQueueHead()
-    let drainedFrames = 0
     while (
       queuedFrames > 0 &&
-      drainedFrames < maxDrainFramesPerTurn &&
       bufferedAmount() <= softCapBytes &&
-      (options.canSend?.(queue[queueHead]!.bytes, true) ?? true)
+      (options.canSend?.(queue[queueHead]!.bytes) ?? true)
     ) {
       const entry = queue[queueHead++]!
       queue[queueHead - 1] = undefined
@@ -225,11 +214,9 @@ export function createWsOutboundBackpressureQueue<TFrame>(
       if (!sendFrame(frame)) {
         return
       }
-      drainedFrames += 1
     }
     if (queuedFrames > 0) {
-      const nextDrainDelay = drainedFrames >= maxDrainFramesPerTurn ? 0 : drainPollMs
-      timer = setTimer(drain, nextDrainDelay)
+      timer = setTimer(drain, drainPollMs)
     } else {
       // Why: resetting the drained array keeps enqueue/drain O(1) per frame;
       // repeated Array.shift() would make recovery from a large backlog O(n²).
@@ -251,7 +238,7 @@ export function createWsOutboundBackpressureQueue<TFrame>(
       queuedFrames === 0 &&
       options.isWritable() &&
       bufferedAmount() <= softCapBytes &&
-      (options.canSend?.(bytes, false) ?? true)
+      (options.canSend?.(bytes) ?? true)
     ) {
       return {
         accepted: sendFrame(frame),

@@ -5,7 +5,6 @@ import { DISPATCH_CIRCUIT_BREAK_FAILURES } from './db/dispatch-context/dispatch-
 import { makePaneKey } from '../../../shared/stable-pane-id'
 import { getDefaultWorkspaceSession } from '../../../shared/constants'
 import type { WorkspaceSessionState } from '../../../shared/workspace-session-state-types'
-import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 // STA-4604: failActiveDispatchOnExit fails the dispatch on worker PTY exit but used to
 // gate the "Agent exited unexpectedly" escalation on the legacy coordinator_runs table.
@@ -131,7 +130,7 @@ async function gradeWorkerExit(
       db.createCoordinatorRun({ spec: 'legacy coordinator loop', coordinatorHandle })
     }
     const task = db.createTask({ spec: 'do the work', runId })
-    const dispatch = createRootDispatch(db, task.id, workerHandle, WORKER_PANE_KEY)
+    const dispatch = db.createDispatchContext(task.id, workerHandle, WORKER_PANE_KEY)
     runtime.setOrchestrationDb(db as never)
 
     runtime.onPtyExit(WORKER_PTY_ID, 137)
@@ -240,7 +239,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
         coordinatorPaneKey: COORDINATOR_PANE_KEY
       })
       const task = db.createTask({ spec: 'do the work', runId: run.id })
-      createRootDispatch(db, task.id, workerHandle, WORKER_PANE_KEY)
+      db.createDispatchContext(task.id, workerHandle, WORKER_PANE_KEY)
       runtime.setOrchestrationDb(db as never)
 
       const waiting = runtime.waitForMessage(`run:${run.id}`, {
@@ -282,7 +281,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
         coordinatorPaneKey: makePaneKey('tab-other', '33333333-3333-4333-8333-333333333333')
       })
       const task = db.createTask({ spec: 'owned work', runId: ownRun.id })
-      createRootDispatch(db, task.id, workerHandle, WORKER_PANE_KEY)
+      db.createDispatchContext(task.id, workerHandle, WORKER_PANE_KEY)
       runtime.setOrchestrationDb(db as never)
 
       runtime.onPtyExit(WORKER_PTY_ID, 137)
@@ -307,12 +306,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
         coordinatorPaneKey: COORDINATOR_PANE_KEY
       })
       const task = db.createTask({ spec: 'supervised work', runId: run.id })
-      const started = db.createStartingWorkerDispatch({
-        creator: { kind: 'system' },
-        maxDepth: Number.MAX_SAFE_INTEGER,
-        taskId: task.id,
-        startOptions: {}
-      })
+      const started = db.createStartingWorkerDispatch({ taskId: task.id, startOptions: {} })
       db.prepareStartingWorkerAuthority({
         dispatchId: started.dispatch.id,
         handle: workerHandle,
@@ -356,10 +350,10 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
       const task = db.createTask({ spec: 'repeatedly failing work', runId: run.id })
       // Burn the breaker down to its last life so this exit is the one that trips it.
       for (let attempt = 1; attempt < DISPATCH_CIRCUIT_BREAK_FAILURES; attempt += 1) {
-        const previous = createRootDispatch(db, task.id, workerHandle, WORKER_PANE_KEY)
+        const previous = db.createDispatchContext(task.id, workerHandle, WORKER_PANE_KEY)
         db.failDispatch(previous.id, `attempt ${attempt}`, { workerProcessExited: true })
       }
-      const dispatch = createRootDispatch(db, task.id, workerHandle, WORKER_PANE_KEY)
+      const dispatch = db.createDispatchContext(task.id, workerHandle, WORKER_PANE_KEY)
       runtime.setOrchestrationDb(db as never)
 
       runtime.onPtyExit(WORKER_PTY_ID, 137)
@@ -420,7 +414,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
         coordinatorPaneKey: COORDINATOR_PANE_KEY
       })
       const task = db.createTask({ spec: 'work outliving its coordinator', runId: run.id })
-      createRootDispatch(db, task.id, workerHandle, WORKER_PANE_KEY)
+      db.createDispatchContext(task.id, workerHandle, WORKER_PANE_KEY)
       // Rebinding the pane to a newer Run clears the old Run's coordinator_handle.
       db.createRun({
         objective: 'newer run on the same coordinator pane',

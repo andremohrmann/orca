@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../orca-runtime'
 import { OrchestrationDb } from '../../orchestration/db'
 import { ORCHESTRATION_METHODS } from './orchestration'
-import { createRootDispatch } from '../../orchestration/db/root-dispatch-test-fixture'
 
 describe('manual Dispatch observation', () => {
   let db: OrchestrationDb | undefined
@@ -112,8 +111,7 @@ describe('manual Dispatch observation', () => {
       coordinatorPaneKey: 'tab_coord:leaf_coord'
     })
     const task = db.createTask({ spec: 'injected lane', runId: run.id })
-    const dispatch = createRootDispatch(
-      db,
+    const dispatch = db.createDispatchContext(
       task.id,
       'term_worker',
       'tab_worker:leaf_worker',
@@ -209,39 +207,6 @@ describe('manual Dispatch observation', () => {
     })
   })
 
-  it('lists an unsupervised context-only dispatch even when process identity is absent', async () => {
-    db = new OrchestrationDb(':memory:')
-    const runtime = new OrcaRuntimeService()
-    runtime.setOrchestrationDb(db)
-    const run = db.createRun({
-      objective: 'context-only listing',
-      coordinatorHandle: 'term_coord',
-      coordinatorPaneKey: 'tab_coord:leaf_coord'
-    })
-    const task = db.createTask({ spec: 'operator lane', runId: run.id })
-    const dispatch = createRootDispatch(db, task.id, 'term_worker', 'tab_worker:leaf_worker')
-
-    const workerListMethod = ORCHESTRATION_METHODS.find(
-      (candidate) => candidate.name === 'orchestration.workerList'
-    )
-    if (!workerListMethod) {
-      throw new Error('Missing method orchestration.workerList')
-    }
-    const result = (await workerListMethod.handler(
-      workerListMethod.params?.parse({ run: run.id }),
-      { runtime }
-    )) as { workers: { dispatchId: string; workerState: string; terminalState: string | null }[] }
-
-    expect(result.workers).toEqual([
-      expect.objectContaining({
-        dispatchId: dispatch.id,
-        workerState: 'unsupervised',
-        terminalState: 'retained'
-      })
-    ])
-    expect(db.getDispatchContextById(dispatch.id)?.process_incarnation).toBeNull()
-  })
-
   it.each([
     ['orchestration.workerStop', 'stopped'],
     ['orchestration.workerAbandon', 'abandoned']
@@ -251,8 +216,7 @@ describe('manual Dispatch observation', () => {
     runtime.setOrchestrationDb(db)
     const closeTerminal = vi.spyOn(runtime, 'closeTerminal')
     const task = db.createTask({ spec: 'operator-owned lane' })
-    const dispatch = createRootDispatch(
-      db,
+    const dispatch = db.createDispatchContext(
       task.id,
       'term_worker',
       'tab_worker:leaf_worker',

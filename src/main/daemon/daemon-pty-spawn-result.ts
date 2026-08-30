@@ -313,9 +313,6 @@ export abstract class DaemonPtySpawnResult extends DaemonPtySpawnRequest {
       ...(kittyKeyboardFlags !== undefined
         ? { snapshotKittyKeyboardFlags: kittyKeyboardFlags }
         : {}),
-      ...(reattachSnapshot.terminalOwner
-        ? { snapshotTerminalOwner: reattachSnapshot.terminalOwner }
-        : {}),
       isReattach: true,
       isAlternateScreen: isAltScreen,
       // Why: the snapshot ANSI has no title frame; carry lastTitle beside it so main can seed title records after a relaunch.

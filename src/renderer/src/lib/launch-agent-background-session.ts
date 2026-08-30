@@ -127,9 +127,7 @@ export async function launchAgentBackgroundSession(
   )
   let ptyId = '',
     runtimeTerminalHandle: string | null = null
-  // What the local spawn answered and later steps still need: which lifetime of `ptyId` this launch
-  // owns, and the config the host actually launched. Both absent for a runtime terminal.
-  let spawned: { incarnationId?: string; launchConfig?: typeof startupPlan.launchConfig } = {}
+  let returnedLaunchConfig: typeof startupPlan.launchConfig | undefined
   let tab: ReturnType<typeof store.createTab> | null = null
   let exitHandled = false,
     eagerPtyBuffer: EagerPtyHandle | null = null
@@ -221,7 +219,7 @@ export async function launchAgentBackgroundSession(
         }
       })
       ptyId = result.id
-      spawned = result
+      returnedLaunchConfig = result.launchConfig
     }
     const adopted = await adoptAgentBackgroundSessionTab({
       store,
@@ -229,7 +227,7 @@ export async function launchAgentBackgroundSession(
       reservedTabId,
       ptyId,
       paneKey,
-      launchConfig: spawned.launchConfig ?? startupPlan.launchConfig,
+      launchConfig: returnedLaunchConfig ?? startupPlan.launchConfig,
       launchRegistration,
       runtimeTarget,
       runtimeTerminalHandle,
@@ -282,9 +280,7 @@ export async function launchAgentBackgroundSession(
         .then((result) => handleExit(ptyId, result.wait.exitCode ?? 0))
         .catch(() => {})
     } else {
-      // Why the incarnation: a relay-recycled id can hold the previous owner's exit, and draining
-      // that into this handler tears the agent session down seconds after it launched.
-      eagerPtyBuffer = registerEagerPtyBuffer(ptyId, handleExit, spawned.incarnationId)
+      eagerPtyBuffer = registerEagerPtyBuffer(ptyId, handleExit)
       unsubscribeData = subscribeToPtyData(ptyId, handleData)
       // Why: opening the workspace attaches a real terminal transport and disposes
       // the eager exit handler. This sidecar keeps automation completion tracking

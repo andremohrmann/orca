@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { create } from 'zustand'
 import type { AppState } from '../types'
-import { createHostedReviewSlice } from './hosted-review'
-import { refreshHostedReviewCard } from './hosted-review-card-refresh'
-import { getHostedReviewCacheKey } from './hosted-review-cache-identity'
-import { HostedReviewCreationEligibilityTimeoutError } from './hosted-review-cache-state'
+import {
+  createHostedReviewSlice,
+  getHostedReviewCacheKey,
+  HostedReviewCreationEligibilityTimeoutError,
+  refreshHostedReviewCard
+} from './hosted-review'
 import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 
 const runtimeRpc = vi.hoisted(() => ({

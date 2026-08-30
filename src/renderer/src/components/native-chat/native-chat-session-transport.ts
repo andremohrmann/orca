@@ -105,14 +105,7 @@ function createRuntimeNativeChatTransport(environmentId: string): NativeChatSess
             {
               selector: environmentId,
               method: 'nativeChat.subscribe',
-              params: {
-                subscriptionId,
-                agent,
-                sessionId,
-                transcriptPath,
-                limit,
-                capabilities: { transcriptPending: 1 }
-              },
+              params: { subscriptionId, agent, sessionId, transcriptPath, limit },
               timeoutMs: 15_000
             },
             {
@@ -141,12 +134,8 @@ function createRuntimeNativeChatTransport(environmentId: string): NativeChatSess
                   hasMore?: boolean
                   error?: string
                   lifecycle?: unknown
-                  pending?: boolean
                 }
                 const lifecycle = parseRuntimeNativeChatTurnLifecycle(frame?.lifecycle)
-                // No transcript behind this window yet — forwarded so the view can
-                // stop spinning, but it is not the settled initial read.
-                const pending = frame?.pending === true
                 if (
                   (frame?.type === 'appended' ||
                     frame?.type === 'snapshot' ||
@@ -154,16 +143,13 @@ function createRuntimeNativeChatTransport(environmentId: string): NativeChatSess
                   Array.isArray(frame.messages)
                 ) {
                   if (!receivedInitial) {
-                    if (!pending) {
-                      receivedInitial = true
-                    }
+                    receivedInitial = true
                     onFrame({
                       type: 'snapshot',
                       messages: frame.messages,
                       hasMore: frame.hasMore ?? frame.messages.length >= (limit ?? 300),
                       ...(frame.error ? { error: frame.error } : {}),
-                      ...(lifecycle ? { lifecycle } : {}),
-                      ...(pending ? { pending: true } : {})
+                      ...(lifecycle ? { lifecycle } : {})
                     })
                   } else if (frame.type === 'snapshot') {
                     onFrame({
@@ -171,8 +157,7 @@ function createRuntimeNativeChatTransport(environmentId: string): NativeChatSess
                       messages: frame.messages,
                       hasMore: frame.hasMore ?? false,
                       ...(frame.error ? { error: frame.error } : {}),
-                      ...(lifecycle ? { lifecycle } : {}),
-                      ...(pending ? { pending: true } : {})
+                      ...(lifecycle ? { lifecycle } : {})
                     })
                   } else {
                     onFrame(

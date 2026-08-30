@@ -4,7 +4,6 @@ import { emitBrowserCookieImportToast } from '@/lib/browser-cookie-import-toast'
 import { cn } from '@/lib/utils'
 import { Button } from '../ui/button'
 import { BrowserCookieImportDisclosure } from '../BrowserCookieImportDisclosure'
-import { BrowserCookieImportMachineNotice } from '../BrowserCookieImportMachineNotice'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,7 +60,7 @@ export function BrowserUseCookieImportStep({
             value2: browserProfile ? ` (${browserProfile})` : ''
           }
         ),
-        result
+        result.executionHostLabel
       )
     } else {
       toast.error(result.reason)
@@ -78,7 +77,7 @@ export function BrowserUseCookieImportStep({
           'Imported {{value0}} cookies from file.',
           { value0: result.summary.importedCookies }
         ),
-        result
+        result.executionHostLabel
       )
     } else if (result.reason !== 'canceled') {
       toast.error(result.reason)
@@ -166,7 +165,6 @@ export function BrowserUseCookieImportStep({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <BrowserCookieImportMachineNotice />
             {detectedBrowsers.map((browser) =>
               browser.profiles.length > 1 ? (
                 <DropdownMenuSub key={browser.family}>

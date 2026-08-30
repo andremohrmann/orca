@@ -1,5 +1,3 @@
-import { normalizeReconcileText } from './mobile-native-chat-draft-reconcile'
-
 export type MobileNativeChatPendingMessage = {
   id: string
   text: string
@@ -45,17 +43,13 @@ export function appendMobileNativeChatPending(
   images?: string[]
 ): PendingByKey {
   const current = previous[key] ?? []
-  // Count outstanding repeats with the same normalized key.
   const earlierOutstanding = current.filter(
     (pending) =>
-      normalizeReconcileText(pending.text) === origin.normalizedText &&
+      pending.text.trim() === origin.normalizedText &&
       pending.expectedOccurrence > origin.baselineOccurrences
   ).length
-  // Image ordinal selection and counting must share the empty-text discriminator.
   const expectedImageEchoOrdinal =
-    current.filter(
-      (pending) => normalizeReconcileText(pending.text) === '' && pending.images?.length
-    ).length + 1
+    current.filter((pending) => pending.text.trim() === '' && pending.images?.length).length + 1
   return {
     ...previous,
     [key]: [

@@ -20,7 +20,6 @@ export type GitBranchCompareSummary = {
   mergeBase: string | null
   changedFiles: number
   commitsAhead?: number
-  commitsBehind?: number
   status: 'ready' | 'invalid-base' | 'unborn-head' | 'no-merge-base' | 'loading' | 'error'
   errorMessage?: string
 }

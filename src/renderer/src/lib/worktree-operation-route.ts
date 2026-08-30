@@ -192,10 +192,9 @@ export function resolveWorktreeOperationRouteResult(
     return explicitResolution
   }
 
-  const hasDetectedWorktree = hasIndexedDetectedWorktree(state.detectedWorktreesByRepo, worktreeId)
   const hasKnownWorktree =
     resolveIndexedWorktreeOwner(state.worktreesByRepo, worktreeId).kind !== 'missing' ||
-    hasDetectedWorktree
+    hasIndexedDetectedWorktree(state.detectedWorktreesByRepo, worktreeId)
   const repoId = getRepoIdFromWorktreeId(worktreeId)
   const hasKnownRepo = state.repos?.some((repo) => repo.id === repoId) === true
   if (!hasKnownWorktree && !hasKnownRepo) {
@@ -220,11 +219,10 @@ export function resolveWorktreeOperationRouteResult(
       }
     }
   }
-  // Why: no saved runtime can publish a remote ownerless row; otherwise current detected presence affirms identity under the stamped-writer invariant.
   const mayBeLegacyLocal =
-    savedRuntimeIds === undefined ||
-    (state.runtimeEnvironmentCatalogHydrated === true &&
-      (savedRuntimeIds.length === 0 || hasDetectedWorktree))
+    (savedRuntimeIds === undefined ||
+      (state.runtimeEnvironmentCatalogHydrated === true && savedRuntimeIds.length === 0)) &&
+    (state.removedRuntimeEnvironmentIds?.size ?? 0) === 0
   return mayBeLegacyLocal
     ? { kind: 'resolved', route: { executionHostId: 'local', runtimeEnvironmentId: null } }
     : { kind: 'missing' }

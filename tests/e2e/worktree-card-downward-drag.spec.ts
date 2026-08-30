@@ -78,17 +78,7 @@ async function seedVirtualizedManualWorktrees(page: Page): Promise<{
           ...state.worktreesByRepo,
           [repoId]: [...worktrees, ...seededWorktrees]
         },
-        // Stands in for the real action only to skip its IPC persistence tail: these 60 rows
-        // are store-only, so persisting them would fail and refetch them away mid-drag.
-        updateWorktreesMeta: async (batchUpdates) => {
-          if (batchUpdates.length === 0) {
-            return
-          }
-          // executionHostId is ignored on purpose: every seeded row is host-less, which the
-          // real action treats as local (worktree-meta-host-match.ts).
-          const updatesByWorktreeId = new Map(
-            batchUpdates.map((batchUpdate) => [batchUpdate.worktreeId, batchUpdate.updates])
-          )
+        updateWorktreesMeta: async (updatesByWorktreeId) => {
           store.setState((current) => ({
             sortEpoch: current.sortEpoch + 1,
             worktreesByRepo: Object.fromEntries(

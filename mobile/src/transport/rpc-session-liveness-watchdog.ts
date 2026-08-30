@@ -8,7 +8,6 @@ type WatchdogOptions = {
   transport: 'direct' | 'relay'
   sendProbe: (identity: RpcSessionIdentity) => boolean
   terminate: (identity: RpcSessionIdentity) => void
-  onTimeout?: (evidence: LivenessTimeoutEvidence) => void
   idleProbeMs?: number | null
   probeTimeoutMs?: number
   missedProbeLimit?: number
@@ -16,14 +15,6 @@ type WatchdogOptions = {
   now?: () => number
   setTimer?: typeof setTimeout
   clearTimer?: typeof clearTimeout
-}
-
-export type LivenessTimeoutEvidence = {
-  transport: 'direct' | 'relay'
-  reason: 'probe-send-failed' | 'probe-timeout'
-  missedProbes: number
-  missedProbeLimit: number
-  lastInboundAgeMs: number
 }
 
 export class RpcSessionLivenessWatchdog {
@@ -147,7 +138,7 @@ export class RpcSessionLivenessWatchdog {
       sent = false
     }
     if (!sent) {
-      this.terminateCurrent(identity, 'probe-send-failed')
+      this.terminateCurrent(identity)
       return
     }
     this.timer = this.setTimer(() => this.handleProbeTimeout(identity, sentAt), this.probeTimeoutMs)
@@ -170,7 +161,7 @@ export class RpcSessionLivenessWatchdog {
     }
     this.missedProbes += 1
     if (this.missedProbes >= this.missedProbeLimit) {
-      this.terminateCurrent(identity, 'probe-timeout')
+      this.terminateCurrent(identity)
       return
     }
     console.log('[net] activity-probe timeout tolerated', {
@@ -181,10 +172,7 @@ export class RpcSessionLivenessWatchdog {
     this.startProbe(identity)
   }
 
-  private terminateCurrent(
-    identity: RpcSessionIdentity,
-    reason: LivenessTimeoutEvidence['reason']
-  ): void {
+  private terminateCurrent(identity: RpcSessionIdentity): void {
     if (this.identity !== identity) {
       return
     }
@@ -195,13 +183,6 @@ export class RpcSessionLivenessWatchdog {
       transport: this.options.transport,
       missedProbes: this.missedProbes,
       missedProbeLimit: this.missedProbeLimit
-    })
-    this.options.onTimeout?.({
-      transport: this.options.transport,
-      reason,
-      missedProbes: this.missedProbes,
-      missedProbeLimit: this.missedProbeLimit,
-      lastInboundAgeMs: Math.max(0, this.now() - this.lastInboundAt)
     })
     this.options.terminate(identity)
   }

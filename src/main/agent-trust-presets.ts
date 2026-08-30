@@ -4,7 +4,6 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { writeFileAtomically } from './codex-accounts/fs-utils'
 import { getOrcaManagedCodexHomePath } from './codex/codex-home-paths'
 import { upsertProjectTrustLevel } from './codex/config-toml-trust'
-import { runExclusivelyForCodexTrustConfig } from './codex/codex-trust-config-mutation-queue'
 
 export type AgentTrustPreset = 'cursor' | 'copilot' | 'codex'
 
@@ -109,21 +108,13 @@ export function markCopilotFolderTrusted(workspacePath: string): void {
  * Verified against codex-rs/tui/src/onboarding/trust_directory.rs and
  * codex-rs/core/src/config/config_tests.rs in the Codex CLI source.
  */
-export function markCodexProjectTrusted(workspacePath: string): Promise<void> {
+export function markCodexProjectTrusted(workspacePath: string): void {
   const absPath = resolveCodexProjectTrustRoot(workspacePath)
-  const systemTomlPath = join(homedir(), '.codex', 'config.toml')
+  const configPath = join(homedir(), '.codex', 'config.toml')
+  upsertProjectTrustLevel(configPath, absPath, 'trusted')
   // Why: Orca-launched Codex runs with an Orca-owned CODEX_HOME, so the trust
   // preset must also update the runtime config Codex will actually read.
-  const runtimeTomlPath = join(getOrcaManagedCodexHomePath(), 'config.toml')
-  // Why (#16441): hook installs now await a codex app-server grant, so an
-  // unqueued write here can land inside their capture->restore window and be
-  // reverted. Same runtime-before-system lock order the installer takes.
-  return runExclusivelyForCodexTrustConfig(runtimeTomlPath, () =>
-    runExclusivelyForCodexTrustConfig(systemTomlPath, async () => {
-      upsertProjectTrustLevel(systemTomlPath, absPath, 'trusted')
-      upsertProjectTrustLevel(runtimeTomlPath, absPath, 'trusted')
-    })
-  )
+  upsertProjectTrustLevel(join(getOrcaManagedCodexHomePath(), 'config.toml'), absPath, 'trusted')
 }
 
 function resolveCodexProjectTrustRoot(workspacePath: string): string {

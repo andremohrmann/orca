@@ -1,16 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Globe } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import { DEFAULT_SEARCH_ENGINE, type SearchEngine } from '../../../../../shared/browser-url'
-import type { BrowserPageDocLocation } from '../../../../../shared/browser-workspace-types'
 import { buildBrowserAddressBarSuggestions } from './browser-address-bar-suggestions'
 import { shouldOverlayBrowserAddressBar } from './browser-address-bar-expansion'
-import { saveBrowserAddressBarEditSession } from './browser-address-bar-edit-session'
-import { useBrowserAddressBarDismissal } from './use-browser-address-bar-dismissal'
-import type { BrowserAddressBarEditSessionBinding } from './use-browser-address-bar-edit-session'
 import BrowserAddressBarSuggestionList from './BrowserAddressBarSuggestionList'
 
 type BrowserAddressBarProps = {
@@ -18,17 +14,8 @@ type BrowserAddressBarProps = {
   onChange: (value: string) => void
   onSubmit: () => void
   onNavigate: (url: string) => void
-  /** Selecting a previewed-document suggestion; without it those rows fall back to onNavigate. */
-  onOpenWorkspaceDoc?: (docLocation: BrowserPageDocLocation) => void
   inputRef: React.RefObject<HTMLInputElement | null>
   dismissSuggestionsRef?: React.MutableRefObject<(() => void) | null>
-  /**
-   * Set by panes React can swap out from under a live edit, so an unmount mid-typing is handed on
-   * to whatever mounts next for the same page. Panes that never remount leave it off.
-   */
-  editSession?: BrowserAddressBarEditSessionBinding | null
-  /** Replaces the leading globe (e.g. the SSH egress indicator). */
-  leadingIcon?: React.ReactNode
 }
 
 export default function BrowserAddressBar({
@@ -36,11 +23,8 @@ export default function BrowserAddressBar({
   onChange,
   onSubmit,
   onNavigate,
-  onOpenWorkspaceDoc,
   inputRef,
-  dismissSuggestionsRef,
-  editSession,
-  leadingIcon
+  dismissSuggestionsRef
 }: BrowserAddressBarProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const [selectedValueOverride, setSelectedValueOverride] = useState<string | null>(null)
@@ -49,7 +33,6 @@ export default function BrowserAddressBar({
   // but suggestions must keep matching the original typed query.
   const autocompleteQuery = prePreviewValueRef.current ?? value
   const browserUrlHistory = useAppStore((s) => s.browserUrlHistory)
-  const workspaceDocHistory = useAppStore((s) => s.workspaceDocHistory)
   const browserDefaultSearchEngine = useAppStore((s) => s.browserDefaultSearchEngine)
   const browserKagiSessionLink = useAppStore((s) => s.browserKagiSessionLink)
   const closingRef = useRef(false)
@@ -74,59 +57,6 @@ export default function BrowserAddressBar({
   }, [])
 
   const overlay = shouldOverlayBrowserAddressBar({ inlineWidth, focused: open })
-
-  const editSessionPageId = editSession?.pageId ?? null
-  const resumedChrome = editSession?.resumed ?? null
-  const liveEditRef = useRef({ value, open })
-  useLayoutEffect(() => {
-    liveEditRef.current = { value, open }
-  })
-
-  useLayoutEffect(() => {
-    if (!resumedChrome) {
-      return
-    }
-    // Why after the fact rather than as the initial state: the pane resumes in its own layout
-    // effect, which runs after this bar has already mounted (and after the focus it takes has
-    // opened the dropdown the way a fresh click would). This is what puts it back as the user
-    // left it. Re-arming the blur grace window keeps the resumed focus from closing it again.
-    if (resumedChrome.preview) {
-      prePreviewValueRef.current = resumedChrome.preview.typedQuery
-      setSelectedValueOverride(resumedChrome.preview.previewedUrl)
-    }
-    openedAtRef.current = Date.now()
-    setOpen(resumedChrome.suggestionsOpen)
-  }, [resumedChrome])
-
-  // Why layout and not a passive cleanup: React destroys passive effects for a deleted tree after
-  // its DOM is gone, and by then document.activeElement is the body — every edit would read idle.
-  useLayoutEffect(() => {
-    const input = inputRef.current
-    if (!editSessionPageId || !input) {
-      return
-    }
-    return () => {
-      // Why only a focused bar: an idle one has no edit to hand on, and resuming it would seize
-      // focus and reopen a dropdown for a user who was reading the page.
-      if (document.activeElement !== input) {
-        return
-      }
-      const typedQuery = prePreviewValueRef.current
-      saveBrowserAddressBarEditSession(editSessionPageId, {
-        draft: liveEditRef.current.value,
-        selection: {
-          start: input.selectionStart ?? input.value.length,
-          end: input.selectionEnd ?? input.value.length,
-          direction: input.selectionDirection ?? 'none'
-        },
-        suggestionsOpen: liveEditRef.current.open,
-        // Why the draft alone is not enough: mid-preview it holds the highlighted suggestion, and
-        // dropping this would strand the user with no way back to what they actually typed.
-        preview:
-          typedQuery === null ? null : { typedQuery, previewedUrl: liveEditRef.current.value }
-      })
-    }
-  }, [editSessionPageId, inputRef])
 
   const clearAddressBarTimers = useCallback((): void => {
     if (blurCloseTimerRef.current !== null) {
@@ -155,18 +85,11 @@ export default function BrowserAddressBar({
     () =>
       buildBrowserAddressBarSuggestions({
         browserUrlHistory,
-        workspaceDocHistory,
         kagiSessionLink: browserKagiSessionLink,
         searchEngine,
         value: autocompleteQuery
       }),
-    [
-      browserUrlHistory,
-      workspaceDocHistory,
-      autocompleteQuery,
-      searchEngine,
-      browserKagiSessionLink
-    ]
+    [browserUrlHistory, autocompleteQuery, searchEngine, browserKagiSessionLink]
   )
 
   const clearSuggestionPreview = useCallback((): void => {
@@ -276,16 +199,7 @@ export default function BrowserAddressBar({
       closingRef.current = true
       setOpen(false)
       clearSuggestionPreview()
-      // Why looked up by row: a workspace-doc suggestion opens on a fresh grant instead of
-      // navigating; its url is the document's path, so even the fallback routes via detection.
-      const docLocation = suggestions.find(
-        (suggestion) => suggestion.url === url && suggestion.docLocation
-      )?.docLocation
-      if (docLocation && onOpenWorkspaceDoc) {
-        onOpenWorkspaceDoc(docLocation)
-      } else {
-        onNavigate(url)
-      }
+      onNavigate(url)
       if (closingResetTimerRef.current !== null) {
         window.clearTimeout(closingResetTimerRef.current)
       }
@@ -294,7 +208,7 @@ export default function BrowserAddressBar({
         closingRef.current = false
       }, 100)
     },
-    [clearSuggestionPreview, onNavigate, onOpenWorkspaceDoc, suggestions]
+    [clearSuggestionPreview, onNavigate]
   )
 
   const handleKeyDown = useCallback(
@@ -360,7 +274,46 @@ export default function BrowserAddressBar({
     ]
   )
 
-  useBrowserAddressBarDismissal(open, dismissSuggestions)
+  // Why: Electron <webview> guests run in a separate process, so clicking the
+  // page never dispatches pointerdown on the renderer document and Radix cannot
+  // detect an outside dismiss. Window blur and focus moves into the guest (the
+  // host <webview> tag) close the dropdown the same way BrowserImportHintButton
+  // does for its popover.
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const handleWindowBlur = (): void => {
+      dismissSuggestions()
+    }
+
+    const handleFocusIn = (event: FocusEvent): void => {
+      const target = event.target
+      if (!(target instanceof HTMLElement) || target.tagName !== 'WEBVIEW') {
+        return
+      }
+      dismissSuggestions()
+    }
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') {
+        return
+      }
+      dismissSuggestions()
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+
+    window.addEventListener('blur', handleWindowBlur)
+    document.addEventListener('focusin', handleFocusIn, true)
+    window.addEventListener('keydown', handleEscape, true)
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur)
+      document.removeEventListener('focusin', handleFocusIn, true)
+      window.removeEventListener('keydown', handleEscape, true)
+    }
+  }, [dismissSuggestions, inputRef, open])
 
   useEffect(() => {
     if (!dismissSuggestionsRef) {
@@ -376,9 +329,7 @@ export default function BrowserAddressBar({
     // Why: min-w-11 keeps the leading globe a real hit target once the toolbar
     // squeezes the bar away — without it neighbouring buttons overlap the only
     // affordance for reopening the URL field.
-    // Why stretch: the toolbar row pins the address slot's height, and the bar must fill it rather
-    // than size itself — otherwise it and the document chip drift apart again.
-    <div ref={slotRef} className="flex min-w-11 flex-1 items-stretch">
+    <div ref={slotRef} className="flex min-w-11 flex-1 items-center">
       <Popover
         modal={false}
         open={open}
@@ -419,7 +370,7 @@ export default function BrowserAddressBar({
               onSubmit()
             }}
           >
-            {leadingIcon ?? <Globe className="size-4 shrink-0 text-muted-foreground" />}
+            <Globe className="size-4 shrink-0 text-muted-foreground" />
             <Input
               ref={inputRef}
               value={value}

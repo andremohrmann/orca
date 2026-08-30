@@ -216,17 +216,11 @@ describe('updater', () => {
 
     const { setupAutoUpdater } = await import('./updater')
 
-    // Why: a startup check also arms its own 24h timer, which would fire at the same boundary as the
-    // reschedule under test; entering 23h in makes the startup timer fire the check itself, so only
-    // the result handler's re-arm can produce a check 24h later.
     setupAutoUpdater(mainWindow as never, {
-      getLastUpdateCheckAt: () => Date.now() - 23 * 60 * 60 * 1000,
+      getLastUpdateCheckAt: () => null,
       setLastUpdateCheckAt
     })
 
-    expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled()
-
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
     await vi.waitFor(() => {
       expect(autoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(1)
     })
@@ -239,15 +233,12 @@ describe('updater', () => {
       changelog: null
     })
 
-    await vi.advanceTimersByTimeAsync(23 * 60 * 60 * 1000)
+    await vi.advanceTimersByTimeAsync(23 * 60 * 60 * 1000 + 59 * 60 * 1000)
     expect(autoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(1)
 
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
-    // Why: the boundary tick sweeps the updater's other timers (30-minute nudge poll, 45-second
-    // stall guard) too, so pin the reschedule itself — nothing before 24h, a check once it elapses —
-    // rather than an exact process-wide call total.
+    await vi.advanceTimersByTimeAsync(60 * 1000)
     await vi.waitFor(() => {
-      expect(autoUpdaterMock.checkForUpdates.mock.calls.length).toBeGreaterThanOrEqual(2)
+      expect(autoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(2)
     })
   })
 

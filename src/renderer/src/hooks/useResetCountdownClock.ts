@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getResetCountdownNextTickDelay } from '../../../shared/rate-limit-reset-format'
 
 // Why: a single boundary-scheduled clock drives the status-bar reset countdowns
@@ -26,24 +26,25 @@ export function useResetCountdownClock(resetTimes: readonly (number | null | und
   const key = useMemo(() => resetTimesKey(resetTimes), [resetTimes])
   const times = useMemo(() => parseResetTimesKey(key), [key])
   const previousKeyRef = useRef(key)
-  // Why: when the set of reset times changes, refresh `now` before paint so the
-  // label reflects the new window without a stale intermediate frame.
-  useLayoutEffect(() => {
-    if (previousKeyRef.current === key) {
-      return
-    }
+  const immediateNowRef = useRef(scheduledNow)
+
+  // Why: when the set of reset times changes, refresh `now` immediately so the
+  // label reflects the new window without waiting for the next scheduled tick.
+  if (previousKeyRef.current !== key) {
     previousKeyRef.current = key
-    setScheduledNow(Date.now())
-  }, [key])
+    immediateNowRef.current = Date.now()
+  }
+
+  const now = Math.max(scheduledNow, immediateNowRef.current)
 
   useEffect(() => {
-    const delayMs = getResetCountdownNextTickDelay(scheduledNow, times)
+    const delayMs = getResetCountdownNextTickDelay(now, times)
     if (delayMs === null) {
       return
     }
     const timeout = window.setTimeout(() => setScheduledNow(Date.now()), delayMs)
     return () => window.clearTimeout(timeout)
-  }, [scheduledNow, times])
+  }, [now, times])
 
-  return scheduledNow
+  return now
 }

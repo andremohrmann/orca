@@ -70,10 +70,7 @@ export function classifyConnection(args: {
     return { kind: 'normal', label: 'Connected' }
   }
 
-  // A disconnected pending path can survive a cleared retry timer during a
-  // lifecycle race. Only narrate Relay while dialing or after a retry has
-  // recorded progress; otherwise the idle transport must read Disconnected.
-  if (args.pendingPath === 'relay' && (state !== 'disconnected' || reconnectAttempts > 0)) {
+  if (args.pendingPath === 'relay') {
     if (reconnectAttempts >= UNREACHABLE_ATTEMPTS) {
       if (lastConnectedAt == null) {
         return { kind: 'unreachable', label: "Can't connect via Relay", reason: 'never-connected' }

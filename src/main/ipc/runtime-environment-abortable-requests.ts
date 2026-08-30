@@ -1,5 +1,4 @@
 import type { PairingOffer } from '../../shared/pairing'
-import type { RuntimeCapability } from '../../shared/protocol-version'
 import { sendRemoteRuntimeRequest } from '../../shared/remote-runtime-client'
 import type {
   RuntimeOrchestrationEnvelope,
@@ -16,19 +15,10 @@ export function sendRemoteRuntimeRequestAbortable(
   params: unknown,
   timeoutMs: number,
   envelope?: RuntimeOrchestrationEnvelope,
-  signal?: AbortSignal,
-  clientCapabilities: readonly RuntimeCapability[] = []
+  signal?: AbortSignal
 ): Promise<RuntimeRpcResponse<unknown>> {
-  if (signal || clientCapabilities.length > 0) {
-    return sendRemoteRuntimeRequest(
-      pairing,
-      method,
-      params,
-      timeoutMs,
-      envelope,
-      signal,
-      clientCapabilities
-    )
+  if (signal) {
+    return sendRemoteRuntimeRequest(pairing, method, params, timeoutMs, envelope, signal)
   }
   return envelope
     ? sendRemoteRuntimeRequest(pairing, method, params, timeoutMs, envelope)

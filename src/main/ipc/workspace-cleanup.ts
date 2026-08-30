@@ -127,8 +127,10 @@ export function registerWorkspaceCleanupHandlers(
     return true
   })
 
-  ipcMain.handle('workspaceCleanup:getCachedScan', (): Promise<WorkspaceCleanupScanResult | null> =>
-    readWorkspaceCleanupScanSnapshot(snapshotDirectory)
+  ipcMain.handle(
+    'workspaceCleanup:getCachedScan',
+    (): Promise<WorkspaceCleanupScanResult | null> =>
+      readWorkspaceCleanupScanSnapshot(snapshotDirectory)
   )
 
   ipcMain.handle('workspaceCleanup:dismiss', (_event, args: WorkspaceCleanupDismissArgs) => {

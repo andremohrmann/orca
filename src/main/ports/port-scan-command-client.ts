@@ -303,8 +303,7 @@ const WORKER_ENTRY_FILENAME = 'port-scan-command-worker-entry.js'
 /** Where the built worker entry can live: packaged resources or the build dir. */
 export type WorkerEntryLayout = {
   isPackaged: boolean
-  /** Undefined on a non-Electron host: `process.resourcesPath` is Electron-only. */
-  resourcesPath: string | undefined
+  resourcesPath: string
   moduleDir: string
 }
 
@@ -319,12 +318,7 @@ export function resolveWorkerEntryPath(layout: WorkerEntryLayout): string {
   // the bundler's __dirname, matching the shipped stt/warp/opencode workers.
   // Split out from the electron read so the packaged branch is testable without
   // a packaged build.
-  // Why the resourcesPath guard: `isPackaged` is true on orcad too, but
-  // `process.resourcesPath` is Electron-only and undefined under plain Node — joining
-  // it threw a TypeError rather than failing as a missing worker. A host without an
-  // Electron resources tree has no asar to look in, so fall back to the module dir and
-  // let the caller report a missing worker honestly.
-  if (layout.isPackaged && layout.resourcesPath) {
+  if (layout.isPackaged) {
     return join(layout.resourcesPath, 'app.asar', 'out', 'main', WORKER_ENTRY_FILENAME)
   }
   return join(layout.moduleDir, WORKER_ENTRY_FILENAME)

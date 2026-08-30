@@ -4,7 +4,7 @@ import type { PtyTransport } from './pty-transport'
 export const XTERM_COMPOSITION_SESSION_START_EVENT = 'xterm-composition-session-start'
 export const XTERM_COMPOSITION_SESSION_END_EVENT = 'xterm-composition-session-end'
 
-export type TerminalImeCompositionSessionDetail = {
+type CompositionSessionDetail = {
   id: number
   data?: string
   dataPendingReconciliation?: boolean
@@ -75,22 +75,16 @@ export function hasPendingTerminalImeComposition(
   return false
 }
 
-export function readTerminalImeCompositionSessionDetail(
-  event: Event
-): TerminalImeCompositionSessionDetail | null {
+function getCompositionDetail(event: Event): CompositionSessionDetail | null {
   if (!(event instanceof CustomEvent)) {
     return null
   }
-  const detail = event.detail as Partial<TerminalImeCompositionSessionDetail> | null
-  if (!detail) {
-    return null
-  }
-  const id = detail.id
-  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) {
+  const detail = event.detail as Partial<CompositionSessionDetail> | null
+  if (!detail || !Number.isSafeInteger(detail.id) || detail.id! <= 0) {
     return null
   }
   return {
-    id,
+    id: detail.id!,
     data: typeof detail.data === 'string' ? detail.data : undefined,
     dataPendingReconciliation: detail.dataPendingReconciliation === true
   }
@@ -115,7 +109,7 @@ export function installTerminalImeCompositionRoute(args: {
   }
 
   const onSessionStart = (event: Event): void => {
-    const detail = readTerminalImeCompositionSessionDetail(event)
+    const detail = getCompositionDetail(event)
     if (!detail || disposed) {
       return
     }
@@ -128,7 +122,7 @@ export function installTerminalImeCompositionRoute(args: {
   }
 
   const onSessionEnd = (event: Event): void => {
-    const detail = readTerminalImeCompositionSessionDetail(event)
+    const detail = getCompositionDetail(event)
     if (!detail) {
       return
     }

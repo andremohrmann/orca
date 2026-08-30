@@ -18,7 +18,6 @@ import { reportCliError } from './format'
 import { printHelp } from './help'
 import type { RuntimeClient } from './runtime-client'
 import { COMMAND_SPECS } from './specs'
-import { resolveOrchestrationCliExecutable } from './runtime/orchestration-recovery-command'
 
 export { COMMAND_SPECS } from './specs'
 export { buildCurrentWorktreeSelector, normalizeWorktreeSelector } from './selectors'
@@ -150,9 +149,7 @@ export async function main(
           undefined,
           undefined,
           remotePairingCode,
-          remoteEnvironment,
-          resolveOrchestrationCliExecutable(),
-          argv
+          remoteEnvironment
         )
         return client
       },

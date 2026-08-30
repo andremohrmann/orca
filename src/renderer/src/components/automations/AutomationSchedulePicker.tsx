@@ -7,8 +7,10 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import type { AutomationSchedulePreset } from '../../../../shared/automations-types'
-import { buildAutomationCronSchedule } from '../../../../shared/automation-schedule-occurrences'
-import { isValidAutomationSchedule } from '../../../../shared/automation-schedule-parsing'
+import {
+  buildAutomationCronSchedule,
+  isValidAutomationSchedule
+} from '../../../../shared/automation-schedules'
 import type { AutomationDraft } from './AutomationEditorDialog'
 import { AutomationCustomCronPanel } from './AutomationCustomCronPanel'
 import { AutomationTimeField, parseAutomationTime } from './AutomationTimeField'

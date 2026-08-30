@@ -148,7 +148,6 @@ describe('useIpcEvents rate-limit hydration', () => {
       clearTimeout: vi.fn(),
       api: {
         repos: makeEvents(),
-        automations: makeEvents(),
         worktrees: makeEvents(),
         keybindings: makeEvents(),
         settings: makeEvents(),
@@ -182,9 +181,7 @@ describe('useIpcEvents rate-limit hydration', () => {
           getBrowserDrivers: () => Promise.resolve([]),
           onTerminalFitOverrideChanged: () => () => {},
           onTerminalDriverChanged: () => () => {},
-          onBrowserDriverChanged: () => () => {},
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          onBrowserDriverChanged: () => () => {}
         },
         agentStatus: { onSet: () => () => {} },
         ui: makeEvents({

@@ -81,8 +81,9 @@ export function registerPetHandlers(): void {
     }
   })
 
-  ipcMain.handle('pet:importPetBundle', async (event): Promise<CustomPet | null> =>
-    importPetBundle(event)
+  ipcMain.handle(
+    'pet:importPetBundle',
+    async (event): Promise<CustomPet | null> => importPetBundle(event)
   )
 
   ipcMain.handle(

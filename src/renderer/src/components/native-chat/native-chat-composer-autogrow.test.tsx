@@ -23,13 +23,11 @@ vi.mock('./NativeChatAutocompleteMenus', () => ({
 }))
 
 import { NativeChatComposerField } from './NativeChatComposerField'
-import { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
 
 afterEach(() => cleanup())
 
-function TestField({ draft }: { draft: string }): React.JSX.Element {
-  const imeEnterGesture = useImeEnterGestureOwnership()
-  return (
+function renderField(draft: string): HTMLTextAreaElement {
+  render(
     <NativeChatComposerField
       textareaRef={createRef<HTMLTextAreaElement>()}
       draft={draft}
@@ -46,11 +44,11 @@ function TestField({ draft }: { draft: string }): React.JSX.Element {
       dictationDisabled={false}
       isDictating={false}
       isDictationHoldMode={false}
-      imeEnterGesture={imeEnterGesture}
       onDraftChange={vi.fn()}
       onTextareaSelect={vi.fn()}
       onKeyDown={vi.fn()}
-      onImeSettled={vi.fn()}
+      onCompositionStart={vi.fn()}
+      onCompositionEnd={vi.fn()}
       onPaste={vi.fn()}
       pickerListboxId="picker"
       onChoosePickerItem={vi.fn()}
@@ -66,10 +64,6 @@ function TestField({ draft }: { draft: string }): React.JSX.Element {
       sessionOptionsSnapshot={[]}
     />
   )
-}
-
-function renderField(draft: string): HTMLTextAreaElement {
-  render(<TestField draft={draft} />)
   return screen.getByRole('textbox') as HTMLTextAreaElement
 }
 

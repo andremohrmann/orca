@@ -35,7 +35,6 @@ export function useSourceControlActionModel({
   prGenerating,
   isCreatingPr,
   hostedReviewReviewLabel,
-  hasSuppressedGitHubPRState,
   conflictOperation,
   effectiveBaseRef
 }: {
@@ -61,14 +60,9 @@ export function useSourceControlActionModel({
   prGenerating: boolean
   isCreatingPr: boolean
   hostedReviewReviewLabel: string
-  hasSuppressedGitHubPRState: boolean
   conflictOperation: DropdownInput['conflictOperation']
   effectiveBaseRef: string | null
 }) {
-  const createReviewEligibility = hasSuppressedGitHubPRState ? null : hostedReviewCreation
-  const createReviewHeaderEligibility = hasSuppressedGitHubPRState
-    ? null
-    : hostedReviewCreationForHeader
   const hasUnstagedChanges = grouped.unstaged.length > 0 || grouped.untracked.length > 0
   const hasStageableChanges = useMemo(
     () =>
@@ -99,7 +93,7 @@ export function useSourceControlActionModel({
         prState: hostedReviewStateForActions,
         isPRStateLoading: isHostedReviewStateLoading,
         inFlightRemoteOpKind,
-        hostedReviewCreation: createReviewEligibility,
+        hostedReviewCreation,
         branchCommitsAhead:
           branchSummary?.status === 'ready' ? (branchSummary.commitsAhead ?? 0) : undefined,
         hasCurrentBranch: Boolean(branchName),
@@ -116,7 +110,7 @@ export function useSourceControlActionModel({
       isAbortingOperation,
       isRemoteOperationActive,
       inFlightRemoteOpKind,
-      createReviewEligibility,
+      hostedReviewCreation,
       isHostedReviewStateLoading,
       hostedReviewStateForActions,
       canUseHostedReviewPushTarget,
@@ -130,9 +124,6 @@ export function useSourceControlActionModel({
   )
 
   const createPrHeaderAction = useMemo(() => {
-    if (hasSuppressedGitHubPRState) {
-      return null
-    }
     const action = resolveCreatePrHeaderAction({
       stagedCount: grouped.staged.length,
       hasUnstagedChanges,
@@ -146,9 +137,9 @@ export function useSourceControlActionModel({
       prState: hostedReviewState,
       isPRStateLoading: isHostedReviewStateLoading,
       inFlightRemoteOpKind,
-      hostedReviewCreation: createReviewHeaderEligibility,
+      hostedReviewCreation: hostedReviewCreationForHeader,
       isHostedReviewCreationLoading:
-        isHostedReviewCreationLoading && createReviewHeaderEligibility !== null,
+        isHostedReviewCreationLoading && hostedReviewCreationForHeader !== null,
       branchCommitsAhead:
         branchSummary?.status === 'ready' ? (branchSummary.commitsAhead ?? 0) : undefined,
       hasCurrentBranch: Boolean(branchName),
@@ -179,10 +170,9 @@ export function useSourceControlActionModel({
     grouped.staged.length,
     hasPartiallyStagedChanges,
     hasStageableChanges,
-    hasSuppressedGitHubPRState,
     hasUnstagedChanges,
     hostedReviewState,
-    createReviewHeaderEligibility,
+    hostedReviewCreationForHeader,
     hostedReviewReviewLabel,
     inFlightRemoteOpKind,
     isAbortingOperation,
@@ -198,7 +188,7 @@ export function useSourceControlActionModel({
   ])
   const directCreatePrAction =
     createPrHeaderAction?.kind === 'create_pr' &&
-    createReviewEligibility?.canCreate === true &&
+    hostedReviewCreation?.canCreate === true &&
     (!createPrHeaderAction.disabled || isCreatingPr || prGenerating)
       ? createPrHeaderAction
       : null
@@ -219,7 +209,7 @@ export function useSourceControlActionModel({
         prState: hostedReviewStateForActions,
         isPRStateLoading: isHostedReviewStateLoading,
         inFlightRemoteOpKind,
-        hostedReviewCreation: createReviewEligibility,
+        hostedReviewCreation,
         isPullRequestOperationActive: prGenerating || isCreatingPr || isCreatePrIntentInFlight,
         branchCommitsAhead:
           branchSummary?.status === 'ready' ? (branchSummary.commitsAhead ?? 0) : undefined,
@@ -238,7 +228,7 @@ export function useSourceControlActionModel({
       isAbortingOperation,
       isRemoteOperationActive,
       inFlightRemoteOpKind,
-      createReviewEligibility,
+      hostedReviewCreation,
       isCreatingPr,
       isCreatePrIntentInFlight,
       isHostedReviewStateLoading,

@@ -12,7 +12,6 @@ type QuickCreationExecutionInput = Pick<
   | 'linkedGitLabMR'
   | 'normalizedSparseDirectories'
   | 'onCreated'
-  | 'parentWorktreeId'
   | 'persistDraft'
   | 'persistSetupAgentStartupPolicy'
   | 'prepareQuickSubmit'
@@ -59,7 +58,6 @@ export function useQuickCreationExecution(input: QuickCreationExecutionInput) {
     linkedGitLabMR,
     normalizedSparseDirectories,
     onCreated,
-    parentWorktreeId,
     persistDraft,
     persistSetupAgentStartupPolicy,
     prepareQuickSubmit,
@@ -219,7 +217,6 @@ export function useQuickCreationExecution(input: QuickCreationExecutionInput) {
         linkedLinearIssueWorkspaceId,
         linkedLinearIssueOrganizationUrlKey,
         branchNameOverride: effectiveBranchNameOverride,
-        parentWorktreeId,
         workspaceStatus: resolvedInitialWorkspaceStatus,
         linkedGitLabMR,
         linkedGitLabIssue,
@@ -262,7 +259,6 @@ export function useQuickCreationExecution(input: QuickCreationExecutionInput) {
       linkedGitLabMR,
       normalizedSparseDirectories,
       onCreated,
-      parentWorktreeId,
       persistDraft,
       persistSetupAgentStartupPolicy,
       prepareQuickSubmit,

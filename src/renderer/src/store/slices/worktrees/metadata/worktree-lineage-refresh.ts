@@ -22,21 +22,6 @@ import type {
   WorktreeWithLineage
 } from '../listing/worktree-slice-types'
 
-/** Per-row baseline the reply is merged against, so any local write since then outranks it. */
-type LineageAtRequestStart = {
-  worktreeLineageById: Readonly<Record<string, WorktreeLineage>>
-  workspaceLineageByChildKey: Readonly<Record<string, WorkspaceLineage>>
-}
-
-function captureLineageAtRequestStart(
-  state: Pick<AppState, 'worktreeLineageById' | 'workspaceLineageByChildKey'>
-): LineageAtRequestStart {
-  return {
-    worktreeLineageById: state.worktreeLineageById,
-    workspaceLineageByChildKey: state.workspaceLineageByChildKey
-  }
-}
-
 export async function listWorktreeLineageForRuntime(
   settings: AppState['settings'],
   options: BackgroundRuntimeRefreshOptions = {}
@@ -49,9 +34,7 @@ export async function listWorktreeLineageForRuntime(
     lineage?: Record<string, WorktreeLineage>
     workspaceLineage?: Record<string, WorkspaceLineage>
   }
-  const normalizeLineageResponse = (
-    value: Record<string, WorktreeLineage> | LineageListResponse
-  ) =>
+  const normalizeLineageResponse = (value: Record<string, WorktreeLineage> | LineageListResponse) =>
     Object.hasOwn(value, 'lineage') || Object.hasOwn(value, 'workspaceLineage')
       ? {
           worktreeLineageById: (value as LineageListResponse).lineage ?? {},
@@ -223,21 +206,14 @@ export function applyHostLineageRefresh(
   lineage: {
     worktreeLineageById: Readonly<Record<string, WorktreeLineage>>
     workspaceLineageByChildKey: Readonly<Record<string, WorkspaceLineage>>
-  },
-  lineageAtRequestStart?: LineageAtRequestStart
+  }
 ): void {
   set((s) => {
-    const worktreeLineageById = mergeLineageForHost(
-      s,
-      hostId,
-      lineage.worktreeLineageById,
-      lineageAtRequestStart?.worktreeLineageById
-    )
+    const worktreeLineageById = mergeLineageForHost(s, hostId, lineage.worktreeLineageById)
     const workspaceLineageByChildKey = mergeWorkspaceLineageForHost(
       s,
       hostId,
-      lineage.workspaceLineageByChildKey,
-      lineageAtRequestStart?.workspaceLineageByChildKey
+      lineage.workspaceLineageByChildKey
     )
     if (
       worktreeLineageById === s.worktreeLineageById &&
@@ -252,38 +228,24 @@ export function applyHostLineageRefresh(
 export async function refreshWorktreeLineageForSettings(
   settings: AppState['settings'],
   set: Parameters<StateCreator<AppState>>[0],
-  getState: () => Pick<AppState, 'worktreeLineageById' | 'workspaceLineageByChildKey'>,
   options: BackgroundRuntimeRefreshOptions = {}
 ): Promise<void> {
-  const lineageAtRequestStart = captureLineageAtRequestStart(getState())
   const lineage = await listWorktreeLineageForRuntime(settings, options)
-  applyHostLineageRefresh(
-    set,
-    getSettingsFocusedExecutionHostId(settings),
-    lineage,
-    lineageAtRequestStart
-  )
+  applyHostLineageRefresh(set, getSettingsFocusedExecutionHostId(settings), lineage)
 }
 
 export async function refreshRemoteWorktreeLineageBestEffort(
   settings: AppState['settings'],
-  set: (partial: Partial<AppState> | ((state: AppState) => Partial<AppState>)) => void,
-  getState: () => Pick<AppState, 'worktreeLineageById' | 'workspaceLineageByChildKey'>
+  set: (partial: Partial<AppState> | ((state: AppState) => Partial<AppState>)) => void
 ): Promise<void> {
   if (getActiveRuntimeTarget(settings).kind === 'local') {
     return
   }
   try {
-    const lineageAtRequestStart = captureLineageAtRequestStart(getState())
     const lineage = await listWorktreeLineageForRuntime(settings, {
       reuseRecentCompatibilityFailure: true
     })
-    applyHostLineageRefresh(
-      set,
-      getSettingsFocusedExecutionHostId(settings),
-      lineage,
-      lineageAtRequestStart
-    )
+    applyHostLineageRefresh(set, getSettingsFocusedExecutionHostId(settings), lineage)
   } catch (err) {
     // Why: lineage is supplemental, so a remote timeout here must not discard a successful worktree refresh.
     console.error('Failed to fetch worktree lineage:', err)

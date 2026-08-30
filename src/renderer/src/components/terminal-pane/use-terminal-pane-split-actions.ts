@@ -26,7 +26,6 @@ type UseTerminalPaneSplitActionsDeps = {
   paneCwdRef: React.RefObject<PaneCwdMap>
   contextPaneIdRef: React.RefObject<number | null>
   tabId: string
-  worktreeId: string
   fallbackCwd: string
   resolveMenuPane: () => ManagedPane | null
 }
@@ -42,7 +41,6 @@ export function useTerminalPaneSplitActions({
   paneCwdRef,
   contextPaneIdRef,
   tabId,
-  worktreeId,
   fallbackCwd,
   resolveMenuPane
 }: UseTerminalPaneSplitActionsDeps): TerminalPaneSplitActions {
@@ -57,8 +55,6 @@ export function useTerminalPaneSplitActions({
         return
       }
       splitTerminalPaneWithInheritedCwd({
-        worktreeId,
-        tabId,
         manager,
         getManager: () => managerRef.current,
         paneTransports: paneTransportsRef.current,
@@ -69,7 +65,7 @@ export function useTerminalPaneSplitActions({
         source
       })
     },
-    [fallbackCwd, managerRef, paneCwdRef, paneTransportsRef, resolveMenuPane, tabId, worktreeId]
+    [fallbackCwd, managerRef, paneCwdRef, paneTransportsRef, resolveMenuPane]
   )
 
   const onSplitRight = (): void => splitWithInheritedCwd('vertical')

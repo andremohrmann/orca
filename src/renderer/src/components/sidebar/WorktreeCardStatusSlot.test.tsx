@@ -9,10 +9,8 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/components/ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <span data-tooltip-root="">{children}</span>,
-  TooltipContent: ({ children }: { children: ReactNode }) => (
-    <span data-tooltip-content="">{children}</span>
-  ),
+  Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
@@ -173,7 +171,6 @@ describe('WorktreeCardStatusSlot', () => {
 
     expect(markup).toContain('Active · Mark as unread')
     expect(markup).toContain('bg-emerald-500')
-    expect(markup.match(/data-tooltip-root/g)).toHaveLength(1)
   })
 
   it('keeps the quiet active dot ahead of PR status by default', () => {
@@ -215,7 +212,6 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).toContain('size-[13px] translate-x-px')
     expect(markup).toContain('text-rose-500/85')
     expect(markup).not.toContain('bg-emerald-500')
-    expect(markup).not.toContain('data-tooltip-root')
   })
 
   it('uses the unified compact review glyph for GitLab MR status', () => {
@@ -281,7 +277,7 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).not.toContain('bg-neutral-500/40')
   })
 
-  it('uses a branch icon with branch-only accessible copy by default', () => {
+  it('uses a branch icon with branch-only tooltip copy by default', () => {
     const markup = renderToStaticMarkup(
       <WorktreeCardStatusSlot
         worktreeId="wt-1"
@@ -302,10 +298,9 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).toContain('size-[13px] translate-x-px text-muted-foreground/70')
     expect(markup).toContain('text-muted-foreground/70')
     expect(markup).not.toContain('bg-emerald-500')
-    expect(markup).not.toContain('data-tooltip-root')
   })
 
-  it('uses context-aware branch or folder path accessible copy', () => {
+  it('uses context-aware branch or folder path tooltip copy', () => {
     const markup = renderToStaticMarkup(
       <WorktreeCardStatusSlot
         worktreeId="wt-1"
@@ -323,7 +318,6 @@ describe('WorktreeCardStatusSlot', () => {
 
     expect(markup).toContain('Branch or folder path')
     expect(markup).toContain('lucide-git-branch')
-    expect(markup).not.toContain('data-tooltip-root')
   })
 
   it('keeps the quiet dot when the row has no branch identity', () => {
@@ -344,7 +338,6 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).toContain('Active')
     expect(markup).toContain('bg-emerald-500')
     expect(markup).not.toContain('lucide-git-branch')
-    expect(markup).not.toContain('data-tooltip-root')
   })
 
   it('keeps working activity ahead of PR status in new card style', () => {
@@ -366,8 +359,6 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).toContain('Working')
     expect(markup).toContain('inline-flex size-5 items-center justify-center')
     expect(markup).toContain('border-yellow-500')
-    expect(markup).toContain('data-tooltip-root')
-    expect(markup).toContain('data-tooltip-content="">Working')
     expect(markup).not.toContain('PR checks: Failed')
   })
 
@@ -390,8 +381,6 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).toContain('Needs permission')
     expect(markup).toContain('lucide-message-circle-question-mark')
     expect(markup).toContain('text-agent-question')
-    expect(markup).toContain('data-tooltip-root')
-    expect(markup).toContain('data-tooltip-content="">Needs permission')
     expect(markup).not.toContain('PR checks: Failed')
   })
 
@@ -444,7 +433,6 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).not.toContain('lucide-bell')
     expect(markup).not.toContain('text-amber-500')
     expect(markup).not.toContain('bg-emerald-500')
-    expect(markup).not.toContain('data-tooltip-root')
   })
 
   it('overlays an unread badge on the branch icon in new card style', () => {
@@ -473,6 +461,5 @@ describe('WorktreeCardStatusSlot', () => {
     expect(markup).not.toContain('lucide-bell')
     expect(markup).not.toContain('text-amber-500')
     expect(markup).not.toContain('bg-emerald-500')
-    expect(markup).not.toContain('data-tooltip-root')
   })
 })

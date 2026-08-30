@@ -102,8 +102,7 @@ describe('getDiff', () => {
 
     expect(gitExecFileAsyncBufferMock).toHaveBeenCalledWith(['show', ':src/file.ts'], {
       cwd: '/repo',
-      maxBuffer: 10 * 1024 * 1024,
-      preferWslDirectGit: true
+      maxBuffer: 10 * 1024 * 1024
     })
     expect(readFileMock).toHaveBeenCalledWith(path.join('/repo', 'src/file.ts'))
     expect(result).toEqual({
@@ -123,8 +122,7 @@ describe('getDiff', () => {
 
     expect(gitExecFileAsyncBufferMock).toHaveBeenCalledWith(['show', ':src/file.ts'], {
       cwd: '/repo',
-      maxBuffer: 10 * 1024 * 1024,
-      preferWslDirectGit: true
+      maxBuffer: 10 * 1024 * 1024
     })
   })
 
@@ -141,8 +139,7 @@ describe('getDiff', () => {
       ['show', '--end-of-options', 'HEAD:src/file.ts'],
       {
         cwd: '/repo',
-        maxBuffer: 10 * 1024 * 1024,
-        preferWslDirectGit: true
+        maxBuffer: 10 * 1024 * 1024
       }
     )
     expect(result.originalContent).toBe('head-content\n')
@@ -161,19 +158,15 @@ describe('getDiff', () => {
   })
 
   it('does not read oversized working-tree files into memory', async () => {
-    const workingTreePath = path.join('/repo', 'dist/large.log')
     gitExecFileAsyncBufferMock.mockResolvedValueOnce({ stdout: Buffer.from('index-content\n') })
-    // Why by path: the diff also stats git-dir entries to stamp its inputs, so a
-    // one-shot queue would hand the oversized size to whichever stat ran first.
-    statMock.mockImplementation(async (target: string) =>
-      target === workingTreePath
-        ? { isFile: () => true, size: 10 * 1024 * 1024 + 1 }
-        : { isFile: () => true, size: 12 }
-    )
+    statMock.mockResolvedValueOnce({
+      isFile: () => true,
+      size: 10 * 1024 * 1024 + 1
+    })
 
     const result = await getDiff('/repo', 'dist/large.log', false)
 
-    expect(readFileMock).not.toHaveBeenCalledWith(workingTreePath)
+    expect(readFileMock).not.toHaveBeenCalled()
     expect(result.kind).toBe('binary')
     expect(result.modifiedIsBinary).toBe(true)
     expect(result.modifiedContent).toBe('')
@@ -266,14 +259,8 @@ describe('getDiff', () => {
 
   it('flags a deleted image so previewers can fall back to the original bytes', async () => {
     const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00])
-    const workingTreePath = path.join('/repo', 'assets/deleted.png')
     gitExecFileAsyncBufferMock.mockResolvedValueOnce({ stdout: pngBuffer })
-    statMock.mockImplementation(async (target: string) => {
-      if (target === workingTreePath) {
-        throw Object.assign(new Error('missing'), { code: 'ENOENT' })
-      }
-      return { isFile: () => true, size: 12 }
-    })
+    statMock.mockRejectedValueOnce(Object.assign(new Error('missing'), { code: 'ENOENT' }))
 
     const result = await getDiff('/repo', 'assets/deleted.png', false)
 
@@ -288,15 +275,9 @@ describe('getDiff', () => {
 
   it('does not treat an unreadable working-tree image as a deletion', async () => {
     const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00])
-    const workingTreePath = path.join('/repo', 'assets/unreadable.png')
     gitExecFileAsyncBufferMock.mockResolvedValueOnce({ stdout: pngBuffer })
-    statMock.mockImplementation(async () => ({ isFile: () => true, size: 5 }))
-    readFileMock.mockImplementation(async (target: string) => {
-      if (target === workingTreePath) {
-        throw new Error('EIO')
-      }
-      return Buffer.from('')
-    })
+    statMock.mockResolvedValueOnce({ isFile: () => true, size: 5 })
+    readFileMock.mockRejectedValueOnce(new Error('EIO'))
 
     const result = await getDiff('/repo', 'assets/unreadable.png', false)
 

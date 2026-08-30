@@ -26,7 +26,6 @@ import {
   type PairingCandidateClient
 } from './mobile-relay-physical-client'
 import { racePairingCandidates, type PairingCandidate } from './pairing-candidate-race'
-import { attributePairingLogPath } from './pairing-log-path'
 import { resolvePairingInviteThroughDirector } from './mobile-relay-invite-director'
 import { createRecoveringPairingRelayCandidate } from './pairing-relay-candidate'
 import { createPairingRelayLogger } from './pairing-relay-log'
@@ -156,7 +155,7 @@ async function runPairing(
     offer.endpoint,
     offer.deviceToken,
     offer.publicKeyB64,
-    { ...connectOptions, onLog: attributePairingLogPath('direct', connectOptions?.onLog) }
+    connectOptions
   )
   clients.add(directClient)
   const candidates: PairingCandidate[] = [{ path: 'direct', client: directClient }]
@@ -192,7 +191,7 @@ async function runPairing(
         await dependencies.updateJournal(journal.metadata.journalId, () => journal!.metadata)
       },
       now: dependencies.now,
-      onLog: attributePairingLogPath('relay', connectOptions?.onLog)
+      onLog: connectOptions?.onLog
     })
     clients.add(relayClient)
     candidates.push({ path: 'relay', client: relayClient })

@@ -107,10 +107,13 @@ describe('remote filesystem watcher batching', () => {
     await handlers['fs:watchWorktree']({ sender }, WATCH_ARGS)
 
     watchCallbacks[0](
-      Array.from({ length: 6_000 }, (_unused, index): FsChangeEvent => ({
-        kind: 'update',
-        absolutePath: `${WORKTREE_PATH}/file-${index}.ts`
-      }))
+      Array.from(
+        { length: 6_000 },
+        (_unused, index): FsChangeEvent => ({
+          kind: 'update',
+          absolutePath: `${WORKTREE_PATH}/file-${index}.ts`
+        })
+      )
     )
     await vi.advanceTimersByTimeAsync(150)
 

@@ -51,13 +51,6 @@ export function hasHostedReviewLinkUpdates(updates: Partial<WorktreeMeta>): bool
   return HOSTED_REVIEW_LINK_KEYS.some((key) => key in updates) || 'pushTarget' in updates
 }
 
-export function hasChangedHostedReviewLinkUpdates(
-  updates: Partial<WorktreeMeta>,
-  worktree: Worktree
-): boolean {
-  return HOSTED_REVIEW_LINK_KEYS.some((key) => key in updates && updates[key] !== worktree[key])
-}
-
 export function getHostedReviewLinkMutationGeneration(worktreeId: string): number {
   return hostedReviewLinkMutationGenerationByWorktreeId.get(worktreeId) ?? 0
 }

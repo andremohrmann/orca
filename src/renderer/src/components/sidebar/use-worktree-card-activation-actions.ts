@@ -107,13 +107,9 @@ export function useWorktreeCardActivationActions({
     // Inline rename has no surface for the failure; the store already logs and
     // refetches, which reverts the optimistic title in place.
     async (displayName: string): Promise<void> => {
-      await updateWorktreeMeta(
-        worktree.id,
-        { displayName },
-        { executionHostId: worktree.hostId ?? 'local' }
-      )
+      await updateWorktreeMeta(worktree.id, { displayName })
     },
-    [updateWorktreeMeta, worktree.hostId, worktree.id]
+    [updateWorktreeMeta, worktree.id]
   )
 
   const handleDoubleClick = useCallback(
@@ -127,7 +123,6 @@ export function useWorktreeCardActivationActions({
       openModal('edit-meta', {
         worktreeId: worktree.id,
         repoId: worktree.repoId,
-        executionHostId: worktree.hostId,
         currentDisplayName: worktree.displayName,
         currentIssue: worktree.linkedIssue,
         currentPR: worktree.linkedPR,
@@ -139,7 +134,6 @@ export function useWorktreeCardActivationActions({
       affiliateListMode,
       worktree.comment,
       worktree.displayName,
-      worktree.hostId,
       worktree.id,
       worktree.linkedIssue,
       worktree.linkedPR,
@@ -151,13 +145,9 @@ export function useWorktreeCardActivationActions({
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
       event.stopPropagation()
-      updateWorktreeMeta(
-        worktree.id,
-        { isUnread: !worktree.isUnread },
-        { executionHostId: worktree.hostId ?? 'local' }
-      )
+      updateWorktreeMeta(worktree.id, { isUnread: !worktree.isUnread })
     },
-    [worktree.hostId, worktree.id, worktree.isUnread, updateWorktreeMeta]
+    [worktree.id, worktree.isUnread, updateWorktreeMeta]
   )
 
   return { handleClick, handleRenameTitle, handleDoubleClick, handleToggleUnreadQuick }

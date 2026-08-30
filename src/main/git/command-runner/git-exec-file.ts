@@ -13,7 +13,6 @@ import { resolveCommand, type ResolvedCommand } from './wsl-command-resolution'
 import type { GitExecOptions } from './git-exec-options'
 import { execFileCapture, execFileCaptureToTermination } from './exec-file-capture'
 import {
-  pendingWslDirectGitReadEnvironment,
   directWslGitExitCode,
   disableDirectWslGitAfterSuccessfulFallback,
   invalidateMissingDirectWslGit,
@@ -39,10 +38,6 @@ async function gitExecFileAsyncUnlocked(
         await prepareWslLinkedWorktreeGitRouting(options.cwd, options.wslDistro, {
           signal: options.signal
         })
-      }
-      const readEnvironmentReady = pendingWslDirectGitReadEnvironment(args, options)
-      if (readEnvironmentReady) {
-        await readEnvironmentReady
       }
       let resolved = resolveGitCommand(args, options, false, options.captureWslLoginShellOutput)
       const environmentReady = prepareWindowsHostGitEnvironment(
@@ -132,14 +127,10 @@ export function gitExecFileAsync(
  */
 export async function gitExecFileAsyncBuffer(
   args: string[],
-  options: { cwd: string; maxBuffer?: number; wslDistro?: string; preferWslDirectGit?: boolean }
+  options: { cwd: string; maxBuffer?: number; wslDistro?: string }
 ): Promise<{ stdout: Buffer }> {
   if (isWslLinkedWorktreeGitRoutingCandidate(options.cwd, options.wslDistro)) {
     await prepareWslLinkedWorktreeGitRouting(options.cwd, options.wslDistro)
-  }
-  const readEnvironmentReady = pendingWslDirectGitReadEnvironment(args, options)
-  if (readEnvironmentReady) {
-    await readEnvironmentReady
   }
   // `git show` is a read, so this normally runs with no shell at all. The fence
   // still matters for the login-shell fallback: these are raw blob bytes going

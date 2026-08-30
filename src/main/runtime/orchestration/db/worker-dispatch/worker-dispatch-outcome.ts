@@ -37,11 +37,7 @@ export function failWorkerStart(
   this: OrchestrationDb,
   dispatchId: string,
   stage: string,
-  reason: string,
-  // Why (#16095): revocation exists to stop a worker acting on a dispatch that never landed. A
-  // prompt whose turn start went unobserved provably landed, so its worker keeps the authority its
-  // own report needs.
-  options: { retainCapability?: boolean } = {}
+  reason: string
 ): WorkerDispatchRow {
   this.db.exec('BEGIN IMMEDIATE')
   try {
@@ -54,11 +50,10 @@ export function failWorkerStart(
       .prepare(
         `UPDATE dispatch_contexts
          SET status = 'failed', last_failure = ?, completed_at = datetime('now'),
-             capability_revoked_at = CASE WHEN ? = 1 THEN capability_revoked_at
-               ELSE COALESCE(capability_revoked_at, datetime('now')) END
+             capability_revoked_at = COALESCE(capability_revoked_at, datetime('now'))
          WHERE id = ?`
       )
-      .run(reason, options.retainCapability ? 1 : 0, dispatchId)
+      .run(reason, dispatchId)
     this.db
       .prepare(
         `UPDATE worker_dispatches

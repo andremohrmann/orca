@@ -225,8 +225,9 @@ describe('createRuntimeClientEventsSync', () => {
   it('backs off exponentially with a cap while an environment keeps failing', async () => {
     vi.useFakeTimers()
     try {
-      const subscribe = vi.fn((): Promise<RuntimeClientEventSubscriptionHandle> =>
-        Promise.reject(new Error('unreachable'))
+      const subscribe = vi.fn(
+        (): Promise<RuntimeClientEventSubscriptionHandle> =>
+          Promise.reject(new Error('unreachable'))
       )
       const sync = createRuntimeClientEventsSync({
         getDesiredEnvironmentIds: () => ['A'],
@@ -265,8 +266,9 @@ describe('createRuntimeClientEventsSync', () => {
   it('applies jitter below the full backoff delay', async () => {
     vi.useFakeTimers()
     try {
-      const subscribe = vi.fn((): Promise<RuntimeClientEventSubscriptionHandle> =>
-        Promise.reject(new Error('unreachable'))
+      const subscribe = vi.fn(
+        (): Promise<RuntimeClientEventSubscriptionHandle> =>
+          Promise.reject(new Error('unreachable'))
       )
       const sync = createRuntimeClientEventsSync({
         getDesiredEnvironmentIds: () => ['A'],
@@ -342,8 +344,9 @@ describe('createRuntimeClientEventsSync', () => {
     vi.useFakeTimers()
     try {
       let subscriptionKey = 'A:1'
-      const subscribe = vi.fn((): Promise<RuntimeClientEventSubscriptionHandle> =>
-        Promise.reject(new Error('unreachable'))
+      const subscribe = vi.fn(
+        (): Promise<RuntimeClientEventSubscriptionHandle> =>
+          Promise.reject(new Error('unreachable'))
       )
       const sync = createRuntimeClientEventsSync({
         getDesiredEnvironmentIds: () => ['A'],
@@ -376,8 +379,9 @@ describe('createRuntimeClientEventsSync', () => {
   it('an external sync retries a waiting environment immediately (recovery path)', async () => {
     vi.useFakeTimers()
     try {
-      const subscribe = vi.fn((): Promise<RuntimeClientEventSubscriptionHandle> =>
-        Promise.reject(new Error('unreachable'))
+      const subscribe = vi.fn(
+        (): Promise<RuntimeClientEventSubscriptionHandle> =>
+          Promise.reject(new Error('unreachable'))
       )
       const sync = createRuntimeClientEventsSync({
         getDesiredEnvironmentIds: () => ['A'],

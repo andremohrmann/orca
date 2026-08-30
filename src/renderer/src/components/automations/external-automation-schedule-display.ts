@@ -2,7 +2,7 @@ import type {
   ExternalAutomationJob,
   ExternalAutomationManager
 } from '../../../../shared/automations-types'
-import { isValidAutomationCronSchedule } from '../../../../shared/automation-schedule-parsing'
+import { isValidAutomationCronSchedule } from '../../../../shared/automation-schedules'
 import { formatUiAutomationSchedule } from './automation-schedule-label'
 import { translate } from '@/i18n/i18n'
 

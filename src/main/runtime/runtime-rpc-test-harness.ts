@@ -1,7 +1,6 @@
 import { createConnection, type Socket } from 'node:net'
 import type { OrchestrationDb } from './orchestration/db'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
-import { createRootDispatch } from './orchestration/db/root-dispatch-test-fixture'
 
 export async function sendRequest(
   endpoint: string,
@@ -113,6 +112,6 @@ export function seedSupervisedAskWorkers(db: OrchestrationDb, workerHandles: str
   })
   for (const workerHandle of workerHandles) {
     const task = db.createTask({ spec: 'Wait for coordinator input', runId: run.id })
-    createRootDispatch(db, task.id, workerHandle)
+    db.createDispatchContext(task.id, workerHandle)
   }
 }

@@ -2,30 +2,37 @@ import { describe, expect, it } from 'vitest'
 import { resolveNewWorktreeFormSheetVisible } from './new-worktree-form-sheet-visibility'
 
 describe('resolveNewWorktreeFormSheetVisible', () => {
-  it('keeps the form under the source picker', () => {
-    expect(resolveNewWorktreeFormSheetVisible({ modalVisible: true, drawerView: 'source' })).toBe(
-      true
-    )
-  })
-
-  // The host Modal stays mounted across every drawer swap, so a transition that
-  // renders no sheet is a transparent tap-swallowing screen with no way out if
-  // the queued transition never lands.
-  it('never leaves the mounted modal without a sheet during a drawer swap', () => {
+  it('keeps the form under the source picker and its close transition', () => {
     expect(
-      resolveNewWorktreeFormSheetVisible({ modalVisible: true, drawerView: 'transition' })
+      resolveNewWorktreeFormSheetVisible({
+        modalVisible: true,
+        drawerView: 'source',
+        formPinnedUnderSource: true
+      })
+    ).toBe(true)
+    expect(
+      resolveNewWorktreeFormSheetVisible({
+        modalVisible: true,
+        drawerView: 'transition',
+        formPinnedUnderSource: true
+      })
     ).toBe(true)
   })
 
-  it('yields the window to the content-sized pickers and the trust prompt', () => {
-    for (const drawerView of ['project', 'runTarget', 'agent', 'trust']) {
-      expect(resolveNewWorktreeFormSheetVisible({ modalVisible: true, drawerView })).toBe(false)
-    }
-  })
-
-  it('hides everything once the modal closes', () => {
-    expect(resolveNewWorktreeFormSheetVisible({ modalVisible: false, drawerView: 'form' })).toBe(
-      false
-    )
+  it('hides the form for sequential repo/agent transitions', () => {
+    expect(
+      resolveNewWorktreeFormSheetVisible({
+        modalVisible: true,
+        drawerView: 'transition',
+        formPinnedUnderSource: false
+      })
+    ).toBe(false)
+    expect(
+      resolveNewWorktreeFormSheetVisible({
+        modalVisible: true,
+        drawerView: 'project',
+        formPinnedUnderSource: false
+      })
+    ).toBe(false)
   })
 })

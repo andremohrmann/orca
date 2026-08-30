@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type Database from '../../sqlite/sync-database'
 import { OrchestrationDb } from './db'
-import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('dispatch failure idempotency', () => {
   it('counts an active dispatch failure only once', () => {
     const db = new OrchestrationDb(':memory:')
     const task = db.createTask({ spec: 'work' })
-    const dispatch = createRootDispatch(db, task.id, 'term_worker')
+    const dispatch = db.createDispatchContext(task.id, 'term_worker')
 
     expect(db.failDispatch(dispatch.id, 'exit')?.failure_count).toBe(1)
     const duplicate = db.failDispatch(dispatch.id, 'duplicate escalation')
@@ -20,7 +19,7 @@ describe('dispatch failure idempotency', () => {
   it('does not overwrite a completed dispatch', () => {
     const db = new OrchestrationDb(':memory:')
     const task = db.createTask({ spec: 'work' })
-    const dispatch = createRootDispatch(db, task.id, 'term_worker')
+    const dispatch = db.createDispatchContext(task.id, 'term_worker')
     db.completeDispatch(dispatch.id)
 
     const lateFailure = db.failDispatch(dispatch.id, 'late exit')
@@ -34,7 +33,7 @@ describe('dispatch failure idempotency', () => {
     const db = new OrchestrationDb(':memory:')
     const sqlite = (db as unknown as { db: Database.Database }).db
     const task = db.createTask({ spec: 'work' })
-    const dispatch = createRootDispatch(db, task.id, 'term_worker')
+    const dispatch = db.createDispatchContext(task.id, 'term_worker')
     sqlite.exec(`
       CREATE TRIGGER reject_task_failure_update
       BEFORE UPDATE ON tasks WHEN OLD.id = '${task.id}'

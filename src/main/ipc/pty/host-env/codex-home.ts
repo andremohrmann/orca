@@ -114,10 +114,8 @@ type ManagedCodexAuthResolutionArgs = {
   getSettings: () => GlobalSettings | undefined
   requiredCodexHomePath?: string
   target: CodexAccountSelectionTarget
-  resolveCurrent: () => string | null | Promise<string | null>
-  resolveAfterUnavailable: (
-    unavailableManagedHomePath: string
-  ) => string | null | Promise<string | null>
+  resolveCurrent: () => string | null
+  resolveAfterUnavailable: (unavailableManagedHomePath: string) => string | null
 }
 
 export function resolveCodexHomeAfterManagedAuthReadiness(
@@ -152,7 +150,7 @@ async function continueCodexHomeAfterManagedAuthWait(
       if (args.requiredCodexHomePath) {
         return selectedCodexHomePath
       }
-      const currentCodexHomePath = await args.resolveCurrent()
+      const currentCodexHomePath = args.resolveCurrent()
       if (codexHomeSelectionsEqual(selectedCodexHomePath, currentCodexHomePath)) {
         return selectedCodexHomePath
       }
@@ -174,7 +172,7 @@ async function continueCodexHomeAfterManagedAuthWait(
     if (args.requiredCodexHomePath) {
       throw new Error(CODEX_RESUME_AUTH_UNAVAILABLE_MESSAGE)
     }
-    selectedCodexHomePath = await args.resolveAfterUnavailable(selectedCodexHomePath!)
+    selectedCodexHomePath = args.resolveAfterUnavailable(selectedCodexHomePath!)
     if (attempt === 1) {
       break
     }

@@ -1,4 +1,4 @@
-import type { WorktreeMetaBatchUpdate, WorktreeSlice } from '../../worktree-helpers'
+import type { WorktreeSlice } from '../../worktree-helpers'
 import type { WorktreeSliceGet, WorktreeSliceSet } from '../listing/worktree-slice-types'
 import {
   getActiveSidebarWorkspaceId,
@@ -9,9 +9,11 @@ import {
   isValidResolvedWorktreeLineageEdge
 } from '../../../../../../shared/resolved-worktree-lineage'
 import type { WorktreeLineage } from '../../../../../../shared/worktree/lineage-types'
+import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
 import type { Worktree } from '../../../../../../shared/worktree/types'
 
 type WorktreeWithEmbeddedLineage = Worktree & { lineage?: WorktreeLineage | null }
+
 function getProjectedLineage(get: WorktreeSliceGet, worktree: Worktree): WorktreeLineage | null {
   if (Object.hasOwn(get().worktreeLineageById, worktree.id)) {
     return get().worktreeLineageById[worktree.id] ?? null
@@ -64,7 +66,7 @@ export function createSetWorktreesPinnedAndReveal(
       get().activeWorktreeId
     )
     // Skip worktrees already in the target state so a no-op toggle doesn't scroll the viewport away.
-    const updates: WorktreeMetaBatchUpdate[] = []
+    const updates = new Map<string, Partial<WorktreeMeta>>()
     const changedWorktreeIds = new Set<string>()
     let didChange = false
     let revealWorktreeId: string | null = null
@@ -77,17 +79,9 @@ export function createSetWorktreesPinnedAndReveal(
       changedWorktreeIds.add(worktreeId)
       const workspaceScope = parseWorkspaceKey(worktreeId)
       if (workspaceScope?.type === 'folder') {
-        void get().updateWorktreeMeta(
-          worktreeId,
-          { isPinned },
-          { executionHostId: current.hostId ?? 'local' }
-        )
+        void get().updateWorktreeMeta(worktreeId, { isPinned })
       } else {
-        updates.push({
-          worktreeId,
-          updates: { isPinned },
-          executionHostId: current.hostId ?? 'local'
-        })
+        updates.set(worktreeId, { isPinned })
       }
       if (revealWorktreeId === null && worktreeId === activeSidebarWorktreeId) {
         revealWorktreeId = worktreeId
@@ -105,7 +99,7 @@ export function createSetWorktreesPinnedAndReveal(
       revealWorktreeId = activeSidebarWorktreeId
     }
     // updateWorktreesMeta applies the store update synchronously, so the reveal below sees the row already rendered.
-    if (updates.length > 0) {
+    if (updates.size > 0) {
       void get().updateWorktreesMeta(updates)
     }
     if (revealWorktreeId !== null) {

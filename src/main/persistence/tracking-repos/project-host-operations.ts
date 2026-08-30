@@ -19,7 +19,6 @@ import { repoGitUsernameCacheKey } from './repo-hydration'
 export type ProjectHostMutationOperations = {
   state: PersistedState
   gitUsernameCache: Map<string, string>
-  bumpLocalWorktreeScanGeneration: (repoId: string) => void
   hydrateRepo: (repo: Repo) => Repo
   updateRepoBackedProjectHostSetup: (
     setup: ProjectHostSetup,
@@ -88,9 +87,6 @@ export class ProjectHostPersistenceOperations {
       return null
     }
     if ('localWindowsRuntimePreference' in updates) {
-      for (const repoId of project.sourceRepoIds) {
-        this.operations.bumpLocalWorktreeScanGeneration(repoId)
-      }
       if (updates.localWindowsRuntimePreference === undefined) {
         delete project.localWindowsRuntimePreference
       } else {

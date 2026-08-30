@@ -7,7 +7,6 @@ import type {
   DashboardSpawnAgentArgs
 } from '../../../../shared/dashboard-snapshot'
 import type { TuiAgent } from '../../../../shared/tui-agent'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { AgentMap } from './AgentMap'
 import type { AgentMapState } from './agent-map-filter'
 
@@ -77,8 +76,7 @@ export function renderMap(
       launchableAgentsByWorktreeId={launchableAgentsByWorktreeId}
       onSpawnAgent={onSpawnAgent}
       onSleepWorkspace={onSleepWorkspace}
-    />,
-    { wrapper: TooltipProvider }
+    />
   )
 }
 

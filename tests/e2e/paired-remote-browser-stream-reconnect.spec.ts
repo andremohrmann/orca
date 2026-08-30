@@ -3,10 +3,6 @@ import {
   launchHeadlessPairedRuntimeHost,
   type HeadlessPairedRuntimeHost
 } from './helpers/headless-paired-runtime-host'
-import {
-  focusMaterializedRemoteBrowserPane,
-  waitForMaterializedRemoteBrowserPane
-} from './helpers/materialized-remote-browser-pane'
 import { expect, test } from './helpers/orca-app'
 import {
   launchPairedElectronClient,
@@ -40,6 +36,35 @@ async function callEnvironment<TResult>(
   ) as Promise<TResult>
 }
 
+/** Mirrors what the client does when the user opens a browser tab on a paired host. */
+async function attachRemoteBrowserPane(
+  page: Page,
+  environmentId: string,
+  worktreeId: string,
+  remotePageId: string
+): Promise<void> {
+  await page.evaluate(
+    ({ environmentId, worktreeId, remotePageId }) => {
+      const state = window.__store?.getState()
+      if (!state) {
+        throw new Error('client store unavailable')
+      }
+      const browserTab = state.createBrowserTab(worktreeId, 'about:blank', {
+        title: 'New Browser Tab',
+        browserRuntimeEnvironmentId: environmentId
+      })
+      const pageId = browserTab.activePageId ?? browserTab.pageIds?.[0] ?? null
+      if (!pageId) {
+        throw new Error('client did not allocate a browser page id')
+      }
+      state.setRemoteBrowserPageHandle(pageId, { environmentId, remotePageId })
+      state.setActiveWorktree(worktreeId)
+      state.focusBrowserTabInWorktree(worktreeId, browserTab.id, { surfacePane: true })
+    },
+    { environmentId, worktreeId, remotePageId }
+  )
+}
+
 test('bounds remote browser stream retries, then offers reconnect', async ({
   testRepoPath
 }, testInfo) => {
@@ -71,26 +96,14 @@ test('bounds remote browser stream retries, then offers reconnect', async ({
       'browser.tabCreate',
       { worktree: `id:${worktreeId}`, url: 'about:blank', activate: true }
     )
-    // The client mirrors the host's browser tabs on its own, so this opens the pane a user would
-    // click into. It used to build a second local pane for the same runtime page, which is not a
-    // state a user can reach: two panes on one connection means two screencast subscribers, and the
-    // runtime keeps only the newest — the loser sits on a dead stream with a frozen frame.
-    await focusMaterializedRemoteBrowserPane(page, {
-      environmentId: client.environmentId,
-      remotePageId: created.browserPageId,
-      worktreeId
-    })
+    await attachRemoteBrowserPane(page, client.environmentId, worktreeId, created.browserPageId)
 
     // The stream is live once the pane paints a remote frame.
     const remoteFrame = page.getByTestId('remote-browser-frame').first()
     await expect(remoteFrame).toBeVisible({ timeout: 60_000 })
 
     const errorToast = page.getByTestId('remote-browser-stream-error')
-    // exact: true, because accessible-name matching is a case-insensitive SUBSTRING match by
-    // default. The pane toolbar's egress indicator is labelled 'Browsing on <host>', and this
-    // test's host is named 'Remote browser reconnect' — so the loose locator matched the
-    // indicator and reported a reconnect control on a perfectly healthy stream.
-    const reconnectButton = page.getByRole('button', { name: 'Reconnect', exact: true })
+    const reconnectButton = page.getByRole('button', { name: 'Reconnect' })
     await expect(reconnectButton).toHaveCount(0)
 
     // Leave a pane-owned notice on screen before the drop. It outranks the stream's own message by
@@ -207,25 +220,15 @@ test('offers reconnect when the remote browser never opens at all', async ({
       { worktree: `id:${worktreeId}`, url: 'about:blank', activate: true }
     )
 
-    // Let the mirrored tab arrive while the link is still up, but leave it unfocused: focusing is
-    // what mounts the pane, and this test needs the very first open to happen after the drop.
-    const target = {
-      environmentId: client.environmentId,
-      remotePageId: created.browserPageId,
-      worktreeId
-    }
-    await waitForMaterializedRemoteBrowserPane(page, target)
-
     // Drop the connection BEFORE the pane mounts, so the very first open fails and no stream ever
     // exists. Nothing here can be recovered by restarting a subscription.
     await page.evaluate(async (selector) => {
       await window.api.runtimeEnvironments.disconnect({ selector })
     }, client.environmentId)
-    await focusMaterializedRemoteBrowserPane(page, target)
+    await attachRemoteBrowserPane(page, client.environmentId, worktreeId, created.browserPageId)
 
     const errorToast = page.getByTestId('remote-browser-stream-error')
-    // exact: true — see the first test: 'Reconnect' is a substring of the egress indicator's label.
-    const reconnectButton = page.getByRole('button', { name: 'Reconnect', exact: true })
+    const reconnectButton = page.getByRole('button', { name: 'Reconnect' })
     await expect(errorToast).toBeVisible({ timeout: 90_000 })
     await expect(errorToast).toContainText('Cannot reach the remote server.')
     await expect(errorToast).not.toContainText('Runtime environment')

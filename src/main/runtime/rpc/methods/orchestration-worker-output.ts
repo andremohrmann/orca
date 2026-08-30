@@ -135,12 +135,7 @@ async function readTerminalOutput(
     cursor: cursor?.source === 'terminal' ? cursor.position : undefined,
     limit: args.limit
   })
-  const redactedTerminal = redactWorkerTerminalLines([
-    ...terminal.tail,
-    ...(terminal.draft ? [terminal.draft] : [])
-  ])
-  const redactedTail = redactedTerminal.lines.slice(0, terminal.tail.length)
-  const redactedDraft = terminal.draft ? redactedTerminal.lines.at(-1) : undefined
+  const redactedTerminal = redactWorkerTerminalLines(terminal.tail)
   const position =
     terminal.nextCursor !== null && /^\d+$/.test(terminal.nextCursor)
       ? Number.parseInt(terminal.nextCursor, 10)
@@ -153,11 +148,7 @@ async function readTerminalOutput(
     dispatchId: args.dispatchId,
     source: 'terminal',
     sourceIdentity,
-    terminal: {
-      ...terminal,
-      tail: redactedTail,
-      ...(redactedDraft ? { draft: redactedDraft } : {})
-    },
+    terminal: { ...terminal, tail: redactedTerminal.lines },
     cursor: nextCursor,
     status: {
       worker: args.workerState,

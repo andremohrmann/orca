@@ -23,12 +23,12 @@ import type { ChecksPanelActiveContentModel } from './active-content-props'
 type ReviewHeaderComponentProps = {
   review: ChecksPanelReview
   isRefreshing: boolean
-  canUnlinkReview: boolean
+  canUnlinkPullRequest: boolean
   modifierHintDestination: ChecksPanelHostedReviewModifierDestination
   onRefresh: () => void
   onOpenReview: (event: React.MouseEvent<HTMLButtonElement>) => void
-  onUnlinkReview: () => void
-  onLinkAnotherReview: () => void
+  onUnlinkPullRequest: () => void
+  onLinkAnotherPullRequest: () => void
 }
 
 export function ChecksPanelActiveContent({
@@ -69,7 +69,7 @@ export function ChecksPanelActiveContent({
     handleFixChecksWithAI,
     handleLaunchAborted,
     handleLaunchAccepted,
-    handleLinkAnotherReview,
+    handleLinkAnotherPullRequest,
     handleLoadCheckDetails,
     handleOpenPR,
     handleOpenStackPR,
@@ -82,11 +82,11 @@ export function ChecksPanelActiveContent({
     handleSetReaction,
     handleStartEdit,
     handleTitleKeyDown,
-    handleUnlinkReview,
+    handleUnlinkPullRequest,
     isFixingChecksWithAI,
     isRefreshing,
     isResolvingConflictsWithAI,
-    linkedGitLabMR,
+    linkedPR,
     pendingCommentResolutionRef,
     pr,
     prRefreshState,
@@ -131,12 +131,12 @@ export function ChecksPanelActiveContent({
         <ReviewHeaderComponent
           review={activeReview}
           isRefreshing={isRefreshing}
-          canUnlinkReview={activeReview.provider === 'github' ? true : linkedGitLabMR !== null}
+          canUnlinkPullRequest={linkedPR !== null}
           modifierHintDestination={hostedReviewModifierHintDestination}
           onRefresh={() => void handleRefresh()}
           onOpenReview={handleOpenPR}
-          onUnlinkReview={handleUnlinkReview}
-          onLinkAnotherReview={handleLinkAnotherReview}
+          onUnlinkPullRequest={handleUnlinkPullRequest}
+          onLinkAnotherPullRequest={handleLinkAnotherPullRequest}
         />
 
         {detachedHeadDisplay && <DetachedHeadBadge display={detachedHeadDisplay} side="bottom" />}

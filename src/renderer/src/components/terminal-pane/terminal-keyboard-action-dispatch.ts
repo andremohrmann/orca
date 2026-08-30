@@ -13,8 +13,6 @@ import type { resolveTerminalKeyboardShortcutAction } from './terminal-keyboard-
 type TerminalShortcutAction = NonNullable<ReturnType<typeof resolveTerminalKeyboardShortcutAction>>
 
 type ActionDispatchContext = {
-  tabId: string
-  worktreeId: string
   fallbackCwd: string
   expandedPaneIdRef: React.RefObject<number | null>
   setExpandedPane: (paneId: number | null) => void
@@ -41,8 +39,6 @@ export function dispatchTerminalShortcutAction(
   context: ActionDispatchContext
 ): void {
   const {
-    tabId,
-    worktreeId,
     fallbackCwd,
     expandedPaneIdRef,
     setExpandedPane,
@@ -209,8 +205,6 @@ export function dispatchTerminalShortcutAction(
       return
     }
     splitTerminalPaneWithInheritedCwd({
-      worktreeId,
-      tabId,
       manager,
       getManager: () => managerRef.current,
       paneTransports: paneTransportsRef.current,

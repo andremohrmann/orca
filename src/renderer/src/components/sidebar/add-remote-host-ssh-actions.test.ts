@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SshTargetCreateInput } from '../../../../shared/ssh-types'
+import type { SshTarget } from '../../../../shared/ssh-types'
 import { EMPTY_FORM } from '../settings/ssh-target-draft'
 
 const toastMocks = vi.hoisted(() => ({
@@ -25,7 +25,7 @@ describe('individual SSH config host selection', () => {
   })
 
   it('saves effective values while leaving all config identities authoritative', async () => {
-    let savedTarget: SshTargetCreateInput | undefined
+    let savedTarget: Omit<SshTarget, 'id'> | undefined
     const ssh = {
       resolveConfigHost: vi.fn().mockResolvedValue({
         alias: 'prod',
@@ -92,7 +92,7 @@ describe('manual SSH host label fallback', () => {
   })
 
   it('labels a bare host with its hostname instead of an empty string', async () => {
-    let savedTarget: SshTargetCreateInput | undefined
+    let savedTarget: Omit<SshTarget, 'id'> | undefined
     const ssh = {
       resolveConfigHost: vi.fn(),
       listTargets: vi.fn().mockResolvedValue([]),

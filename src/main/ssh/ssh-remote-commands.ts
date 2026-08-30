@@ -2,11 +2,6 @@ import {
   RELAY_INSTALL_COMPLETE_FILENAME,
   relayArtifactFilenames
 } from '../../shared/relay-artifacts'
-import {
-  RELAY_INSTALL_MODEL,
-  remoteInstallListingRegexSource,
-  type RemoteInstallModel
-} from './remote-install-model'
 import type { RemoteHostPlatform } from './ssh-remote-platform'
 import { isWindowsRemoteHost, joinRemotePath, remoteDirname } from './ssh-remote-platform'
 import { powerShellCommand, powerShellLiteral, powerShellNativeArg } from './ssh-remote-powershell'
@@ -104,28 +99,10 @@ export function probeRelayInstalledCommand(
   host: RemoteHostPlatform,
   remoteRelayDir: string
 ): string {
-  return probeRemoteInstallCompleteCommand(host, remoteRelayDir, [
+  const required = [
     ...relayArtifactFilenames(isWindowsRemoteHost(host)),
     RELAY_INSTALL_COMPLETE_FILENAME
-  ])
-}
-
-/**
- * The model-agnostic form: any install is complete when its directory exists and every
- * named artifact is a regular file inside it.
- *
- * Why the caller passes the list: orcad and the relay ship different artifacts, and a probe
- * that checked a shared subset would call a torn install complete.
- */
-export function probeRemoteInstallCompleteCommand(
-  host: RemoteHostPlatform,
-  remoteInstallDir: string,
-  requiredFilenames: readonly string[]
-): string {
-  const remoteRelayDir = remoteInstallDir
-  const required = requiredFilenames.map((filename) =>
-    joinRemotePath(host, remoteRelayDir, filename)
-  )
+  ].map((filename) => joinRemotePath(host, remoteRelayDir, filename))
   if (!isWindowsRemoteHost(host)) {
     const fileTests = required.map((path) => `&& test -f ${shellEscape(path)} `).join('')
     return `test -d ${shellEscape(remoteRelayDir)} ${fileTests}&& echo OK || echo MISSING`
@@ -144,28 +121,12 @@ export function probeRemoteInstallCompleteCommand(
 export const MAX_RELAY_GC_LISTING_ENTRIES = 64
 
 export function listRelayBaseDirsCommand(host: RemoteHostPlatform, baseDir: string): string {
-  return listRemoteInstallBaseDirsCommand(host, baseDir, RELAY_INSTALL_MODEL)
-}
-
-/**
- * List one model's version dirs (and its own tombstones) under `~/.orca-remote/`.
- *
- * The model scopes BOTH the `find`/`Get-ChildItem` glob and the validating regex. That
- * double filter is the on-the-wire half of the GC ownership rule: an orcad GC pass never
- * even receives a relay directory name, so it cannot delete one through a later bug.
- */
-export function listRemoteInstallBaseDirsCommand(
-  host: RemoteHostPlatform,
-  baseDir: string,
-  model: RemoteInstallModel
-): string {
-  const namePattern = remoteInstallListingRegexSource(model)
   if (!isWindowsRemoteHost(host)) {
     const statusPrefix = '__ORCA_RELAY_GC_FIND_STATUS__'
     return [
       `base=${shellEscape(baseDir)}; [ -d "$base" ] || exit 0;`,
-      `{ find "$base" -mindepth 1 -maxdepth 1 -type d -name '${model.dirPrefix}-*' -print; status=$?; printf '\n${statusPrefix}%s\n' "$status"; } |`,
-      String.raw`awk 'BEGIN { count=0; status=-1 } /^${statusPrefix}[0-9]+$/ { status=substr($0, ${statusPrefix.length + 1}); next } { name=$0; sub(/^.*\//, "", name); if (name ~ /${namePattern}/ && count < ${MAX_RELAY_GC_LISTING_ENTRIES}) { entries[count++]=name } } END { if (status != 0) exit 1; for (i=0; i<count; i++) print entries[i] }'`
+      `{ find "$base" -mindepth 1 -maxdepth 1 -type d -name 'relay-*' -print; status=$?; printf '\n${statusPrefix}%s\n' "$status"; } |`,
+      String.raw`awk 'BEGIN { count=0; status=-1 } /^${statusPrefix}[0-9]+$/ { status=substr($0, ${statusPrefix.length + 1}); next } { name=$0; sub(/^.*\//, "", name); if (name ~ /^relay-(v?[0-9]+\.[0-9]+\.[0-9]+(\+[0-9a-f]+)?)(\.gc-tombstone\.[0-9]+\.[0-9]+)?$/ && count < ${MAX_RELAY_GC_LISTING_ENTRIES}) { entries[count++]=name } } END { if (status != 0) exit 1; for (i=0; i<count; i++) print entries[i] }'`
     ].join(' ')
   }
   return powerShellCommand(
@@ -173,9 +134,7 @@ export function listRemoteInstallBaseDirsCommand(
       "$ErrorActionPreference = 'Stop'",
       `$base = ${powerShellLiteral(baseDir)}`,
       'if (Test-Path -LiteralPath $base -PathType Container) {',
-      // Why the pattern goes in verbatim: a single-quoted PowerShell string is already
-      // literal, so `\.` reaches `-match` as the regex escape it is meant to be.
-      `Get-ChildItem -LiteralPath $base -Directory -Filter '${model.dirPrefix}-*' -ErrorAction Stop | Where-Object { $_.Name -match '${namePattern}' } | Select-Object -First ` +
+      "Get-ChildItem -LiteralPath $base -Directory -Filter 'relay-*' -ErrorAction Stop | Where-Object { $_.Name -match '^relay-(v?[0-9]+\\.[0-9]+\\.[0-9]+(\\+[0-9a-f]+)?)(\\.gc-tombstone\\.[0-9]+\\.[0-9]+)?$' } | Select-Object -First " +
         `${MAX_RELAY_GC_LISTING_ENTRIES} | ForEach-Object { $_.Name }`,
       '}'
     ].join('\n')

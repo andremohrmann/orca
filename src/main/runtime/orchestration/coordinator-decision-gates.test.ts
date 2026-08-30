@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { openDecisionGateFromMessage } from './coordinator-decision-gates'
 import { OrchestrationDb } from './db'
-import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('coordinator decision-gate authority', () => {
   let db: OrchestrationDb
@@ -13,7 +12,7 @@ describe('coordinator decision-gate authority', () => {
   it('opens a gate only for the sender-owned active Dispatch', () => {
     db = new OrchestrationDb(':memory:')
     const task = db.createTask({ spec: 'owned gate target' })
-    const dispatch = createRootDispatch(db, task.id, 'term_owner', 'tab_owner:leaf_owner')
+    const dispatch = db.createDispatchContext(task.id, 'term_owner', 'tab_owner:leaf_owner')
     const logs: string[] = []
 
     openDecisionGateFromMessage(
@@ -42,14 +41,13 @@ describe('coordinator decision-gate authority', () => {
   it('rejects a gate targeting another active Dispatch without mutating either Task', () => {
     db = new OrchestrationDb(':memory:')
     const attackerTask = db.createTask({ spec: 'attacker assignment' })
-    const attacker = createRootDispatch(
-      db,
+    const attacker = db.createDispatchContext(
       attackerTask.id,
       'term_attacker',
       'tab_attacker:leaf_attacker'
     )
     const victimTask = db.createTask({ spec: 'victim assignment' })
-    const victim = createRootDispatch(db, victimTask.id, 'term_victim', 'tab_victim:leaf_victim')
+    const victim = db.createDispatchContext(victimTask.id, 'term_victim', 'tab_victim:leaf_victim')
     const logs: string[] = []
 
     openDecisionGateFromMessage(
@@ -80,7 +78,7 @@ describe('coordinator decision-gate authority', () => {
   it('accepts the canonical sender of an imported federated Dispatch', () => {
     db = new OrchestrationDb(':memory:')
     const task = db.createTask({ spec: 'remote gate target' })
-    const dispatch = createRootDispatch(db, task.id, 'remote-worker')
+    const dispatch = db.createDispatchContext(task.id, 'remote-worker')
 
     openDecisionGateFromMessage(
       db,

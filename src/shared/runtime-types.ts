@@ -94,27 +94,17 @@ export type {
 export {
   BROWSER_UNAVAILABLE_ERROR_CODE,
   browserUnavailableMessage,
-  HEADLESS_RUNTIME_WINDOW_ID,
-  UNPUBLISHED_WORKTREE_PUBLICATION_EPOCH
+  HEADLESS_RUNTIME_WINDOW_ID
 } from './runtime-session-contracts'
-export {
-  TERMINAL_PTY_DEGRADATION_CAPABILITY,
-  TERMINAL_UNAVAILABLE_ERROR_CODE,
-  terminalUnavailableMessage
-} from './runtime-capability-degradation'
-export type {
-  RuntimeBrowserUnavailableReason,
-  RuntimeDegradation,
-  RuntimeTerminalUnavailableReason
-} from './runtime-capability-degradation'
 export type {
   CliRuntimeState,
   CliStatusResult,
   DeviceScope,
   RuntimeBrowserDriverState,
+  RuntimeBrowserUnavailableReason,
+  RuntimeDegradation,
   RuntimeDesktopWindowStatus,
   RuntimeGraphStatus,
-  RuntimeMobileSessionAgentTab,
   RuntimeMobileSessionBrowserTab,
   RuntimeMobileSessionClientTab,
   RuntimeMobileSessionCreateTerminalResult,

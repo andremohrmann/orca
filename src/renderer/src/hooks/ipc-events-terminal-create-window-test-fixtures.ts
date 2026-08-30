@@ -26,7 +26,6 @@ export function buildTerminalCreateWindow(args: {
     dispatchEvent,
     api: {
       repos: { onChanged: () => () => {} },
-      automations: { onChanged: () => () => {} },
       worktrees: {
         onChanged: () => () => {},
         onBaseStatus: () => () => {},
@@ -173,9 +172,7 @@ export function buildTerminalCreateWindow(args: {
         getBrowserDrivers: () => Promise.resolve([]),
         onTerminalFitOverrideChanged: () => () => {},
         onTerminalDriverChanged: () => () => {},
-        onBrowserDriverChanged: () => () => {},
-        onClientHostedBrowserRowsChanged: () => () => {},
-        getClientHostedBrowserRows: async () => []
+        onBrowserDriverChanged: () => () => {}
       },
       ssh: {
         listTargets: () => Promise.resolve([]),

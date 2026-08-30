@@ -1,10 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const source = readFileSync(
-  new URL('../host-screen/use-host-worktree-actions.ts', import.meta.url),
-  'utf8'
-)
+const source = readFileSync(new URL('../../app/h/[hostId]/index.tsx', import.meta.url), 'utf8')
 
 function sliceBetween(startPattern: string, endPattern: string): string {
   const start = source.indexOf(startPattern)
@@ -18,7 +15,7 @@ describe('mobile worktree activation', () => {
   it('opens mobile sessions without foregrounding other paired clients', () => {
     const openSession = sliceBetween(
       'const openWorktreeSession = useCallback(',
-      'const openFloatingWorkspace = useCallback'
+      'const handleSortChange = useCallback'
     )
 
     expect(openSession).toContain("sendRequest('worktree.activate'")

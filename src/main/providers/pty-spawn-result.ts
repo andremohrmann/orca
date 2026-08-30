@@ -3,7 +3,6 @@ import type { TuiAgent } from '../../shared/tui-agent'
 import type { AgentSessionClaimedSpawnResult } from '../../shared/agent-session-host-authority'
 import type { PtyIncarnationId } from '../../shared/pty-incarnation'
 import type { PtySourceReceivingActivation } from '../../shared/pty-source-receiving-activation'
-import type { TerminalOwner } from '../../shared/terminal-owner'
 
 export type PtySpawnResult = {
   agentSessionEnsure?: AgentSessionClaimedSpawnResult
@@ -53,8 +52,6 @@ export type PtySpawnResult = {
   /** Renderer-domain sequence main reconciled for the attach boundary those
    *  flags describe. Set by main, not the provider. */
   snapshotSeq?: number
-  /** Ordered ownership evidence proven by the provider snapshot. */
-  snapshotTerminalOwner?: TerminalOwner
   /** True when the spawn reattached to an existing daemon session. */
   isReattach?: boolean
   /** Last OSC title tracked by the daemon session the snapshot came from.

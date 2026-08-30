@@ -3,7 +3,7 @@ import type { PersistedState } from '../../../shared/persisted-state-types'
 import {
   latestAutomationOccurrenceAtOrBefore,
   nextAutomationOccurrenceAfter
-} from '../../../shared/automation-schedule-occurrences'
+} from '../../../shared/automation-schedules'
 
 export function advanceAutomationNextRun(
   state: PersistedState,
@@ -18,8 +18,7 @@ export function advanceAutomationNextRun(
   const current = state.automations[index]
   const nextRunAt = nextAutomationOccurrenceAfter(current.rrule, current.dtstart, now)
   const updated = { ...current, nextRunAt, updatedAt: now }
-  // Replaced, not patched in place: the list projection caches on array identity.
-  state.automations = state.automations.map((entry) => (entry.id === id ? updated : entry))
+  state.automations[index] = updated
   flush()
   return updated
 }

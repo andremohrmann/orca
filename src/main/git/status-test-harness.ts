@@ -15,8 +15,6 @@ export type FsPromisesMocks = {
   readFileMock: MockFn
   statMock: MockFn
   rmMock: MockFn
-  /** Optional: defaults to "nothing exists", which is what most git-read tests assume. */
-  accessMock?: MockFn
 }
 
 export function createGitRunnerModuleMock(mocks: GitRunnerMocks): Record<string, unknown> {
@@ -51,12 +49,7 @@ export function createFsPromisesModuleMock(mocks: FsPromisesMocks): Record<strin
     realpath: mocks.realpathMock,
     readFile: mocks.readFileMock,
     stat: mocks.statMock,
-    rm: mocks.rmMock,
-    access:
-      mocks.accessMock ??
-      (async (target: string) => {
-        throw Object.assign(new Error(`ENOENT: ${target}`), { code: 'ENOENT' })
-      })
+    rm: mocks.rmMock
   }
 }
 

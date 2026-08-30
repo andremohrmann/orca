@@ -29,7 +29,10 @@ import {
 } from './workspace-cleanup-dialog-notices'
 import { WorkspaceCleanupRowList } from './workspace-cleanup-row-list'
 import { formatWorkspaceCleanupScanNotice } from './workspace-cleanup-scan-notice'
-import { applyWorkspaceCleanupGitEvidence } from './workspace-cleanup-git-evidence'
+import {
+  applyWorkspaceCleanupGitEvidence,
+  needsWorkspaceCleanupGitEvidence
+} from './workspace-cleanup-git-evidence'
 import { useWorkspaceCleanupBrowseState } from './use-workspace-cleanup-browse-state'
 import {
   useWorkspaceCleanupDialogLifecycle,
@@ -110,9 +113,7 @@ function WorkspaceCleanupDialogContent({
   )
 
   const candidates = useMemo(() => scan?.candidates ?? [], [scan?.candidates])
-  // The browse view promises Git facts for every row. The broad scan defers
-  // some reads for performance, so fill those gaps while the modal is open.
-  const gitEvidenceNeeded = open
+  const gitEvidenceNeeded = open && needsWorkspaceCleanupGitEvidence(browse.filters, browse.sort)
   const gitEvidence = useWorkspaceCleanupGitEvidence({
     enabled: gitEvidenceNeeded,
     candidates,

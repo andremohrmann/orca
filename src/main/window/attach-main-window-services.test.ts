@@ -13,12 +13,9 @@ const {
   systemPreferencesGetMediaAccessStatusMock,
   registerRepoHandlersMock,
   setRepoRemoteClientNotifierMock,
-  setWorktreeCatalogRemoteClientNotifierMock,
   registerWorktreeHandlersMock,
   registerPtyHandlersMock,
   hydrateLocalPtyRegistryAtBootMock,
-  setWorktreeBaseDirectoryWatcherSyncContextMock,
-  scheduleWorktreeBaseDirectoryWatcherSyncMock,
   setupAutoUpdaterMock,
   browserManagerUnregisterAllMock,
   runWorktreeChangeInvalidatorsMock,
@@ -38,12 +35,9 @@ const {
   systemPreferencesGetMediaAccessStatusMock: vi.fn(),
   registerRepoHandlersMock: vi.fn(),
   setRepoRemoteClientNotifierMock: vi.fn(),
-  setWorktreeCatalogRemoteClientNotifierMock: vi.fn(),
   registerWorktreeHandlersMock: vi.fn(),
   registerPtyHandlersMock: vi.fn(),
   hydrateLocalPtyRegistryAtBootMock: vi.fn(),
-  setWorktreeBaseDirectoryWatcherSyncContextMock: vi.fn(),
-  scheduleWorktreeBaseDirectoryWatcherSyncMock: vi.fn(),
   setupAutoUpdaterMock: vi.fn(),
   browserManagerUnregisterAllMock: vi.fn(),
   runWorktreeChangeInvalidatorsMock: vi.fn(),
@@ -81,10 +75,6 @@ vi.mock('../ipc/repos/repos-changed-notification', () => ({
   setRepoRemoteClientNotifier: setRepoRemoteClientNotifierMock
 }))
 
-vi.mock('../ipc/watched-worktree-catalog-notification', () => ({
-  setWorktreeCatalogRemoteClientNotifier: setWorktreeCatalogRemoteClientNotifierMock
-}))
-
 vi.mock('../ipc/worktrees', () => ({
   registerWorktreeHandlers: registerWorktreeHandlersMock
 }))
@@ -100,11 +90,6 @@ vi.mock('../ipc/pty', () => ({
 
 vi.mock('../memory/hydrate-local-pty-registry', () => ({
   hydrateLocalPtyRegistryAtBoot: hydrateLocalPtyRegistryAtBootMock
-}))
-
-vi.mock('../ipc/worktree-base-directory-watcher', () => ({
-  setWorktreeBaseDirectoryWatcherSyncContext: setWorktreeBaseDirectoryWatcherSyncContextMock,
-  scheduleWorktreeBaseDirectoryWatcherSync: scheduleWorktreeBaseDirectoryWatcherSyncMock
 }))
 
 vi.mock('../browser/browser-manager', () => ({
@@ -231,18 +216,37 @@ async function fireReadyToShow(mainWindow: MainWindowStub): Promise<void> {
 
 describe('attachMainWindowServices', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    onMock.mockReset()
+    removeAllListenersMock.mockReset()
+    removeListenerMock.mockReset()
+    handleMock.mockReset()
+    removeHandlerMock.mockReset()
+    setPermissionRequestHandlerMock.mockReset()
+    setPermissionCheckHandlerMock.mockReset()
+    systemPreferencesAskForMediaAccessMock.mockReset()
+    systemPreferencesGetMediaAccessStatusMock.mockReset()
+    registerRepoHandlersMock.mockReset()
+    setRepoRemoteClientNotifierMock.mockReset()
+    registerWorktreeHandlersMock.mockReset()
+    registerPtyHandlersMock.mockReset()
+    hydrateLocalPtyRegistryAtBootMock.mockReset()
+    setupAutoUpdaterMock.mockReset()
+    browserManagerUnregisterAllMock.mockReset()
+    acknowledgePendingTccPromptNoticeMock.mockReset()
+    consumePendingTccPromptNoticeMock.mockReset()
+    dismissTccPromptNoticeMock.mockReset()
+    releasePendingTccPromptNoticeMock.mockReset()
     systemPreferencesAskForMediaAccessMock.mockResolvedValue(true)
     systemPreferencesGetMediaAccessStatusMock.mockReturnValue('granted')
   })
 
-  it('gives host-local catalog notifiers the runtime', () => {
+  // #11994: without this wiring, host-local repo IPC mutations never reach paired clients.
+  it('gives the repo IPC handlers the runtime so repo changes reach paired clients', () => {
     const runtime = createRuntime()
 
     attachMainWindowServices(createMainWindow() as never, createStore(), runtime as never)
 
     expect(setRepoRemoteClientNotifierMock).toHaveBeenCalledWith(runtime)
-    expect(setWorktreeCatalogRemoteClientNotifierMock).toHaveBeenCalledWith(runtime)
   })
 
   it('reloads the app renderer through main and marks expected renderer teardown', async () => {
@@ -271,8 +275,8 @@ describe('attachMainWindowServices', () => {
     expect(mainWindow.webContents.reload).toHaveBeenCalledTimes(1)
   })
 
-  it('hydrates once after the local PTY provider barrier resolves', async () => {
-    const providerStartup = deferred()
+  it('retries local PTY registry hydration after local startup services are ready', async () => {
+    const localStartup = deferred()
     const store = createStore()
 
     attachMainWindowServices(
@@ -281,17 +285,18 @@ describe('attachMainWindowServices', () => {
       createRuntime() as never,
       undefined,
       undefined,
-      { awaitLocalPtyProviderStartup: () => providerStartup.promise }
+      { awaitLocalPtyStartup: () => localStartup.promise }
     )
 
-    expect(hydrateLocalPtyRegistryAtBootMock).not.toHaveBeenCalled()
+    expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenCalledTimes(1)
+    expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenCalledWith(store)
 
-    providerStartup.resolve()
-    await providerStartup.promise
+    localStartup.resolve()
+    await localStartup.promise
     await Promise.resolve()
 
-    expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenCalledOnce()
-    expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenCalledWith(store)
+    expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenCalledTimes(2)
+    expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenLastCalledWith(store)
   })
 
   it('passes injected update quit cleanup to the auto-updater', async () => {
@@ -932,22 +937,5 @@ describe('attachMainWindowServices', () => {
       title: undefined,
       identity
     })
-  })
-
-  it('keeps deferred worktree watcher setup inside the service boundary', async () => {
-    const mainWindow = createMainWindow()
-    const store = createStore()
-
-    vi.useFakeTimers()
-    try {
-      attachMainWindowServices(mainWindow as never, store, createRuntime() as never)
-
-      expect(setWorktreeBaseDirectoryWatcherSyncContextMock).toHaveBeenCalledWith(store, mainWindow)
-      expect(scheduleWorktreeBaseDirectoryWatcherSyncMock).toHaveBeenCalledWith(store, mainWindow)
-
-      await vi.advanceTimersByTimeAsync(100)
-    } finally {
-      vi.useRealTimers()
-    }
   })
 })

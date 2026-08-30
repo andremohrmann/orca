@@ -45,7 +45,7 @@ describe('fetchWorktrees', () => {
     clearHugeRepoWarningDismissalsForTests()
   })
 
-  it('stamps ownerless worktrees from an older active remote runtime before repos hydrate', async () => {
+  it('fetches worktrees from the active remote runtime environment', async () => {
     const store = createTestStore()
     const remote = makeWorktree({
       id: 'repo1::/remote/wt1',
@@ -63,15 +63,7 @@ describe('fetchWorktrees', () => {
 
     await store.getState().fetchWorktrees('repo1')
 
-    const expected = {
-      ...remote,
-      hostId: 'runtime:env-1',
-      runtimeOwnerEnvironmentId: 'env-1'
-    }
-    expect(store.getState().worktreesByRepo.repo1).toEqual([expected])
-    expect(store.getState().detectedWorktreesByRepo.repo1?.worktrees).toEqual([
-      expect.objectContaining(expected)
-    ])
+    expect(store.getState().worktreesByRepo.repo1).toEqual([remote])
     expect(runtimeEnvironmentCall).toHaveBeenCalledWith({
       selector: 'env-1',
       method: 'worktree.detectedList',
@@ -589,26 +581,12 @@ describe('fetchWorktrees', () => {
 
     await store.getState().fetchWorktrees('repo1')
 
-    expect(store.getState().worktreesByRepo.repo1).toEqual([
-      {
-        ...remote,
-        hostId: 'runtime:env-1',
-        runtimeOwnerEnvironmentId: 'env-1'
-      }
-    ])
+    expect(store.getState().worktreesByRepo.repo1).toEqual([remote])
     expect(store.getState().detectedWorktreesByRepo.repo1).toMatchObject({
       repoId: 'repo1',
       authoritative: true,
       source: 'session-fallback',
-      worktrees: [
-        {
-          id: remote.id,
-          ownership: 'orca-managed',
-          visible: true,
-          hostId: 'runtime:env-1',
-          runtimeOwnerEnvironmentId: 'env-1'
-        }
-      ]
+      worktrees: [{ id: remote.id, ownership: 'orca-managed', visible: true }]
     })
     expect(runtimeEnvironmentCall).toHaveBeenCalledWith({
       selector: 'env-1',

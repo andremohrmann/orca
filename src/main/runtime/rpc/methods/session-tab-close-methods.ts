@@ -2,22 +2,12 @@ import { withSpan } from '../../../observability/tracer'
 import { SESSION_TAB_CLOSE_INTENT_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { defineMethod, type RpcAnyMethod } from '../core'
 import { CloseLifecycleTab, CloseTab } from './session-tabs-schemas'
-import { assertProjectedSessionTabVisible } from './session-tab-browser-placement-projection'
-import { projectSessionTabsForClient } from './session-tabs-inventory'
 
 export const SESSION_TAB_CLOSE_METHODS: RpcAnyMethod[] = [
   defineMethod({
     name: 'session.tabs.close',
     params: CloseTab,
     handler: async (params, context) => {
-      if (context.clientKind) {
-        const visible = projectSessionTabsForClient(
-          await context.runtime.listMobileSessionTabs(params.worktree, context.pairedDeviceId),
-          context.clientKind,
-          context.clientCapabilities
-        )
-        assertProjectedSessionTabVisible(visible, params.tabId)
-      }
       const requiresIntent =
         context.clientKind === undefined ||
         (context.clientKind === 'runtime' &&
@@ -75,16 +65,8 @@ export const SESSION_TAB_CLOSE_METHODS: RpcAnyMethod[] = [
   defineMethod({
     name: 'session.tabs.closeLifecycle',
     params: CloseLifecycleTab,
-    handler: async (params, context) => {
-      if (context.clientKind) {
-        const visible = projectSessionTabsForClient(
-          await context.runtime.listMobileSessionTabs(params.worktree, context.pairedDeviceId),
-          context.clientKind,
-          context.clientCapabilities
-        )
-        assertProjectedSessionTabVisible(visible, params.tabId)
-      }
-      return withSpan(
+    handler: async (params, context) =>
+      withSpan(
         'runtime.session-tabs.close-lifecycle',
         async (span) => {
           const result = await context.runtime.closeMobileSessionTab(
@@ -120,6 +102,5 @@ export const SESSION_TAB_CLOSE_METHODS: RpcAnyMethod[] = [
           }
         }
       )
-    }
   })
 ]

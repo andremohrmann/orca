@@ -7,12 +7,8 @@ import { GitStatusReadLeaseOwner } from '../git-status-read-lease-owner'
 import { invalidateGitUpstreamStatusReads } from '../upstream'
 import { clearSubmodulePathsCache } from './submodule-paths'
 import { resolvedUpstreamNameCache } from './resolved-upstream-name-cache'
-import { SettledDiffCache } from './settled-diff-cache'
 
 export const gitDiffReadDedupe = new InFlightPromiseDedupe<GitDiffResult>()
-
-/** Settled diff results, valid only while their stamped git state holds. */
-export const settledDiffCache = new SettledDiffCache()
 
 export const statusReadLeaseOwner = new GitStatusReadLeaseOwner<GitStatusResult>()
 
@@ -20,7 +16,6 @@ export const statusReadLeaseOwner = new GitStatusReadLeaseOwner<GitStatusResult>
 // getStatus() join a pre-mutation read and publish it as current.
 export function invalidateGitReadCaches(): void {
   gitDiffReadDedupe.clear()
-  settledDiffCache.clear()
   statusReadLeaseOwner.invalidate()
   invalidateGitBranchLineTotalInFlight()
   invalidateGitUpstreamStatusReads()

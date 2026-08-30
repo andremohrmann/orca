@@ -654,10 +654,7 @@ describe('PtyHandler negotiated source publication', () => {
 
     expect(mockPtySpawn).toHaveBeenCalledOnce()
     expect(
-      responseResult(
-        replacementWrites.find((buffer) => responseResult(buffer, 4))!,
-        4
-      )
+      responseResult(replacementWrites.find((buffer) => responseResult(buffer, 4))!, 4)
     ).toMatchObject({
       id: 'pty-1',
       incarnationId: expect.any(String),

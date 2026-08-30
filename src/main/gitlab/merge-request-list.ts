@@ -10,7 +10,6 @@ import {
   glabRepoExecOptions,
   glabExecFileAsync,
   parseGlabJsonList,
-  parseGlabPaginationHeader,
   release,
   resolveIssueSource,
   type LocalGitExecOptions
@@ -131,11 +130,11 @@ export async function listMergeRequests(
       items: data.map((d) => mapMRToWorkItem(d, repoId, projectRef)),
       page,
       perPage,
-      totalCount: parseGlabPaginationHeader(headers['x-total'], 0) ?? 0,
+      totalCount: parseHeaderInt(headers['x-total'], 0),
       // Why: GitLab may omit x-total-pages for 'all' or large per_page; fall back to ceil(total/perPage).
       totalPages:
-        parseGlabPaginationHeader(headers['x-total-pages'], 1) ??
-        Math.max(1, Math.ceil((parseGlabPaginationHeader(headers['x-total'], 0) ?? 0) / perPage))
+        parseHeaderInt(headers['x-total-pages'], 0) ||
+        Math.max(1, Math.ceil(parseHeaderInt(headers['x-total'], 0) / perPage))
     }
   } catch (err) {
     return {
@@ -149,6 +148,14 @@ export async function listMergeRequests(
   } finally {
     release()
   }
+}
+
+function parseHeaderInt(value: string | undefined, fallback: number): number {
+  if (!value) {
+    return fallback
+  }
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 /**

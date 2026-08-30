@@ -35,13 +35,6 @@ type Props = {
   headerActions?: ReactNode
 }
 
-function resizeDiffCommentTextarea(textarea: HTMLTextAreaElement): boolean {
-  const previousHeight = textarea.style.height
-  textarea.style.height = 'auto'
-  textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`
-  return textarea.style.height !== previousHeight
-}
-
 export function DiffCommentCard({
   lineNumber,
   startLine,
@@ -123,7 +116,8 @@ export function DiffCommentCard({
     if (!el) {
       return
     }
-    resizeDiffCommentTextarea(el)
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 240)}px`
     el.focus()
     el.setSelectionRange(el.value.length, el.value.length)
     onContentResizeRef.current?.()
@@ -287,10 +281,10 @@ export function DiffCommentCard({
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value)
-                // Why: rich-review layout measures every note; skip it when this card stayed put.
-                if (resizeDiffCommentTextarea(e.currentTarget)) {
-                  onContentResizeRef.current?.()
-                }
+                const el = e.currentTarget
+                el.style.height = 'auto'
+                el.style.height = `${Math.min(el.scrollHeight, 240)}px`
+                onContentResizeRef.current?.()
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {

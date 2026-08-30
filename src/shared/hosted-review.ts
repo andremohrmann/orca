@@ -55,8 +55,6 @@ export type HostedReviewInfo = {
 export type HostedReviewForBranchArgs = {
   repoPath: string
   repoId?: string
-  /** Desktop IPC-only owner guard; runtime RPC callers omit this field. */
-  repoOwnerExecutionHostId?: string
   branch: string
   linkedGitHubPR?: number | null
   fallbackGitHubPR?: number | null

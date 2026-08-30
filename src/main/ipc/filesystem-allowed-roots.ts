@@ -1,7 +1,6 @@
 import { resolve } from 'node:path'
 import type { Store } from '../persistence'
 import { computeWorkspaceRoot, getWorktreePathSettings } from './worktree-logic'
-import { getWorktreeMirrorDistro } from '../project-runtime-git-options'
 import { isPathInsideOrEqual } from '../../shared/cross-platform-path'
 import { getProjectGroupSubtreeIds } from '../../shared/project-groups'
 import type { FolderWorkspace } from '../../shared/folder-workspace-types'
@@ -98,15 +97,7 @@ export function getAllowedRoots(store: Store): string[] {
     } else {
       for (const repo of localRepos) {
         roots.push(
-          resolve(
-            computeWorkspaceRoot(
-              repo.path,
-              // Why enriched here too: placement has to agree with the create
-              // flow, or renderer file access is denied for a worktree Orca
-              // just put on the WSL side.
-              getWorktreePathSettings(repo, settings, getWorktreeMirrorDistro(store, repo))
-            )
-          )
+          resolve(computeWorkspaceRoot(repo.path, getWorktreePathSettings(repo, settings)))
         )
       }
     }

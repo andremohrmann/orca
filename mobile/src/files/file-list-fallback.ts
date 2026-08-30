@@ -60,10 +60,13 @@ export function directoryCacheFromFileList(files: LegacyMobileFileEntry[]): Dire
     Array.from(childrenByDir, ([path, children]) => [
       path,
       {
-        entries: Array.from(children, ([name, isDirectory]): MobileDirEntry => ({
-          name,
-          isDirectory
-        }))
+        entries: Array.from(
+          children,
+          ([name, isDirectory]): MobileDirEntry => ({
+            name,
+            isDirectory
+          })
+        )
       }
     ])
   )

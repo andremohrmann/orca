@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { installNetRequestFetchAdapter } from './updater-net-request.fixture'
 import { publishingIncident } from './updater-prerelease-feed-reproduction.fixture'
 
-const { netFetchMock, netRequestMock } = vi.hoisted(() => ({
-  netFetchMock: vi.fn(),
-  netRequestMock: vi.fn()
-}))
+const { netFetchMock } = vi.hoisted(() => ({ netFetchMock: vi.fn() }))
 
 const { appMock, browserWindowMock, nativeUpdaterMock, autoUpdaterMock, isMock, killAllPtyMock } =
   vi.hoisted(() => {
@@ -79,7 +75,7 @@ vi.mock('electron', () => ({
   BrowserWindow: browserWindowMock,
   autoUpdater: nativeUpdaterMock,
   powerMonitor: { on: vi.fn() },
-  net: { fetch: netFetchMock, request: netRequestMock }
+  net: { fetch: netFetchMock }
 }))
 
 vi.mock('electron-updater', () => ({
@@ -177,8 +173,6 @@ describe('updater check failure handling', () => {
       status: 200,
       text: () => Promise.resolve('<feed></feed>')
     })
-    netRequestMock.mockReset()
-    installNetRequestFetchAdapter(netRequestMock, netFetchMock)
   })
 
   it('surfaces GitHub release-transition failures with calmer copy and no short retry', async () => {

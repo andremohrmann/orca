@@ -2,7 +2,7 @@ import type { IBufferLine, Terminal } from '@xterm/xterm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   registerHttpLinkStoreAccessor,
-  registerWorkspaceHttpLinkBrowserOpener
+  registerRuntimeHttpLinkBrowserOpener
 } from '@/lib/http-link-routing'
 import { handleOscLink } from './terminal-osc-link-routing'
 import { handleTerminalWebLinkClick } from './terminal-web-link-click'
@@ -108,11 +108,11 @@ beforeEach(() => {
     setActiveWorktree: setActiveWorktreeMock,
     createBrowserTab: createBrowserTabMock
   }))
-  registerWorkspaceHttpLinkBrowserOpener(openRuntimeBrowserTabMock)
+  registerRuntimeHttpLinkBrowserOpener(openRuntimeBrowserTabMock)
 })
 
 afterEach(() => {
-  registerWorkspaceHttpLinkBrowserOpener(null)
+  registerRuntimeHttpLinkBrowserOpener(null)
   vi.unstubAllGlobals()
 })
 
@@ -190,23 +190,17 @@ describe('terminal HTTP links on a runtime-hosted pane', () => {
 describe('terminal HTTP links on a direct SSH pane', () => {
   const baseDeps = { worktreeId: 'wt-1', worktreePath: '/tmp', startupCwd: '/tmp' }
 
-  it('opens an OSC 8 hyperlink through the owning SSH workspace', () => {
+  it('sends an OSC 8 hyperlink to the system browser', () => {
     expect(handleOscLink(URL, clickEvent(), { ...baseDeps, sourceOwner: sshSourceOwner })).toBe(
       true
     )
 
-    expect(openRuntimeBrowserTabMock).toHaveBeenCalledWith({
-      workspaceId: 'wt-1',
-      url: URL,
-      intent: { kind: 'url' },
-      expectedSshConnectionId: 'ssh-1'
-    })
-    expect(openUrlMock).not.toHaveBeenCalled()
+    expect(openUrlMock).toHaveBeenCalledWith(URL)
     expect(createBrowserTabMock).not.toHaveBeenCalled()
     expect(setActiveWorktreeMock).not.toHaveBeenCalled()
   })
 
-  it('opens a WebLinksAddon click through the owning SSH workspace', () => {
+  it('sends a WebLinksAddon click to the system browser', () => {
     const { terminal } = makeTerminal()
 
     expect(
@@ -217,14 +211,11 @@ describe('terminal HTTP links on a direct SSH pane', () => {
       })
     ).toBe(true)
 
-    expect(openRuntimeBrowserTabMock).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedSshConnectionId: 'ssh-1', url: URL })
-    )
-    expect(openUrlMock).not.toHaveBeenCalled()
+    expect(openUrlMock).toHaveBeenCalledWith(URL)
     expect(createBrowserTabMock).not.toHaveBeenCalled()
   })
 
-  it('opens a click-fallback activation through the owning SSH workspace', () => {
+  it('sends a click-fallback activation to the system browser', () => {
     const { terminal, registrations } = makeTerminal()
     const disposable = installHttpLinkClickFallback(terminal, {
       worktreeId: 'wt-1',
@@ -235,10 +226,7 @@ describe('terminal HTTP links on a direct SSH pane', () => {
       ([name, _listener, options]) => name === 'mouseup' && options === undefined
     )?.[1](clickEvent())
 
-    expect(openRuntimeBrowserTabMock).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedSshConnectionId: 'ssh-1', url: URL })
-    )
-    expect(openUrlMock).not.toHaveBeenCalled()
+    expect(openUrlMock).toHaveBeenCalledWith(URL)
     expect(createBrowserTabMock).not.toHaveBeenCalled()
     disposable.dispose()
   })

@@ -1,7 +1,6 @@
 import { app } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { isBrowserRoutePartition } from './browser-route-identity'
 import {
   loadBrowserSessionMeta,
   persistBrowserSessionMeta,
@@ -16,25 +15,6 @@ import {
   SCOPED_COOKIE_IMPORT_FORMAT
 } from './browser-cookie-staged-import'
 import { resolveChromiumCookiesPath } from './chromium-cookie-path'
-
-/**
- * Whether a cold-start replay can ever run for `partition`. Startup only knows the default
- * partition and persisted session profiles; a client-hosted route partition is derived at runtime
- * and never lands in the metadata, so staging one would leave a plaintext DB nothing replays.
- */
-export function supportsPendingBrowserCookieImportReplay(partition: string): boolean {
-  return !isBrowserRoutePartition(partition)
-}
-
-function unlinkStagedCookieDb(stagedPath: string): void {
-  for (const suffix of ['', '-wal', '-shm']) {
-    try {
-      unlinkSync(stagedPath + suffix)
-    } catch {
-      /* best-effort */
-    }
-  }
-}
 
 type PendingCookieImportTarget = {
   // Why: lazy so a pre-ready app.getPath('userData') throw is swallowed where it always was.
@@ -96,9 +76,6 @@ export function applyPendingBrowserCookieImports({
 
     for (const [partition, pendingEntry] of pendingEntries) {
       if (!knownPartitions.has(partition)) {
-        // Why: the staged file is a plaintext cookie DB, so dropping the entry must not orphan it
-        // — and an unknown partition drops the entry regardless of the entry's format.
-        unlinkStagedCookieDb(typeof pendingEntry === 'string' ? pendingEntry : pendingEntry.path)
         delete remainingEntries[partition]
         continue
       }
@@ -219,5 +196,11 @@ export function clearPendingBrowserCookieImport({
     pendingCookieImports,
     pendingCookieDbPath: legacyPendingPath(pendingCookieImports[defaultPartition])
   })
-  unlinkStagedCookieDb(stagedPath)
+  for (const suffix of ['', '-wal', '-shm']) {
+    try {
+      unlinkSync(stagedPath + suffix)
+    } catch {
+      /* best-effort */
+    }
+  }
 }

@@ -7,8 +7,6 @@ import {
 type PtyExitDelivery = {
   ptyId: string
   code: number
-  /** Which lifetime of `ptyId` died. Absent when the execution host predates the field. */
-  incarnationId?: string
   primary?: (code: number) => void
   sidecars: readonly ((code: number, context: { hadPrimary: boolean }) => void)[]
 }
@@ -28,7 +26,7 @@ export function deliverPtyExitToHandlers(delivery: PtyExitDelivery): void {
         consumePreHandlerPtyState(delivery.ptyId)
       }
     } else {
-      bufferPreHandlerPtyExit(delivery.ptyId, delivery.code, delivery.incarnationId)
+      bufferPreHandlerPtyExit(delivery.ptyId, delivery.code)
     }
   } catch (error) {
     firstError = error

@@ -209,14 +209,11 @@ async function generatePosixScripts(): Promise<Map<string, string>> {
   return scripts
 }
 
-// Why: the Codex installer awaits an app-server trust-grant session, so the
-// override has to stay pinned across the await instead of being restored by a
-// synchronous `finally` while the install is still running.
-async function withPlatform<T>(platform: NodeJS.Platform, run: () => T | Promise<T>): Promise<T> {
+function withPlatform<T>(platform: NodeJS.Platform, run: () => T): T {
   const original = Object.getOwnPropertyDescriptor(process, 'platform')
   Object.defineProperty(process, 'platform', { configurable: true, value: platform })
   try {
-    return await run()
+    return run()
   } finally {
     if (original) {
       Object.defineProperty(process, 'platform', original)
@@ -225,7 +222,7 @@ async function withPlatform<T>(platform: NodeJS.Platform, run: () => T | Promise
 }
 
 describe('Windows managed hook stdin structure', () => {
-  it('exits immediately when Orca env is missing and keeps drain for other failures', async () => {
+  it('exits immediately when Orca env is missing and keeps drain for other failures', () => {
     const home = mkdtempSync(join(tmpdir(), 'orca-hook-stdin-windows-'))
     homedirMock.mockReturnValue(home)
     const previousGrokHome = process.env.GROK_HOME
@@ -233,9 +230,9 @@ describe('Windows managed hook stdin structure', () => {
     delete process.env.GROK_HOME
     delete process.env.KIMI_CODE_HOME
     try {
-      await withPlatform('win32', async () => {
+      withPlatform('win32', () => {
         for (const entry of LOCAL_INSTALLERS) {
-          expect((await entry.install()).state, `${entry.agent} install status`).toBe('installed')
+          expect(entry.install().state, `${entry.agent} install status`).toBe('installed')
         }
       })
       const hooksDir = join(home, '.orca', 'agent-hooks')
@@ -320,7 +317,7 @@ describe('Windows managed hook stdin structure', () => {
       try {
         const gitBash = findGitBash()
         for (const entry of LOCAL_INSTALLERS) {
-          expect((await entry.install()).state, `${entry.agent} install status`).toBe('installed')
+          expect(entry.install().state, `${entry.agent} install status`).toBe('installed')
         }
         const hooksDir = join(home, '.orca', 'agent-hooks')
         const mainScripts = readdirSync(hooksDir).filter(

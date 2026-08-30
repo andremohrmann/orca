@@ -31,7 +31,6 @@ export type WorkerTranscriptSnapshotArchive = {
 
 export type WorkerTerminalTailArchive = {
   lines: string[]
-  draft?: string
   truncated: boolean
   terminalStatus: string
   warnings: string[]
@@ -86,13 +85,8 @@ export async function captureWorkerOutputArchive(args: {
       `Output could not be preserved for Dispatch ${args.dispatchId}; the terminal was retained. ${error instanceof Error ? error.message : String(error)}`
     )
   }
-  const redacted = redactWorkerTerminalLines([
-    ...terminal.tail,
-    ...(terminal.draft ? [terminal.draft] : [])
-  ])
+  const redacted = redactWorkerTerminalLines(terminal.tail)
   const bounded = boundArchiveLines(redacted.lines)
-  const draft = terminal.draft ? bounded.lines.at(-1) : undefined
-  const lines = terminal.draft ? bounded.lines.slice(0, -1) : bounded.lines
   // Why: an exited PTY zeroes its tail immediately, so an empty capture is a distinct receipt,
   // not silent success — worker-read must be able to say why nothing is there.
   const empty = bounded.lines.every((line) => line.trim() === '')
@@ -100,8 +94,7 @@ export async function captureWorkerOutputArchive(args: {
     kind: 'terminal_tail',
     status: empty ? 'empty' : 'captured',
     content: {
-      lines,
-      ...(draft ? { draft } : {}),
+      lines: bounded.lines,
       truncated: terminal.truncated || bounded.truncated,
       terminalStatus: terminal.status,
       warnings: empty

@@ -116,10 +116,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
     writeClipboardText.mockResolvedValue(undefined)
   })
 
-  function renderHover(
-    onUnlinkReview = vi.fn(),
-    onOpenReviewInBrowser?: () => void
-  ): ReturnType<typeof vi.fn> {
+  function renderHover(onUnlinkReview = vi.fn()): ReturnType<typeof vi.fn> {
     container = document.createElement('div')
     root = createRoot(container)
     act(() => {
@@ -133,7 +130,6 @@ describe('WorktreeCardDetailsHover interactions', () => {
           onEditComment={vi.fn()}
           onOpenReviewInOrca={vi.fn()}
           onUnlinkReview={onUnlinkReview}
-          onOpenReviewInBrowser={onOpenReviewInBrowser}
         >
           <span>Linked PR</span>
         </WorktreeCardDetailsHover>
@@ -248,7 +244,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
     })
 
     const unlinkButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Unlink PR from workspace')
+      button.textContent?.includes('Unlink PR')
     )
 
     act(() => {
@@ -292,49 +288,6 @@ describe('WorktreeCardDetailsHover interactions', () => {
     ).toBe('false')
   })
 
-  it('opens the review URL in Orca browser and leaves existing actions independent', () => {
-    const onOpenReviewInBrowser = vi.fn()
-    const onUnlinkReview = renderHover(vi.fn(), onOpenReviewInBrowser)
-
-    act(() => {
-      interactionMocks.onHoverOpenChange?.(true)
-      interactionMocks.onReviewMenuOpenChange?.(true)
-    })
-
-    const browserButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Open in Orca browser')
-    )
-
-    act(() => {
-      browserButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onOpenReviewInBrowser).toHaveBeenCalledWith('https://github.com/acme/orca/pull/456')
-    expect(onUnlinkReview).not.toHaveBeenCalled()
-    expect(container.querySelector('[data-hover-open]')?.getAttribute('data-hover-open')).toBe(
-      'false'
-    )
-  })
-
-  it('preserves repeated-click behavior by forwarding each browser action', () => {
-    const onOpenReviewInBrowser = vi.fn()
-    renderHover(vi.fn(), onOpenReviewInBrowser)
-
-    act(() => {
-      interactionMocks.onReviewMenuOpenChange?.(true)
-    })
-    const browserButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Open in Orca browser')
-    )
-
-    act(() => {
-      browserButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-      browserButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onOpenReviewInBrowser).toHaveBeenCalledTimes(2)
-  })
-
   it('reports clipboard failures without unlinking the review', async () => {
     writeClipboardText.mockRejectedValueOnce(new Error('clipboard unavailable'))
     const onUnlinkReview = renderHover()
@@ -356,44 +309,5 @@ describe('WorktreeCardDetailsHover interactions', () => {
     expect(writeClipboardText).toHaveBeenCalledWith('https://github.com/acme/orca/pull/456')
     expect(onUnlinkReview).not.toHaveBeenCalled()
     expect(toastMocks.error).toHaveBeenCalledWith('Failed to copy link')
-  })
-
-  it('passes a linked issue URL to the embedded-browser action', () => {
-    const onOpenIssueInBrowser = vi.fn()
-    container = document.createElement('div')
-    root = createRoot(container)
-    act(() => {
-      root.render(
-        <WorktreeCardDetailsHover
-          issue={{
-            number: 5518,
-            title: 'Agent monitor issue',
-            state: 'open',
-            url: 'https://github.com/acme/orca/issues/5518',
-            labels: []
-          }}
-          linearIssue={null}
-          review={null}
-          comment={null}
-          onOpenIssueInBrowser={onOpenIssueInBrowser}
-        >
-          <span>Linked issue</span>
-        </WorktreeCardDetailsHover>
-      )
-    })
-
-    act(() => {
-      interactionMocks.onHoverOpenChange?.(true)
-      interactionMocks.onReviewMenuOpenChange?.(true)
-    })
-    const browserButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Open in Orca browser')
-    )
-
-    act(() => {
-      browserButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onOpenIssueInBrowser).toHaveBeenCalledWith('https://github.com/acme/orca/issues/5518')
   })
 })

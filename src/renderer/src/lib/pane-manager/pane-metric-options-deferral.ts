@@ -27,8 +27,7 @@ const deferredMetricOptions = new WeakMap<PaneTerminal, PaneMetricOptions>()
 export function applyOrDeferPaneMetricOptions(
   pane: ManagedPane,
   options: PaneMetricOptions,
-  measurable: boolean,
-  reason = 'appearance'
+  measurable: boolean
 ): 'applied' | 'deferred' {
   if (!measurable) {
     // Latest wins: a newer settings change while hidden supersedes the pending one.
@@ -36,7 +35,7 @@ export function applyOrDeferPaneMetricOptions(
     return 'deferred'
   }
   deferredMetricOptions.delete(pane.terminal)
-  writePaneMetricOptions(pane, options, reason)
+  writePaneMetricOptions(pane, options)
   return 'applied'
 }
 
@@ -47,7 +46,7 @@ export function flushDeferredPaneMetricOptions(pane: ManagedPane): boolean {
     return false
   }
   deferredMetricOptions.delete(pane.terminal)
-  writePaneMetricOptions(pane, pending, 'deferred-flush')
+  writePaneMetricOptions(pane, pending)
   recordTerminalWebglDiagnostic('metric-options-deferred-flush', { paneId: pane.id })
   return true
 }
@@ -94,11 +93,7 @@ export function overridePendingPaneMetricOptions(
   deferredMetricOptions.set(pane.terminal, { ...pending, ...options })
 }
 
-function writePaneMetricOptions(
-  pane: ManagedPane,
-  options: PaneMetricOptions,
-  reason: string
-): void {
+function writePaneMetricOptions(pane: ManagedPane, options: PaneMetricOptions): void {
   const target = pane.terminal.options
   if (options.fontSize !== undefined) {
     target.fontSize = options.fontSize
@@ -107,44 +102,12 @@ function writePaneMetricOptions(
     target.fontFamily = options.fontFamily
   }
   if (options.fontWeight !== undefined) {
-    recordMetricWeightChange(pane, 'fontWeight', target.fontWeight, options.fontWeight, reason)
     target.fontWeight = options.fontWeight as typeof target.fontWeight
   }
   if (options.fontWeightBold !== undefined) {
-    recordMetricWeightChange(
-      pane,
-      'fontWeightBold',
-      target.fontWeightBold,
-      options.fontWeightBold,
-      reason
-    )
     target.fontWeightBold = options.fontWeightBold as typeof target.fontWeightBold
   }
   if (options.lineHeight !== undefined) {
     target.lineHeight = options.lineHeight
   }
-}
-
-/**
- * Field forensics for the terminal bold-collapse bug (STA-4042 family): weights
- * never change in normal operation, so any real transition is the poisoning or
- * healing write. Recorded before the write so `prev` is the pre-write value.
- */
-function recordMetricWeightChange(
-  pane: ManagedPane,
-  key: 'fontWeight' | 'fontWeightBold',
-  prev: string | number | undefined,
-  next: string | number,
-  reason: string
-): void {
-  if (prev === next) {
-    return
-  }
-  recordTerminalWebglDiagnostic('metric-weight-change', {
-    paneId: pane.id,
-    key,
-    prev: prev === undefined ? null : String(prev),
-    next: String(next),
-    reason
-  })
 }

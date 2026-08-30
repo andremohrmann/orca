@@ -317,8 +317,7 @@ describe('registerPtyHandlers', () => {
       upsertSshRemotePtyLease: vi.fn(),
       persistPtyBinding: vi.fn(),
       removeSshRemotePtyLease: vi.fn(),
-      markSshRemotePtyLease: vi.fn(),
-      clearSshRemotePtyKillIntent: vi.fn()
+      markSshRemotePtyLease: vi.fn()
     }
     const runtime = {
       setPtyController: vi.fn(),

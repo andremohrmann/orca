@@ -2,7 +2,6 @@ import type { WorkerDispatchState, RemoteDispatchAttachmentRow } from '../../typ
 import { OrchestrationError } from '../../orchestration-error'
 import { ensureMutationReceiptCapacity } from '../../mutation-receipt-capacity'
 import type { OrchestrationDb } from '../orchestration-db'
-import { insertRemoteDispatchAttachmentRow } from '../dispatch-row-writer'
 
 export function createRemoteDispatchAttachment(
   this: OrchestrationDb,
@@ -12,8 +11,6 @@ export function createRemoteDispatchAttachment(
     homePeerFingerprint: string
     protocolVersion: number
     runtimeEpoch: string
-    /** Child depth computed by the Run home; absent from an old client = 1 (fails closed). */
-    depth?: number
     mutationReceipt: {
       callerFingerprint: string
       requestId: string
@@ -57,14 +54,19 @@ export function createRemoteDispatchAttachment(
         params.mutationReceipt.payloadHash,
         JSON.stringify({ accepted: { dispatchId: params.dispatchId } })
       )
-    insertRemoteDispatchAttachmentRow(this.db, {
-      dispatchId: params.dispatchId,
-      taskId: params.taskId,
-      homePeerFingerprint: params.homePeerFingerprint,
-      protocolVersion: params.protocolVersion,
-      runtimeEpoch: params.runtimeEpoch,
-      depth: params.depth ?? 1
-    })
+    this.db
+      .prepare(
+        `INSERT INTO remote_dispatch_attachments (
+           dispatch_id, task_id, home_peer_fingerprint, protocol_version, runtime_epoch
+         ) VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(
+        params.dispatchId,
+        params.taskId,
+        params.homePeerFingerprint,
+        params.protocolVersion,
+        params.runtimeEpoch
+      )
     this.db.exec('COMMIT')
     return this.getRemoteDispatchAttachment(params.dispatchId) as RemoteDispatchAttachmentRow
   } catch (error) {

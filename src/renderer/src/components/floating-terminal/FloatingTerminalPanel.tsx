@@ -90,8 +90,6 @@ import type { Tab } from '../../../../shared/tab-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import { resolveUnifiedTabLabel } from '../../../../shared/tab-title-resolution'
 import { FloatingBrowserSlot } from './FloatingBrowserSlot'
-import { FloatingWorkspaceTabDragContext } from './FloatingWorkspaceTabDragContext'
-import { isFloatingTerminalDragTarget } from './floating-terminal-titlebar-drag-target'
 import { FloatingTerminalOrchestrationDialog } from './FloatingTerminalOrchestrationDialog'
 import { FloatingTerminalResizeHandles } from './FloatingTerminalResizeHandles'
 import { FloatingTerminalWindowControls } from './FloatingTerminalWindowControls'
@@ -155,12 +153,18 @@ type FloatingPanelShortcutResolution =
   | { kind: 'index'; index: number }
   | { kind: 'chrome'; action: KeybindingActionId }
 
+const FLOATING_TERMINAL_NO_DRAG_SELECTOR =
+  'button,input,textarea,select,[role="menuitem"],[data-testid="sortable-tab"],[data-floating-terminal-no-drag]'
 const FLOATING_TERMINAL_SHORTCUT_SURFACE_SELECTOR = '[data-floating-terminal-shortcut-surface]'
 
 type FloatingTerminalPanelBoundsState = {
   committedBounds: FloatingTerminalPanelCommittedBounds
   renderedBounds: FloatingTerminalPanelBounds
   source: FloatingTerminalPanelBoundsSource
+}
+
+function isFloatingTerminalDragTarget(target: EventTarget): boolean {
+  return !(target instanceof HTMLElement && target.closest(FLOATING_TERMINAL_NO_DRAG_SELECTOR))
 }
 
 function readInitialPanelBounds(): FloatingTerminalPanelBoundsState {
@@ -1821,7 +1825,7 @@ export function FloatingTerminalPanel({
           onPointerCancel={handleDragEnd}
           onDoubleClick={handleTitlebarDoubleClick}
         >
-          <FloatingWorkspaceTabDragContext enabled={open}>
+          <div className="flex h-full min-w-0 flex-1">
             <TabBar
               tabs={terminalItems}
               activeTabId={activeTerminalId}
@@ -1870,7 +1874,7 @@ export function FloatingTerminalPanel({
               tabBarOrder={tabBarOrder}
               tabStripChrome="floating-panel"
             />
-          </FloatingWorkspaceTabDragContext>
+          </div>
           <FloatingTerminalWindowControls
             maximized={maximized}
             onToggleMaximized={toggleMaximized}

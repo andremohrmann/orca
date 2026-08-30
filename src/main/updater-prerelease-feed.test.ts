@@ -1,15 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installNetRequestFetchAdapter } from './updater-net-request.fixture'
 
 const ORIGINAL_PLATFORM = process.platform
 
-const { netFetchMock, netRequestMock } = vi.hoisted(() => ({
-  netFetchMock: vi.fn(),
-  netRequestMock: vi.fn()
+const { netFetchMock } = vi.hoisted(() => ({
+  netFetchMock: vi.fn()
 }))
 
 vi.mock('electron', () => ({
-  net: { fetch: netFetchMock, request: netRequestMock }
+  net: { fetch: netFetchMock }
 }))
 
 function buildAtomFeed(tags: string[], repo = 'stablyai/orca'): string {
@@ -92,8 +90,6 @@ describe('fetchNewerReleaseTag', () => {
     vi.resetModules()
     vi.doUnmock('../shared/update-feed-info')
     netFetchMock.mockReset()
-    netRequestMock.mockReset()
-    installNetRequestFetchAdapter(netRequestMock, netFetchMock)
   })
 
   afterEach(() => {
@@ -215,7 +211,6 @@ describe('fetchNewerReleaseTag', () => {
       expect(assetUrls).toEqual([
         'https://github.com/stablyai/orca/releases/download/v1.4.1/Orca-1.4.1-arm64-mac.zip'
       ])
-      expect(netRequestMock).toHaveBeenCalledTimes(platform === 'win32' ? 1 : 0)
     }
   )
 

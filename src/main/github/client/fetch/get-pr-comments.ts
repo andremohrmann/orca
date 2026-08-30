@@ -149,17 +149,19 @@ export async function getPRComments(
         if (!pullRequest) {
           console.warn('Review threads response missing pullRequest; keeping REST results')
         }
-        const graphQLIssueComments = (pullRequest?.comments?.nodes ?? []).map((c): PRComment => ({
-          id: c.databaseId,
-          author: c.author?.login ?? 'ghost',
-          authorAvatarUrl: c.author?.avatarUrl ?? '',
-          body: c.body ?? '',
-          createdAt: c.createdAt,
-          url: c.url,
-          isBot: c.author?.__typename === 'Bot',
-          reactionSubjectId: c.id,
-          reactions: mapGraphQLReactionGroups(c.reactionGroups)
-        }))
+        const graphQLIssueComments = (pullRequest?.comments?.nodes ?? []).map(
+          (c): PRComment => ({
+            id: c.databaseId,
+            author: c.author?.login ?? 'ghost',
+            authorAvatarUrl: c.author?.avatarUrl ?? '',
+            body: c.body ?? '',
+            createdAt: c.createdAt,
+            url: c.url,
+            isBot: c.author?.__typename === 'Bot',
+            reactionSubjectId: c.id,
+            reactions: mapGraphQLReactionGroups(c.reactionGroups)
+          })
+        )
         if (graphQLIssueComments.length > 0) {
           issueComments = graphQLIssueComments
         }
@@ -167,17 +169,19 @@ export async function getPRComments(
         graphQLReviewSummaries = pullRequest
           ? (pullRequest.reviews?.nodes ?? [])
               .filter((review) => review.body?.trim())
-              .map((review): PRComment => ({
-                id: review.databaseId,
-                author: review.author?.login ?? 'ghost',
-                authorAvatarUrl: review.author?.avatarUrl ?? '',
-                body: review.body,
-                createdAt: review.createdAt,
-                url: review.url,
-                isBot: review.author?.__typename === 'Bot',
-                reactionSubjectId: review.id,
-                reactions: mapGraphQLReactionGroups(review.reactionGroups)
-              }))
+              .map(
+                (review): PRComment => ({
+                  id: review.databaseId,
+                  author: review.author?.login ?? 'ghost',
+                  authorAvatarUrl: review.author?.avatarUrl ?? '',
+                  body: review.body,
+                  createdAt: review.createdAt,
+                  url: review.url,
+                  isBot: review.author?.__typename === 'Bot',
+                  reactionSubjectId: review.id,
+                  reactions: mapGraphQLReactionGroups(review.reactionGroups)
+                })
+              )
           : undefined
 
         const threads = pullRequest?.reviewThreads?.nodes ?? []
@@ -224,15 +228,17 @@ export async function getPRComments(
       } else if (reviewsResult.status === 'fulfilled') {
         reviewSummaries = (JSON.parse(reviewsResult.value.stdout) as RESTReview[])
           .filter((r) => r.body?.trim())
-          .map((r): PRComment => ({
-            id: r.id,
-            author: r.user?.login ?? 'ghost',
-            authorAvatarUrl: r.user?.avatar_url ?? '',
-            body: r.body,
-            createdAt: r.submitted_at,
-            url: r.html_url,
-            isBot: r.user?.type === 'Bot'
-          }))
+          .map(
+            (r): PRComment => ({
+              id: r.id,
+              author: r.user?.login ?? 'ghost',
+              authorAvatarUrl: r.user?.avatar_url ?? '',
+              body: r.body,
+              createdAt: r.submitted_at,
+              url: r.html_url,
+              isBot: r.user?.type === 'Bot'
+            })
+          )
       } else {
         console.warn('Failed to fetch review summaries:', reviewsResult.reason)
       }

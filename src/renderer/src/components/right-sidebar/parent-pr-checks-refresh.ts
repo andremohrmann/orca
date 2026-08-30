@@ -6,8 +6,10 @@ import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 import { isFolderRepo } from '../../../../shared/repo-kind'
 import { getWorktreeGitIdentityDisplay } from '@/lib/worktree-git-identity-display'
 import { compareWorktreeDisplayName } from '@/lib/worktree-display-name-order'
-import { getParentPrChecksRefreshIdentity } from './parent-pr-checks-rows'
-import type { ParentPrChecksRefreshOutcome } from './parent-pr-checks-row-types'
+import {
+  getParentPrChecksRefreshIdentity,
+  type ParentPrChecksRefreshOutcome
+} from './parent-pr-checks-rows'
 
 type FetchHostedReview = (
   repoPath: string,

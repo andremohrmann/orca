@@ -17,11 +17,11 @@ export function createReposApi(): NonNullable<Partial<PreloadApi>['repos']> {
       const owned = await callRuntimeResultWithOwner<{ repos: Repo[] }>('repo.list')
       return owned.result.repos.map((repo) => withRuntimeRepoOwner(repo, owned.hostId))
     },
-    add: async ({ path, kind, displayName }) => {
+    add: async ({ path, kind }) => {
       invalidateRuntimeWorktreeCaches()
       const owned = await callRuntimeResultWithOwner<{ repo: Repo } | { error: string }>(
         'repo.add',
-        { path, kind, displayName }
+        { path, kind }
       )
       return withRuntimeRepoMutationOwner(owned.result, owned.hostId)
     },

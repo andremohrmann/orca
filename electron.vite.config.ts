@@ -225,7 +225,6 @@ export const electronViteConfig: UserConfig = {
           index: resolve('src/main/index.ts'),
           // Why: sandboxed webview preloads cannot load Rollup helper chunks.
           'browser-window-close-preload': resolve('src/preload/browser-window-close.ts'),
-          'doc-preview-link-preload': resolve('src/preload/doc-preview-link.ts'),
           'daemon-entry': resolve('src/main/daemon/daemon-entry.ts'),
           'plugin-host-entry': resolve('src/main/plugins/plugin-host-entry.ts'),
           'computer-sidecar': resolve('src/main/computer/sidecar-entry.ts'),
@@ -255,6 +254,12 @@ export const electronViteConfig: UserConfig = {
           // without paying for another Electron process.
           'main-thread-hang-watchdog-entry': resolve(
             'src/main/hang-watchdog/main-thread-hang-watchdog-entry.ts'
+          ),
+          // Why: run under ELECTRON_RUN_AS_NODE while the caller blocks on
+          // spawnSync — codex app-server trust grants need a live event loop
+          // but must finish before a Codex pane launch proceeds.
+          'codex/codex-app-server-grant-entry': resolve(
+            'src/main/codex/codex-app-server-grant-entry.ts'
           ),
           // Why: electron-vite cleans out/main in dev. The dev CLI imports
           // this path for `orca agent hooks ...`, so it must survive rebuilds.
@@ -293,7 +298,7 @@ export const electronViteConfig: UserConfig = {
     define: buildDefines,
     build: {
       externalizeDeps: {
-        exclude: ['@electron-toolkit/preload', 'zod']
+        exclude: ['@electron-toolkit/preload']
       }
     }
   },

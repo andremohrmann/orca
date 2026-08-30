@@ -80,7 +80,6 @@ export function buildManagedWorktreeCreateArgs(
     startupDraft: params.startupDraft,
     lineage: {
       parentWorkspace: params.parentWorkspace,
-      ...(params.parentWorkspaceOrigin ? { parentWorkspaceOrigin: 'manual' as const } : {}),
       envParentWorkspace: params.envParentWorkspace,
       parentWorktree: params.parentWorktree,
       ...(params.cwdParentWorktree ? { cwdParentWorktree: params.cwdParentWorktree } : {}),

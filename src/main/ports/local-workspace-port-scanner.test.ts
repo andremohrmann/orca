@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import path from 'node:path'
-import { scanWorkspacePorts } from './local-workspace-port-scanner'
-import { attributePortToWorkspace, isContainerProcess } from './local-workspace-port-attribution'
 import {
+  attributePortToWorkspace,
+  isContainerProcess,
   parseLsofListeningOutput,
   parseNetstatListeningOutput,
-  parseProcNetTcp
-} from './local-workspace-platform-port-scanner'
-import { resetWorkspacePortScanTimeoutBackoffForTests } from './local-workspace-port-scan-state'
+  parseProcNetTcp,
+  resetWorkspacePortScanTimeoutBackoffForTests,
+  scanWorkspacePorts
+} from './local-workspace-port-scanner'
 import { PortScanCommandTimeoutError } from './port-scan-command-protocol'
 
 const runPortScanCommandMock = vi.hoisted(() => vi.fn())

@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const newLinearIssueDialogSources = [
-  './task-page/dialogs/new-linear-issue-dialog.tsx',
-  './task-page/dialogs/new-linear-issue-more-pickers.tsx',
-  './task-page/dialogs/new-linear-issue-status-assignee.tsx'
-].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'))
+const taskPageSource = readFileSync(new URL('./TaskPage.tsx', import.meta.url), 'utf8')
 
-/** The extracted Linear "New Issue" dialog and its attribute pickers. */
+/** The Linear "New Issue" dialog, up to the Jira dialog that follows it. */
 function newLinearIssueDialog(): string {
-  return newLinearIssueDialogSources.join('\n')
+  const start = taskPageSource.indexOf('open={newLinearIssueOpen}')
+  const end = taskPageSource.indexOf('open={newJiraIssueOpen}', start)
+  expect(start).toBeGreaterThan(-1)
+  expect(end).toBeGreaterThan(start)
+  return taskPageSource.slice(start, end)
 }
 
 function popoverContentClassNames(section: string): string[] {

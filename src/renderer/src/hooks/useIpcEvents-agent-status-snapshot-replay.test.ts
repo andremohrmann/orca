@@ -87,7 +87,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
 
     expect(setAgentStatus).not.toHaveBeenCalled()
 
-    const beforeHydration = { ...storeState }
     Object.assign(storeState, {
       tabsByWorktree: {
         'wt-1': [{ id: 'tab-future', ptyId: 'pty-1', worktreeId: 'wt-1', title: 'SSH Tab' }]
@@ -100,7 +99,7 @@ describe('useIpcEvents agent status snapshot integration', () => {
         }
       }
     })
-    subscribeListenerRef.current?.(storeState, beforeHydration)
+    subscribeListenerRef.current?.(storeState, storeState)
 
     expect(setAgentStatus).toHaveBeenCalledTimes(1)
     expect(setAgentStatus).toHaveBeenCalledWith(
@@ -193,7 +192,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
 
     expect(setAgentStatus).not.toHaveBeenCalled()
 
-    const beforeHydration = { ...storeState }
     Object.assign(storeState, {
       tabsByWorktree: {
         'wt-1': [{ id: 'tab-future', ptyId: 'pty-1', worktreeId: 'wt-1', title: 'SSH Tab' }]
@@ -206,7 +204,7 @@ describe('useIpcEvents agent status snapshot integration', () => {
         }
       }
     })
-    subscribeListenerRef.current?.(storeState, beforeHydration)
+    subscribeListenerRef.current?.(storeState, storeState)
 
     expect(setAgentStatus).toHaveBeenCalledWith(
       FUTURE_PANE_KEY,

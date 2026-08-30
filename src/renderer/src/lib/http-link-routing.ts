@@ -10,8 +10,8 @@ import { toast } from 'sonner'
 
 export type OpenHttpLinkOptions = {
   worktreeId?: string | null
-  /** Terminal-only opt-in for routing a remote-owned source through its managed browser. */
-  allowRemoteInApp?: boolean
+  /** Terminal-only opt-in for routing a runtime-owned source through its managed browser. */
+  allowRuntimeInApp?: boolean
   /** Unconditional: always use the system browser regardless of settings. */
   forceSystemBrowser?: boolean
   /** Unconditional for local sources: open inside Orca regardless of settings. */
@@ -47,15 +47,14 @@ type StoreAccessor = () => {
   workspacePortScansByKey?: Record<string, WorkspacePortScanResult>
 }
 
-type WorkspaceHttpLinkBrowserRequest = {
+type RuntimeHttpLinkBrowserRequest = {
   workspaceId: string
   url: string
   intent: { kind: 'url' }
-  expectedRuntimeEnvironmentId?: string
-  expectedSshConnectionId?: string
+  expectedRuntimeEnvironmentId: string
 }
 
-type WorkspaceHttpLinkBrowserOpener = (request: WorkspaceHttpLinkBrowserRequest) => Promise<void>
+type RuntimeHttpLinkBrowserOpener = (request: RuntimeHttpLinkBrowserRequest) => Promise<void>
 
 type LocalhostLinkRepo = {
   id: string
@@ -75,16 +74,16 @@ type LocalhostLinkWorktree = {
 // the break, several renderer test files that load this module first see
 // `createEditorSlice` as undefined at store/index.ts initialization.
 let storeAccessor: StoreAccessor | null = null
-let workspaceHttpLinkBrowserOpener: WorkspaceHttpLinkBrowserOpener | null = null
+let runtimeHttpLinkBrowserOpener: RuntimeHttpLinkBrowserOpener | null = null
 
 export function registerHttpLinkStoreAccessor(fn: StoreAccessor): void {
   storeAccessor = fn
 }
 
-export function registerWorkspaceHttpLinkBrowserOpener(
-  fn: WorkspaceHttpLinkBrowserOpener | null
+export function registerRuntimeHttpLinkBrowserOpener(
+  fn: RuntimeHttpLinkBrowserOpener | null
 ): void {
-  workspaceHttpLinkBrowserOpener = fn
+  runtimeHttpLinkBrowserOpener = fn
 }
 
 // Scope: http(s) URLs only. file: URIs and in-worktree markdown targets are
@@ -116,7 +115,7 @@ export function resolveModifierRouting(
 export function openHttpLink(url: string, opts: OpenHttpLinkOptions = {}): void {
   const {
     worktreeId,
-    allowRemoteInApp,
+    allowRuntimeInApp,
     forceSystemBrowser,
     forceInApp,
     modifierHeld,
@@ -140,20 +139,13 @@ export function openHttpLink(url: string, opts: OpenHttpLinkOptions = {}): void 
     Boolean(worktreeId) &&
     (forceInApp || openLinksInApp || modifier.wantsOrca)
 
-  if (
-    wantsOrca &&
-    allowRemoteInApp &&
-    worktreeId &&
-    (sourceOwner?.kind === 'runtime' || sourceOwner?.kind === 'ssh')
-  ) {
-    if (workspaceHttpLinkBrowserOpener) {
-      void workspaceHttpLinkBrowserOpener({
+  if (wantsOrca && allowRuntimeInApp && worktreeId && sourceOwner?.kind === 'runtime') {
+    if (runtimeHttpLinkBrowserOpener) {
+      void runtimeHttpLinkBrowserOpener({
         workspaceId: worktreeId,
         url,
         intent: { kind: 'url' },
-        ...(sourceOwner.kind === 'runtime'
-          ? { expectedRuntimeEnvironmentId: sourceOwner.runtimeEnvironmentId }
-          : { expectedSshConnectionId: sourceOwner.connectionId })
+        expectedRuntimeEnvironmentId: sourceOwner.runtimeEnvironmentId
       }).catch((error) => {
         toast.error(
           error instanceof Error

@@ -1241,7 +1241,7 @@ export class SshConnection {
     return channel
   }
 
-  getSystemSshBuildArgsOptions(): SystemSshBuildArgsOptions {
+  private getSystemSshBuildArgsOptions(): SystemSshBuildArgsOptions {
     const options: SystemSshBuildArgsOptions = {}
     if (this.systemSshResolvedConfig) {
       options.resolvedConfig = this.systemSshResolvedConfig

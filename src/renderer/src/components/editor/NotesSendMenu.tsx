@@ -43,10 +43,6 @@ export type NotesSendMenuProps<TNote> = {
   // A new nonce value asks this menu to open (e.g. from a keyboard shortcut).
   // Only a single mounted instance should be driven this way.
   openRequestNonce?: number | null
-  // Wall-clock deadline after which a never-consumed request is dropped instead
-  // of opening the menu. Checked here, on the commit that acts on the request,
-  // so it reads exact time rather than a render clock that can lag or freeze.
-  openRequestExpiresAt?: number | null
   onOpenRequestHandled?: () => void
   onDelivered: (notes: readonly TNote[]) => void
 }
@@ -73,7 +69,6 @@ export function NotesSendMenu<TNote>({
   iconClassName = 'size-3.5',
   align = 'end',
   openRequestNonce = null,
-  openRequestExpiresAt = null,
   onOpenRequestHandled,
   onDelivered
 }: NotesSendMenuProps<TNote>): React.JSX.Element {
@@ -153,21 +148,13 @@ export function NotesSendMenu<TNote>({
     if (openRequestNonce == null) {
       return
     }
-    // Why: only open when notes remain and the request has not aged out; either
-    // way clear it so a stale nonce cannot reopen the menu on a later remount.
-    const expired = openRequestExpiresAt != null && Date.now() >= openRequestExpiresAt
-    if (!expired && hasDeliverableNotes && defaultScope) {
+    // Why: only open when notes remain; either way clear the request so a stale
+    // nonce cannot reopen the menu on a later remount.
+    if (hasDeliverableNotes && defaultScope) {
       handleOpenChange(true)
     }
     onOpenRequestHandled?.()
-  }, [
-    openRequestNonce,
-    openRequestExpiresAt,
-    hasDeliverableNotes,
-    defaultScope,
-    handleOpenChange,
-    onOpenRequestHandled
-  ])
+  }, [openRequestNonce, hasDeliverableNotes, defaultScope, handleOpenChange, onOpenRequestHandled])
 
   return (
     <DropdownMenu modal={false} open={effectiveSendMenuOpen} onOpenChange={handleOpenChange}>

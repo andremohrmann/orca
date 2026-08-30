@@ -1,4 +1,4 @@
-import { runProcess } from '../../shared/child-process/run-process'
+import { execFileSync } from 'node:child_process'
 import { resolveCodexCommand } from '../codex-cli/command'
 import { getSpawnArgsForWindows } from '../win32-utils'
 import {
@@ -36,18 +36,10 @@ export type ResolvedCodexTrustGrantHost = {
   buildRequest: (input: CodexTrustGrantRequestInput) => CodexHookTrustGrantRequest
 }
 
-/**
- * Resolves the host that runs the codex binary for a grant session.
- *
- * Async because the WSL identity probe shells into the distro; #16441 measured
- * a 15s main-thread stall when launch prep did this work synchronously.
- */
-export async function resolveCodexTrustGrantHost(
-  host: CodexTrustGrantHost
-): Promise<ResolvedCodexTrustGrantHost> {
+export function resolveCodexTrustGrantHost(host: CodexTrustGrantHost): ResolvedCodexTrustGrantHost {
   if (host.kind === 'wsl') {
     return {
-      binaryStamp: await buildWslCodexBinaryStamp(host.distro),
+      binaryStamp: buildWslCodexBinaryStamp(host.distro),
       buildRequest: (input) => ({
         invocation: {
           command: 'wsl.exe',
@@ -63,10 +55,6 @@ export async function resolveCodexTrustGrantHost(
     }
   }
 
-  return resolveNativeCodexTrustGrantHost()
-}
-
-export function resolveNativeCodexTrustGrantHost(): ResolvedCodexTrustGrantHost {
   // Why: command resolution scans PATH/version-manager directories. Resolve
   // once per grant and reuse it for both the binary stamp and invocation.
   const command = resolveCodexCommand()
@@ -93,24 +81,19 @@ export function resolveNativeCodexTrustGrantHost(): ResolvedCodexTrustGrantHost 
   }
 }
 
-async function buildWslCodexBinaryStamp(
-  distro: string
-): Promise<CodexTrustGrantBinaryStamp | null> {
+function buildWslCodexBinaryStamp(distro: string): CodexTrustGrantBinaryStamp | null {
   try {
     // Why: WSL PATH resolution happens inside the distro's login shell. The
     // resolved path plus CLI version detects upgrades without assuming UNC access.
     const probe = buildWslCodexIdentityProbe(distro)
-    const result = await runProcess({
-      program: 'wsl.exe',
-      args: probe.args,
-      timeoutMs: WSL_CODEX_AVAILABILITY_TIMEOUT_MS
+    const stdout = execFileSync('wsl.exe', probe.args, {
+      encoding: 'utf-8',
+      timeout: WSL_CODEX_AVAILABILITY_TIMEOUT_MS,
+      windowsHide: true
     })
-    if (result.code !== 0 || result.timedOut) {
-      return null
-    }
     // Why: the split below is positional, so login-shell rc output ahead of the
     // payload would silently become the "path" and destabilize the stamp.
-    const output = probe.readStdout(result.stdout)
+    const output = probe.readStdout(stdout)
     if (output === null) {
       return null
     }
@@ -131,10 +114,9 @@ export function readCodexTrustGrantLedgerHomeMatchingStamp(
   return home && binaryStampsMatch(home.binary, currentStamp) ? home : null
 }
 
-/** Native-only: the WSL stamp needs a subprocess, and status reads must stay
- *  synchronous for the hook-status readers that never target a distro. */
-export function readCurrentNativeCodexTrustGrantLedgerHome(
-  runtimeHomePath: string
+export function readCurrentCodexTrustGrantLedgerHome(
+  runtimeHomePath: string,
+  host: CodexTrustGrantHost
 ): CodexTrustGrantLedgerHome | null {
   try {
     const home = readCodexTrustGrantLedgerHome(runtimeHomePath)
@@ -143,7 +125,7 @@ export function readCurrentNativeCodexTrustGrantLedgerHome(
       // and version-manager scan when there is no recorded stamp to validate.
       return null
     }
-    return binaryStampsMatch(home.binary, resolveNativeCodexTrustGrantHost().binaryStamp)
+    return binaryStampsMatch(home.binary, resolveCodexTrustGrantHost(host).binaryStamp)
       ? home
       : null
   } catch {

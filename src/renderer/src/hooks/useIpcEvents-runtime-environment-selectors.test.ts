@@ -303,7 +303,6 @@ describe('createRuntimeEnvironmentStoreSyncSubscriber', () => {
 describe('invalidateRuntimeClientEventReplay', () => {
   it('explicitly syncs an advanced SSH generation when stale publication is a no-op and hydration fails', async () => {
     const sshStateReference = new Map()
-    const refreshRuntimeStatus = vi.fn()
     const requestProjectRefresh = vi.fn()
     const markEnvironmentSshStateStale = vi.fn()
     const sync = vi.fn()
@@ -313,7 +312,6 @@ describe('invalidateRuntimeClientEventReplay', () => {
 
     invalidateRuntimeClientEventReplay({
       getSshStateReference: () => sshStateReference,
-      refreshRuntimeStatus,
       requestProjectRefresh,
       markEnvironmentSshStateStale,
       hydrateEnvironmentSshState,
@@ -321,7 +319,6 @@ describe('invalidateRuntimeClientEventReplay', () => {
     })
     await Promise.resolve()
 
-    expect(refreshRuntimeStatus).toHaveBeenCalledOnce()
     expect(requestProjectRefresh).toHaveBeenCalledOnce()
     expect(markEnvironmentSshStateStale).toHaveBeenCalledOnce()
     expect(sync).toHaveBeenCalledOnce()
@@ -334,7 +331,6 @@ describe('invalidateRuntimeClientEventReplay', () => {
 
     invalidateRuntimeClientEventReplay({
       getSshStateReference: () => sshStateReference,
-      refreshRuntimeStatus: vi.fn(),
       requestProjectRefresh: vi.fn(),
       markEnvironmentSshStateStale: () => {
         sshStateReference = new Map()

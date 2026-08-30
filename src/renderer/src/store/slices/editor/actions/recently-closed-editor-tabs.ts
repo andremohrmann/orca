@@ -77,7 +77,6 @@ export function createRecentlyClosedEditorTabs(
             activeFileId: null,
             activeTabType: 'terminal',
             markdownViewMode: {},
-            markdownRichModeSizeOverride: {},
             editorViewMode: {},
             markdownFrontmatterVisible: {},
             markdownTableOfContentsVisible: {},
@@ -93,11 +92,6 @@ export function createRecentlyClosedEditorTabs(
         )
         const newMarkdownViewMode = Object.fromEntries(
           Object.entries(s.markdownViewMode).filter(([fileId]) => remainingFileIds.has(fileId))
-        )
-        const newMarkdownRichModeSizeOverride = Object.fromEntries(
-          Object.entries(s.markdownRichModeSizeOverride).filter(([fileId]) =>
-            remainingFileIds.has(fileId)
-          )
         )
         const newEditorViewMode = Object.fromEntries(
           Object.entries(s.editorViewMode).filter(([fileId]) => remainingFileIds.has(fileId))
@@ -181,7 +175,6 @@ export function createRecentlyClosedEditorTabs(
               : s.activeBrowserTabId,
           activeTabType: browserTabsForWorktree.length > 0 ? 'browser' : 'terminal',
           markdownViewMode: newMarkdownViewMode,
-          markdownRichModeSizeOverride: newMarkdownRichModeSizeOverride,
           editorViewMode: newEditorViewMode,
           markdownFrontmatterVisible: newMarkdownFrontmatterVisible,
           markdownTableOfContentsVisible: newMarkdownTableOfContentsVisible,

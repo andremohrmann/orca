@@ -23,11 +23,6 @@ type ClaudeUsageSourceRecord = {
       output_tokens?: number
       cache_read_input_tokens?: number
       cache_creation_input_tokens?: number
-      /** TTL split of `cache_creation_input_tokens`; 1h writes bill at 2x base input. */
-      cache_creation?: {
-        ephemeral_5m_input_tokens?: number
-        ephemeral_1h_input_tokens?: number
-      }
     }
   }
 }
@@ -48,8 +43,7 @@ export function stripClaudeSourceMetadata(
     inputTokens: turn.inputTokens,
     outputTokens: turn.outputTokens,
     cacheReadTokens: turn.cacheReadTokens,
-    cacheWriteTokens: turn.cacheWriteTokens,
-    cacheWrite1hTokens: turn.cacheWrite1hTokens
+    cacheWriteTokens: turn.cacheWriteTokens
   }
 }
 
@@ -70,7 +64,6 @@ function dedupeClaudeUsageTurns(
         existing.outputTokens = Math.max(existing.outputTokens, turn.outputTokens)
         existing.cacheReadTokens = Math.max(existing.cacheReadTokens, turn.cacheReadTokens)
         existing.cacheWriteTokens = Math.max(existing.cacheWriteTokens, turn.cacheWriteTokens)
-        existing.cacheWrite1hTokens = Math.max(existing.cacheWrite1hTokens, turn.cacheWrite1hTokens)
         continue
       }
     }
@@ -108,11 +101,6 @@ function parseClaudeUsageSourceRecord(
   const outputTokens = usage?.output_tokens ?? 0
   const cacheReadTokens = usage?.cache_read_input_tokens ?? 0
   const cacheWriteTokens = usage?.cache_creation_input_tokens ?? 0
-  // Why: clamp so the implied 5m remainder can never go negative on a partial row.
-  const cacheWrite1hTokens = Math.min(
-    usage?.cache_creation?.ephemeral_1h_input_tokens ?? 0,
-    cacheWriteTokens
-  )
 
   if (inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens <= 0) {
     return null
@@ -131,8 +119,7 @@ function parseClaudeUsageSourceRecord(
     inputTokens,
     outputTokens,
     cacheReadTokens,
-    cacheWriteTokens,
-    cacheWrite1hTokens
+    cacheWriteTokens
   }
 }
 

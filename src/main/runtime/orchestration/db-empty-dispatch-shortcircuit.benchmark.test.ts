@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { OrchestrationDb } from './db'
-import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 // Why: buildAgentOrchestrationByPaneKey issues 2 dispatch lookups per terminal
 // on EVERY 16ms graph publish. For users who never orchestrate, every one of
@@ -65,7 +64,7 @@ describe('orchestration empty-dispatch short-circuit (benchmark)', () => {
   it('still runs the fan-out once a dispatch exists (correctness preserved)', () => {
     const db = new OrchestrationDb(':memory:')
     const task = db.createTask({ spec: 'work' })
-    createRootDispatch(db, task.id, 'term_5')
+    db.createDispatchContext(task.id, 'term_5')
     const handles = Array.from({ length: 10 }, (_, i) => `term_${i}`)
 
     const contexts = simulateGraphPublish(db, handles)
@@ -76,7 +75,7 @@ describe('orchestration empty-dispatch short-circuit (benchmark)', () => {
   it('predicate lifecycle: false when empty, true after dispatch (even completed), false after reset', () => {
     const db = new OrchestrationDb(':memory:')
     expect(db.hasAnyDispatchContexts()).toBe(false)
-    const ctx = createRootDispatch(db, db.createTask({ spec: 'work' }).id, 'term_worker')
+    const ctx = db.createDispatchContext(db.createTask({ spec: 'work' }).id, 'term_worker')
     expect(db.hasAnyDispatchContexts()).toBe(true)
     // Completed rows still count — recent-completed lookups must stay valid.
     db.completeDispatch(ctx.id)

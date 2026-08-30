@@ -6,7 +6,6 @@ import RetainedAgentsSyncGate from '../components/dashboard/RetainedAgentsSyncGa
 import { WorkspacePortScanner } from '../components/ports/WorkspacePortScanner'
 import { MacosTccPromptNoticeHost } from '../hooks/MacosTccPromptNoticeHost'
 import { useAppStore } from '../store'
-import { StructuredAgentSessionStatusBridge } from '../components/native-chat/StructuredAgentSessionStatusBridge'
 
 const DashboardPopoutBridge = lazy(() => import('../components/dashboard/DashboardPopoutBridge'))
 
@@ -61,7 +60,6 @@ export function AppBackgroundServices(): React.JSX.Element {
       ) : null}
       <AgentDashboardStartupGate />
       <AgentHibernationGate />
-      <StructuredAgentSessionStatusBridge />
     </>
   )
 }

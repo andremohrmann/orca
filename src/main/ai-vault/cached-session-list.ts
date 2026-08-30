@@ -4,8 +4,7 @@ import {
   resetAiVaultScannerBackgroundForTests,
   scanAiVaultSessionsInBackground
 } from './session-scanner-background'
-import { listRunningWslHomeDirsAsync } from '../wsl'
-import { filterPathsToRunningWslDistrosAsync } from '../wsl-running-path-filter'
+import { getWslHomeAsync, listWslDistrosAsync } from '../wsl'
 import type { AiVaultListArgs, AiVaultListResult } from '../../shared/ai-vault-types'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import { AiVaultScanCoordinator } from './ai-vault-scan-coordinator'
@@ -80,21 +79,15 @@ export async function listAiVaultSessions(
     force: args?.force,
     signal: options.signal,
     start: async (scanSignal) => {
-      const configuredCodexHomes = sources.getAdditionalCodexHomePaths?.() ?? []
-      const [additionalCodexHomes, wslHomeDirs] = await Promise.all([
-        filterPathsToRunningWslDistrosAsync(configuredCodexHomes),
-        getAiVaultWslHomeDirs()
-      ])
-      const additionalCodexSessionsDirs = additionalCodexHomes.map((homePath) =>
-        join(homePath, 'sessions')
-      )
+      const additionalCodexSessionsDirs =
+        sources.getAdditionalCodexHomePaths?.().map((homePath) => join(homePath, 'sessions')) ?? []
       const result = await scanAiVaultSessionsInBackground(
         {
           limit: args?.limit,
           unlimited: args?.unlimited,
           scopePaths: args?.scopePaths,
           additionalCodexSessionsDirs,
-          wslHomeDirs,
+          wslHomeDirs: await getAiVaultWslHomeDirs(),
           // Why: this scan is always host-local; callers addressing this host by a
           // runtime id get the result restamped at the RPC edge, never rescanned.
           executionHostId: LOCAL_EXECUTION_HOST_ID
@@ -131,7 +124,10 @@ export async function getAiVaultWslHomeDirs(): Promise<string[]> {
   if (process.platform !== 'win32') {
     return []
   }
-  return listRunningWslHomeDirsAsync()
+  const homes = await Promise.all(
+    (await listWslDistrosAsync()).map((distro) => getWslHomeAsync(distro))
+  )
+  return homes.filter((homeDir): homeDir is string => Boolean(homeDir))
 }
 
 // Drops the scan-result cache after a session is deleted so a non-force

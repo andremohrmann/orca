@@ -23,7 +23,7 @@ export type LocalPtyProviderMocks = {
   writeFileSyncMock: Mock
   prepareMacosTccLoginShellMock: Mock
   resolveAgentForegroundProcessMock: Mock
-  readWindowsPtyJobProcessIdsMock: Mock
+  readWindowsConptyProcessIdsMock: Mock
   killWithDescendantSweepMock: Mock
   isWslAvailableAsyncMock: Mock
   wslUncDirectoryExistsMock: Mock
@@ -95,8 +95,8 @@ export function applyLocalPtyProviderMockDefaults(mocks: LocalPtyProviderMocks):
       processName: fallbackProcess
     })
   )
-  mocks.readWindowsPtyJobProcessIdsMock.mockReset()
-  mocks.readWindowsPtyJobProcessIdsMock.mockReturnValue(null)
+  mocks.readWindowsConptyProcessIdsMock.mockReset()
+  mocks.readWindowsConptyProcessIdsMock.mockResolvedValue(null)
   mocks.isWslAvailableAsyncMock.mockReset()
   mocks.isWslAvailableAsyncMock.mockResolvedValue(true)
   mocks.wslUncDirectoryExistsMock.mockReset()

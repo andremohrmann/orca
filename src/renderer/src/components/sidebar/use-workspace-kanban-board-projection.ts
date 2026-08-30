@@ -5,7 +5,6 @@ import { groupWorkspaceKanbanWorktrees } from './workspace-kanban-worktree-group
 import { buildWorkspaceKanbanLaneViews } from './workspace-kanban-search'
 import { useWorkspaceKanbanSearch } from './use-workspace-kanban-search'
 import { registerWorkspaceKanbanSidebarDropGroups } from './workspace-kanban-sidebar-drop'
-import { buildUnambiguousWorktreeIdIndex } from './worktree-unambiguous-id-index'
 import {
   composeWorktreeHostIdentity,
   getWorktreeHostIdentity
@@ -39,7 +38,7 @@ export function useWorkspaceKanbanBoardProjection(args: {
     [args.allWorktrees, args.sortBy, args.workspaceStatuses, visibleWorktreeIds]
   )
   const worktreeById = useMemo(
-    () => buildUnambiguousWorktreeIdIndex(args.allWorktrees),
+    () => new Map(args.allWorktrees.map((worktree) => [worktree.id, worktree])),
     [args.allWorktrees]
   )
   const boardWorktrees = useMemo(

@@ -139,7 +139,6 @@ export function useTerminalPaneContextMenu({
     paneCwdRef,
     contextPaneIdRef,
     tabId,
-    worktreeId,
     fallbackCwd,
     resolveMenuPane
   })

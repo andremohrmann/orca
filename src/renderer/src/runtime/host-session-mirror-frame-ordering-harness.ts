@@ -5,10 +5,6 @@ import { makePaneKey } from '../../../shared/stable-pane-id'
 import { resetStaleDocumentVisibilityForTesting } from '@/components/terminal-pane/stale-document-visibility'
 import { useAppStore, type AppState } from '@/store'
 import {
-  clearRuntimeEnvironmentConnectionGenerationsForTests,
-  setRuntimeEnvironmentConnectionGenerationForTests
-} from '@/store/slices/runtime-status'
-import {
   BG_MIRROR_TAB_ID,
   BG_WT,
   ENV,
@@ -193,7 +189,6 @@ export function installFrameOrderingHarness(options: { fakeTimers?: boolean } = 
     }
     resetWebSessionTabsSnapshotFreshnessForTests()
     resetHostSessionMirrorHydrationForTests()
-    setRuntimeEnvironmentConnectionGenerationForTests(ENV, 1)
     seedState()
   })
 
@@ -203,7 +198,6 @@ export function installFrameOrderingHarness(options: { fakeTimers?: boolean } = 
     replaceRuntimeEnvironmentRevisions([])
     resetWebSessionTabsSnapshotFreshnessForTests()
     resetHostSessionMirrorHydrationForTests()
-    clearRuntimeEnvironmentConnectionGenerationsForTests()
     if (options.fakeTimers) {
       resetStaleDocumentVisibilityForTesting()
       setDocumentVisibility('visible')

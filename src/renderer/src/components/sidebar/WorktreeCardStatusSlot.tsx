@@ -63,7 +63,7 @@ function overlayNewCardUnreadStatus(
   )
 }
 
-function getReviewStatusLabel(review: WorktreeCardPrDisplay): string {
+function getReviewStatusTooltip(review: WorktreeCardPrDisplay): string {
   const label = getReviewLabel(review)
   if (review.state === 'merged') {
     return `${label}: Merged`
@@ -115,44 +115,57 @@ export function WorktreeCardStatusSlot({
     QUIET_REVIEW_REPLACEABLE_STATUSES.has(status)
   const passiveStatusLabel =
     canShowReviewStatus && prDisplay
-      ? getReviewStatusLabel(prDisplay)
+      ? getReviewStatusTooltip(prDisplay)
       : canShowBranchStatus
         ? (branchIdentityLabel ?? getDefaultBranchIdentityLabel())
         : statusLabel
-  const passiveStatusAnnouncement =
+  const passiveStatusTooltip =
     newCardStyle && isUnread ? `${passiveStatusLabel} · Unread` : passiveStatusLabel
   // Why: working and permission already own the new-card status lane, but
-  // unread state should still surface to assistive technology and reappear afterward.
+  // unread state should still surface in tooltip/sr-only copy and reappear afterward.
   const showNewCardUnreadAlert =
     newCardStyle && isUnread && showStatus && status !== 'working' && status !== 'permission'
   const reviewStatusIconClassName = compactReviewAndBranchStatusIconClassName
   const branchStatusIcon = <GitBranch className={branchStatusIconClassName} aria-hidden="true" />
   const passiveStatus =
     canShowReviewStatus && prDisplay ? (
-      <span className={cn('inline-flex size-5 items-center justify-center p-0.5', className)}>
-        <ReviewIcon review={prDisplay} className={reviewStatusIconClassName} variant="generic" />
-        <span className="sr-only">{passiveStatusAnnouncement}</span>
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={cn('inline-flex size-5 items-center justify-center p-0.5', className)}>
+            <ReviewIcon
+              review={prDisplay}
+              className={reviewStatusIconClassName}
+              variant="generic"
+            />
+            <span className="sr-only">{passiveStatusTooltip}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          <span>{passiveStatusTooltip}</span>
+        </TooltipContent>
+      </Tooltip>
     ) : canShowBranchStatus ? (
-      <span className={cn('inline-flex size-5 items-center justify-center p-0.5', className)}>
-        {branchStatusIcon}
-        <span className="sr-only">{passiveStatusAnnouncement}</span>
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={cn('inline-flex size-5 items-center justify-center p-0.5', className)}>
+            {branchStatusIcon}
+            <span className="sr-only">{passiveStatusTooltip}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          <span>{passiveStatusTooltip}</span>
+        </TooltipContent>
+      </Tooltip>
     ) : newCardStyle && showStatus ? (
       <>
         <span className={cn('inline-flex size-5 items-center justify-center', className)}>
-          <StatusIndicator status={status} aria-hidden="true" tooltipSide="right" />
+          <StatusIndicator status={status} aria-hidden="true" />
         </span>
-        <span className="sr-only">{passiveStatusAnnouncement}</span>
+        <span className="sr-only">{passiveStatusTooltip}</span>
       </>
     ) : (
       <>
-        <StatusIndicator
-          status={status}
-          aria-hidden="true"
-          className={className}
-          tooltipSide="right"
-        />
+        <StatusIndicator status={status} aria-hidden="true" className={className} />
         <span className="sr-only">{statusLabel}</span>
       </>
     )
@@ -203,7 +216,7 @@ export function WorktreeCardStatusSlot({
                   {branchStatusIcon}
                 </span>
               ) : showStatus ? (
-                <StatusIndicator status={status} aria-hidden="true" showTooltip={false} />
+                <StatusIndicator status={status} aria-hidden="true" />
               ) : (
                 <span className="sr-only">{actionLabel}</span>
               )
@@ -214,7 +227,6 @@ export function WorktreeCardStatusSlot({
                 <StatusIndicator
                   status={status}
                   aria-hidden="true"
-                  showTooltip={false}
                   className="transition-opacity group-hover/unread:opacity-0 group-focus-within/unread:opacity-0"
                 />
                 <Bell className="absolute size-3 text-muted-foreground/40 opacity-0 transition-opacity group-hover/unread:opacity-100 group-focus-within/unread:opacity-100" />

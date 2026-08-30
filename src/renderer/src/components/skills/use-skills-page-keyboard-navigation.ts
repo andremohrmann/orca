@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import type { SkillsPageView } from './skills-page-view'
-import { hasVisibleOverlay } from '@/lib/visible-overlay'
 
 type UseSkillsPageKeyboardNavigationOptions = {
   closeSkillsPage: () => void
@@ -18,12 +17,33 @@ export function useSkillsPageKeyboardNavigation({
   view
 }: UseSkillsPageKeyboardNavigationOptions): void {
   useEffect(() => {
+    const hasVisibleOverlay = (): boolean =>
+      Array.from(
+        document.querySelectorAll('[role="dialog"], [role="listbox"], [role="menu"]')
+      ).some((element) => {
+        if (!(element instanceof HTMLElement)) {
+          return false
+        }
+        if (element.closest('[aria-hidden="true"]')) {
+          return false
+        }
+        if (element.closest('[data-skills-page-list="true"]')) {
+          return false
+        }
+        const style = window.getComputedStyle(element)
+        return (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          element.getClientRects().length > 0
+        )
+      })
+
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') {
         return
       }
       // Why: menus and dialogs own Escape before page-level navigation.
-      if (hasVisibleOverlay({ ignoreSelector: '[data-skills-page-list="true"]' })) {
+      if (hasVisibleOverlay()) {
         return
       }
       const target = event.target

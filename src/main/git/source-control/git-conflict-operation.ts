@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import * as path from 'node:path'
 import type { GitConflictOperation } from '../../../shared/git-status-types'
 import type { GitRuntimeOptions } from '../git-runtime-options'
@@ -16,12 +16,17 @@ export async function detectConflictOperation(worktreePath: string): Promise<Git
   const rebaseMergeDir = path.join(gitDir, 'rebase-merge')
   const rebaseApplyDir = path.join(gitDir, 'rebase-apply')
 
-  // Why async and concurrent: this runs on every status poll, and on a WSL/UNC git dir each
-  // probe is a 9p round trip — four of them synchronously blocked the Electron main thread.
-  const [hasMergeHead, hasCherryPickHead, hasRebaseMergeDir, hasRebaseApplyDir] = await Promise.all(
-    [mergeHead, cherryPickHead, rebaseMergeDir, rebaseApplyDir].map(pathExists)
-  )
-  const hasRebaseDir = hasRebaseMergeDir || hasRebaseApplyDir
+  let hasMergeHead = false
+  let hasCherryPickHead = false
+  let hasRebaseDir = false
+
+  try {
+    hasMergeHead = existsSync(mergeHead)
+    hasCherryPickHead = existsSync(cherryPickHead)
+    hasRebaseDir = existsSync(rebaseMergeDir) || existsSync(rebaseApplyDir)
+  } catch {
+    return 'unknown'
+  }
 
   if (hasMergeHead) {
     return 'merge'
@@ -33,16 +38,6 @@ export async function detectConflictOperation(worktreePath: string): Promise<Git
     return 'cherry-pick'
   }
   return 'unknown'
-}
-
-/** Mirrors existsSync: any failure to reach the path reads as absent, never as a throw. */
-async function pathExists(target: string): Promise<boolean> {
-  try {
-    await access(target)
-    return true
-  } catch {
-    return false
-  }
 }
 
 export async function abortMerge(

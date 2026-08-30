@@ -6,8 +6,6 @@ import { resolveSplitCwd, type PaneCwdMap } from './resolve-split-cwd'
 import { recordCreatedTerminalPaneSplit } from './terminal-pane-split-completion'
 
 export function splitTerminalPaneWithInheritedCwd(args: {
-  worktreeId: string
-  tabId: string
   manager: PaneManager
   getManager?: () => PaneManager | null
   paneTransports: Map<number, PtyTransport>
@@ -18,13 +16,7 @@ export function splitTerminalPaneWithInheritedCwd(args: {
   source: TerminalPaneSplitSource
 }): void {
   const ptyId = args.paneTransports.get(args.pane.id)?.getPtyId() ?? null
-  if (
-    splitWebRuntimeTerminal(ptyId, args.direction, args.source, {
-      worktreeId: args.worktreeId,
-      tabId: args.tabId,
-      leafId: args.pane.leafId
-    })
-  ) {
+  if (splitWebRuntimeTerminal(ptyId, args.direction, args.source)) {
     return
   }
   const cached = args.paneCwdMap.get(args.pane.id)

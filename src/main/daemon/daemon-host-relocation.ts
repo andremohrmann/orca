@@ -10,11 +10,9 @@ import {
   writeFileSync
 } from 'node:fs'
 import { dirname, join, win32 as winPath } from 'node:path'
-import { getAppEnvironment } from '../../shared/app-environment'
-import type { ProcessLivenessVerdict } from './daemon-incarnation-evidence-types'
+import { app } from 'electron'
 import { parseDaemonPidFile } from './daemon-pid-file-parse'
-import { quarantineCorruptDaemonPidRecord } from './daemon-pid-record-quarantine'
-import { inspectProcessLiveness, mergeProcessLivenessVerdict } from './daemon-process-inspection'
+import { startTimeMatches } from './daemon-process-start-time'
 
 /**
  * Relocate the terminal daemon's process image out of the app install dir into LOCAL userData so it
@@ -87,27 +85,9 @@ function resolveEntrySourcePath(resourcesPath: string): string {
   return join(unpackedRoot, 'out', 'main', 'daemon-entry.js')
 }
 
-/**
- * Whether this process is a packaged ELECTRON app on win32 — the only shape relocation
- * addresses, because what it escapes is the NSIS updater's kill zone.
- *
- * Why asar and not isPackaged alone: orcad answers isPackaged() true (it is a shipped build,
- * not a dev checkout) while having no asar, no resourcesPath and no NSIS installer. Asking
- * whether the app root is an asar archive is the same honesty fix the watcher path uses, and
- * it keeps a Node host from staging a copy of an Electron tree it does not have.
- */
-function isPackagedElectronWin32(): boolean {
-  const environment = getAppEnvironment()
-  return (
-    process.platform === 'win32' &&
-    environment.isPackaged() &&
-    environment.getAppPath().includes('app.asar')
-  )
-}
-
 // Relocation inputs from the live packaged process, or null when it doesn't apply (non-win32, dev, or missing resourcesPath).
 function collectDaemonHostSources(): DaemonHostSources | null {
-  if (!isPackagedElectronWin32()) {
+  if (process.platform !== 'win32' || !app.isPackaged) {
     return null
   }
   const resourcesPath = process.resourcesPath
@@ -226,7 +206,7 @@ function hostRootDir(): string {
   const base =
     typeof localAppData === 'string' && localAppData.length > 0
       ? join(localAppData, LOCAL_HOST_ROOT_NAME)
-      : getAppEnvironment().getPath('userData')
+      : app.getPath('userData')
   return join(base, HOST_SUBDIR)
 }
 
@@ -239,7 +219,7 @@ export function getRelocatedDaemonHost(): RelocatedDaemonHost | null {
   if (!sources) {
     return null
   }
-  const version = getAppEnvironment().getVersion()
+  const version = app.getVersion()
   const dest = join(hostRootDir(), version)
   const marker = readMarker(dest)
   if (!marker || marker.version !== version) {
@@ -266,7 +246,7 @@ export function materializeRelocatedDaemonHost(): RelocatedDaemonHost | null {
   if (!sources) {
     return null
   }
-  const version = getAppEnvironment().getVersion()
+  const version = app.getVersion()
   const root = hostRootDir()
   const dest = join(root, version)
   const staging = join(root, `${version}.staging-${randomBytes(6).toString('hex')}`)
@@ -295,94 +275,54 @@ export function materializeRelocatedDaemonHost(): RelocatedDaemonHost | null {
   return getRelocatedDaemonHost()
 }
 
-export type PinnedDaemonVersionsEvidence =
-  | { status: 'complete'; versionLiveness: ReadonlyMap<string, ProcessLivenessVerdict> }
-  | { status: 'unverifiable'; reason: string }
+function isDaemonPidAlive(pid: number, startedAtMs: number | null): boolean {
+  try {
+    process.kill(pid, 0)
+  } catch {
+    return false
+  }
+  return startTimeMatches(pid, startedAtMs)
+}
 
 /**
  * App versions still pinned by a live daemon (from daemon-v<N>.pid files under `runtimeDir`), whose
  * host dir must not be reclaimed while alive. On win32 start-time can't verify, so a matching pid pins conservatively.
  */
-export function collectPinnedDaemonVersions(runtimeDir: string): PinnedDaemonVersionsEvidence {
-  const versionLiveness = new Map<string, ProcessLivenessVerdict>()
+export function collectPinnedDaemonVersions(runtimeDir: string): Set<string> {
+  const pinned = new Set<string>()
   let entries
   try {
     entries = readdirSync(runtimeDir, { withFileTypes: true })
   } catch {
-    return { status: 'unverifiable', reason: 'the daemon runtime directory could not be read' }
+    return pinned
   }
   for (const entry of entries) {
     if (!entry.isFile() || !/^daemon-v\d+\.pid$/.test(entry.name)) {
       continue
     }
-    let contents
+    let parsed
     try {
-      contents = readFileSync(join(runtimeDir, entry.name), 'utf8')
+      parsed = parseDaemonPidFile(readFileSync(join(runtimeDir, entry.name), 'utf8'))
     } catch {
-      // Read failures (AV lock, vanished file) are transient; the veto re-evaluates next launch.
-      return {
-        status: 'unverifiable',
-        reason: `the daemon pid file could not be read: ${entry.name}`
-      }
-    }
-    const parsed = parseDaemonPidFile(contents)
-    // Why not just `!parsed`: the parser's legacy bare-integer fallback coerces an empty or
-    // whitespace-only record to pid 0 (Number('') === 0), which is the exact shape a concurrent
-    // read sees while a live daemon publishes its record — writeFileSync 'wx' creates the file
-    // before writing it. Such a record would otherwise pass as a valid pre-relocation daemon,
-    // skip on appVersion === null, and leave its version unpinned, so the prune below would
-    // reclaim a running daemon's host image. A pid that is not a positive integer names no
-    // process — process.kill(0, 0) probes the caller's own process group, never a daemon — so
-    // it is not liveness evidence and must veto rather than be skipped.
-    if (!parsed || !Number.isInteger(parsed.pid) || parsed.pid <= 0) {
-      return {
-        status: 'unverifiable',
-        reason: quarantineCorruptDaemonPidRecord(runtimeDir, entry.name, contents)
-      }
-    }
-    // appVersion null => pre-relocation daemon forked from the install dir; pins no host dir here.
-    if (parsed.appVersion === null) {
       continue
     }
-    const verdict = inspectProcessLiveness(parsed.pid)
-    versionLiveness.set(
-      parsed.appVersion,
-      mergeProcessLivenessVerdict(versionLiveness.get(parsed.appVersion), verdict)
-    )
+    // appVersion null => pre-relocation daemon forked from the install dir; pins no host dir here.
+    if (parsed && parsed.appVersion !== null && isDaemonPidAlive(parsed.pid, parsed.startedAtMs)) {
+      pinned.add(parsed.appVersion)
+    }
   }
-  return { status: 'complete', versionLiveness }
-}
-
-// Why: deletion is the destructive direction and this is a statement position the compiler does
-// not police for exhaustiveness — reclaim must be opted into by a positively matched 'exited',
-// so any future unhandled verdict status preserves the host dir instead of deleting it.
-export function reclaimUnownedDaemonHostDir(
-  verdict: ProcessLivenessVerdict,
-  hostDir: string
-): void {
-  if (verdict.status !== 'exited') {
-    return
-  }
-  try {
-    rmSync(hostDir, { recursive: true, force: true })
-  } catch {
-    // Still locked or already gone — retry on a future launch.
-  }
+  return pinned
 }
 
 /**
  * Reclaim daemon-host/<ver> dirs that are neither the current version nor pinned by a live daemon.
  * Best-effort — never throws; a locked/staging dir is retried on a future launch.
  */
-export function pruneOldDaemonHosts(evidence: PinnedDaemonVersionsEvidence): void {
-  if (!isPackagedElectronWin32()) {
+export function pruneOldDaemonHosts(pinnedVersions: ReadonlySet<string>): void {
+  if (process.platform !== 'win32' || !app.isPackaged) {
     return
   }
-  if (evidence.status === 'unverifiable') {
-    console.warn(`[daemon] Skipping daemon-host prune: ${evidence.reason}`)
-    return
-  }
-  const version = getAppEnvironment().getVersion()
+  const version = app.getVersion()
   const root = hostRootDir()
   let entries
   try {
@@ -391,11 +331,13 @@ export function pruneOldDaemonHosts(evidence: PinnedDaemonVersionsEvidence): voi
     return
   }
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name === version) {
+    if (!entry.isDirectory() || entry.name === version || pinnedVersions.has(entry.name)) {
       continue
     }
-    // A complete runtime-dir listing with no pid record for this version proves it is unowned.
-    const verdict = evidence.versionLiveness.get(entry.name) ?? { status: 'exited' }
-    reclaimUnownedDaemonHostDir(verdict, join(root, entry.name))
+    try {
+      rmSync(join(root, entry.name), { recursive: true, force: true })
+    } catch {
+      // Still locked or already gone — retry on a future launch.
+    }
   }
 }

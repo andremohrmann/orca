@@ -62,7 +62,6 @@ function EditorPanelInner({
   )
   const markdownViewMode = useAppStore((s) => s.markdownViewMode)
   const setMarkdownViewMode = useAppStore((s) => s.setMarkdownViewMode)
-  const markdownRichModeSizeOverride = useAppStore((s) => s.markdownRichModeSizeOverride)
   const editorViewMode = useAppStore((s) => s.editorViewMode)
   const setEditorViewMode = useAppStore((s) => s.setEditorViewMode)
   const openFile = useAppStore((s) => s.openFile)
@@ -235,7 +234,6 @@ function EditorPanelInner({
     gitStatusEntries,
     gitBranchEntries,
     markdownViewMode,
-    markdownRichModeSizeOverride,
     isChangesMode,
     canOpenWorkspaceFileBrowser
   })

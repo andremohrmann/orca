@@ -33,7 +33,6 @@ export function CommentRow({
   replyDisabled,
   replyDisabledReason,
   presentation,
-  now,
   onResolve,
   onReply,
   onEditComment,
@@ -52,7 +51,6 @@ export function CommentRow({
   replyDisabled?: boolean
   replyDisabledReason?: string
   presentation: PRCommentPresentationClasses
-  now: number
   onResolve?: (threadId: string, resolve: boolean) => boolean | Promise<boolean>
   onReply?: (comment: PRComment) => void
   onEditComment?: (comment: PRComment, body: string) => Promise<boolean>
@@ -117,7 +115,7 @@ export function CommentRow({
 
   const trimmedDraft = draft.trim()
   const canSaveEdit = !submittingEdit && trimmedDraft.length > 0 && trimmedDraft !== comment.body
-  const relativeTime = formatPrCommentRelativeTime(comment.createdAt, now)
+  const relativeTime = formatPrCommentRelativeTime(comment.createdAt, Date.now())
 
   const authorAvatar = comment.authorAvatarUrl ? (
     <img

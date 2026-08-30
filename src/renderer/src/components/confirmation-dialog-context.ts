@@ -5,7 +5,6 @@ import { createContext, useContext } from 'react'
 export type ConfirmationDialogOptions = {
   title: string
   description?: string
-  descriptionClassName?: string
   confirmLabel?: string
   cancelLabel?: string
   confirmVariant?: 'default' | 'destructive'

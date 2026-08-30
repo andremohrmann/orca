@@ -178,9 +178,7 @@ function ConflictReviewFileTreeRow({
         }
       }}
     >
-      {React.createElement(FileIcon, {
-        className: cn('size-3.5 shrink-0', isStillUnresolved && 'text-destructive')
-      })}
+      <FileIcon className={cn('size-3.5 shrink-0', isStillUnresolved && 'text-destructive')} />
       <span className="min-w-0 flex-1 truncate">
         <span className="text-foreground">{node.name}</span>
       </span>

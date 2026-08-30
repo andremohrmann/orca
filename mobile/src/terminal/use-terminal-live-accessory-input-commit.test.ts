@@ -26,7 +26,6 @@ function createDeferredBoolean(): DeferredBoolean {
 }
 
 type AccessoryInputCommitHarnessOptions = {
-  readonly composing?: boolean
   readonly heldText?: string
   readonly sentText?: string
   readonly pendingHandle?: string | null
@@ -47,7 +46,6 @@ type AccessoryInputCommitHarness = {
 }
 
 function createAccessoryInputCommitHarness({
-  composing,
   heldText = '',
   sentText = '',
   pendingHandle = null,
@@ -57,7 +55,6 @@ function createAccessoryInputCommitHarness({
 }: AccessoryInputCommitHarnessOptions = {}): AccessoryInputCommitHarness {
   const activeHandle = 'terminal-a'
   const heldLiveInputTextRef: RefObject<string> = { current: heldText }
-  const liveInputComposingRef: RefObject<boolean | undefined> = { current: composing }
   const sentLiveInputTextRef: RefObject<string> = { current: sentText }
   const pendingLiveInputHandleRef: RefObject<string | null> = { current: pendingHandle }
   const liveInputRef: RefObject<TextInput | null> = { current: null }
@@ -69,9 +66,7 @@ function createAccessoryInputCommitHarness({
       return sendResult
     }
   }
-  const applyLiveInputMirror = vi.fn(
-    async (_handle: string, _fieldText: string, _composing?: boolean) => true
-  )
+  const applyLiveInputMirror = vi.fn((_handle: string, _fieldText: string) => {})
   const clearPendingLiveInputCommit = vi.fn(() => {})
   const flushPendingLiveInputText = vi.fn(async (_expectedHandle: string | null) => flushResult)
   const waitForPendingLiveInputFlush = vi.fn(async () => waitResult)
@@ -87,7 +82,6 @@ function createAccessoryInputCommitHarness({
       clearPendingLiveInputCommit,
       flushPendingLiveInputText,
       heldLiveInputTextRef,
-      liveInputComposingRef,
       liveInputRef,
       liveInputTerminalHandles,
       pendingLiveInputHandleRef,
@@ -171,20 +165,6 @@ describe('terminal live accessory input commit hook', () => {
     expect(result).toEqual({ kind: 'handled' })
   })
 
-  it('Given held text with a failed control send When committed Then reports the accessory input as suppressed', async () => {
-    const harness = createAccessoryInputCommitHarness({
-      heldText: '한',
-      pendingHandle: 'terminal-a',
-      sendResult: false
-    })
-
-    const result = await harness.commit({ bytes: '\x1b' })
-
-    expect(harness.flushPendingLiveInputText).toHaveBeenCalledWith('terminal-a')
-    expect(harness.sent).toEqual(['\x1b'])
-    expect(result).toEqual({ kind: 'suppress-raw' })
-  })
-
   it('Given raw accessory bytes with no held text When committed Then allows the raw send without flushing', async () => {
     // Given
     const harness = createAccessoryInputCommitHarness({ pendingHandle: null })
@@ -198,11 +178,10 @@ describe('terminal live accessory input commit hook', () => {
     expect(harness.sent).toEqual([])
   })
 
-  it('Given accessory backspace with reported composition When committed Then keeps the edited preedit held', async () => {
+  it('Given accessory backspace with a held syllable When committed Then mirrors the emptied field without terminal bytes', async () => {
     // Given
     const harness = createAccessoryInputCommitHarness({
-      composing: true,
-      heldText: 'ni hao',
+      heldText: '한',
       sentText: '',
       pendingHandle: 'terminal-a'
     })
@@ -211,31 +190,14 @@ describe('terminal live accessory input commit hook', () => {
     const result = await harness.commit({ bytes: '\x7f', localEdit: 'backspace' })
 
     // Then
-    expect(harness.applyLiveInputMirror).toHaveBeenCalledWith('terminal-a', 'ni ha', true)
+    expect(harness.applyLiveInputMirror).toHaveBeenCalledWith('terminal-a', '')
     expect(result).toEqual({ kind: 'handled' })
     expect(harness.sent).toEqual([])
-  })
-
-  it('Given accessory backspace with an unreported hold When committed Then preserves the Android fallback', async () => {
-    // Given
-    const harness = createAccessoryInputCommitHarness({
-      heldText: '한글',
-      sentText: '',
-      pendingHandle: 'terminal-a'
-    })
-
-    // When
-    const result = await harness.commit({ bytes: '\x7f', localEdit: 'backspace' })
-
-    // Then
-    expect(harness.applyLiveInputMirror).toHaveBeenCalledWith('terminal-a', '한', undefined)
-    expect(result).toEqual({ kind: 'handled' })
   })
 
   it('Given accessory backspace with mirrored sent text When committed Then mirrors the shortened field so the diff emits DEL', async () => {
     // Given
     const harness = createAccessoryInputCommitHarness({
-      composing: false,
       heldText: '',
       sentText: 'ab',
       pendingHandle: 'terminal-a'
@@ -245,7 +207,7 @@ describe('terminal live accessory input commit hook', () => {
     const result = await harness.commit({ bytes: '\x7f', localEdit: 'backspace' })
 
     // Then
-    expect(harness.applyLiveInputMirror).toHaveBeenCalledWith('terminal-a', 'a', false)
+    expect(harness.applyLiveInputMirror).toHaveBeenCalledWith('terminal-a', 'a')
     expect(result).toEqual({ kind: 'handled' })
   })
 })

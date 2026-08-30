@@ -4,13 +4,10 @@ import type { StatusPillTone } from './workspace-cleanup-candidate-row-data'
 
 export function StatusPill({
   children,
-  tone = 'neutral',
-  toneClassName
+  tone = 'neutral'
 }: {
   children: React.ReactNode
   tone?: StatusPillTone
-  /** Overrides `tone` for pills whose color comes from a domain state (e.g. review state). */
-  toneClassName?: string
 }): React.JSX.Element {
   return (
     <span
@@ -20,8 +17,7 @@ export function StatusPill({
         tone === 'ready' &&
           'border-status-success-border bg-status-success-background text-status-success',
         tone === 'review' && 'border-border bg-muted text-foreground',
-        tone === 'destructive' && 'border-destructive/30 text-destructive',
-        toneClassName
+        tone === 'destructive' && 'border-destructive/30 text-destructive'
       )}
     >
       {children}

@@ -87,7 +87,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  rebaseInternals.setSessionRunner(null)
+  rebaseInternals.setSessionRunnerSync(null)
   rebaseInternals.resetRetryState()
   rmSync(fakeHomeDir, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
@@ -100,30 +100,10 @@ afterEach(() => {
 })
 
 describe('ensureRealHomeCodexHookState (install)', () => {
-  // Why (#16441): the ensure chain is process-wide; a rejection that escapes it
-  // would return the same rejected promise to every later pane launch, with no
-  // retry and no cooldown recovery.
-  it('recovers from a home-resolution failure instead of poisoning later ensures', async () => {
-    grantSucceeds()
-    homedirMock.mockImplementationOnce(() => {
-      throw new Error('home unavailable')
-    })
-
-    await expect(
-      ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).resolves.toBe('unavailable')
-    await expect(
-      ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
-    ).resolves.toBe('removed')
-  })
-
-  it('creates hooks.json with the Orca entry in every managed event for a fresh home', async () => {
+  it('creates hooks.json with the Orca entry in every managed event for a fresh home', () => {
     grantSucceeds()
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: true,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
 
     expect(lane).toBe('installed')
     const material = getCodexManagedHookInstallMaterial()
@@ -141,7 +121,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     expect(plan.managedEntries.every((entry) => entry.groupIndex === 0)).toBe(true)
   })
 
-  it('keeps a symlinked default home logical in the keys sent to Codex', async () => {
+  it('keeps a symlinked default home logical in the keys sent to Codex', () => {
     grantSucceeds()
     const logicalHome = join(fakeHomeDir, '.codex')
     const targetHome = join(fakeHomeDir, 'dotfiles-codex')
@@ -149,9 +129,9 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     mkdirSync(targetHome)
     symlinkSync(targetHome, logicalHome, process.platform === 'win32' ? 'junction' : 'dir')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('installed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'installed'
+    )
 
     const plan = grantMock.mock.calls[0]![0] as CodexManagedTrustGrantPlan
     expect(
@@ -159,7 +139,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     ).toBe(true)
   })
 
-  it('keeps the managed lane for unknown top-level fields Codex cannot load', async () => {
+  it('keeps the managed lane for unknown top-level fields Codex cannot load', () => {
     grantSucceeds()
     const userConfig = {
       hooks: {
@@ -171,10 +151,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     const original = `${JSON.stringify(userConfig, null, 2)}\n`
     writeFileSync(getRealHooksJsonPath(), original, 'utf-8')
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: true,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
 
     expect(lane).toBe('unavailable')
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe(original)
@@ -184,7 +161,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     )
   })
 
-  it('appends LAST and preserves user entries and trust positions', async () => {
+  it('appends LAST and preserves user entries and trust positions', () => {
     grantSucceeds()
     const userConfig = {
       hooks: {
@@ -195,9 +172,9 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     const original = `${JSON.stringify(userConfig, null, 2)}\n`
     writeFileSync(getRealHooksJsonPath(), original, 'utf-8')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('installed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'installed'
+    )
 
     const config = readRealHooksJson()
     expect(config.hooks?.Stop).toHaveLength(2)
@@ -213,7 +190,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
   // Why: ordinary Windows CI tokens cannot create file symlinks without Developer Mode.
   it.skipIf(process.platform === 'win32')(
     'updates a symlinked hooks.json target without replacing the symlink',
-    async () => {
+    () => {
       grantSucceeds()
       const dotfilesDir = join(fakeHomeDir, 'dotfiles')
       const targetPath = join(dotfilesDir, 'hooks.json')
@@ -225,87 +202,78 @@ describe('ensureRealHomeCodexHookState (install)', () => {
       )
       symlinkSync(targetPath, getRealHooksJsonPath())
 
-      expect(
-        await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-      ).toBe('installed')
+      expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+        'installed'
+      )
 
       expect(lstatSync(getRealHooksJsonPath()).isSymbolicLink()).toBe(true)
       expect(JSON.parse(readFileSync(targetPath, 'utf-8')).hooks.Stop).toHaveLength(2)
     }
   )
 
-  it('keeps the managed lane and original bytes when the pristine backup cannot be created', async () => {
+  it('keeps the managed lane and original bytes when the pristine backup cannot be created', () => {
     grantSucceeds()
     const original = `${JSON.stringify({ hooks: { Stop: [] } }, null, 2)}\n`
     writeFileSync(getRealHooksJsonPath(), original, 'utf-8')
     writeFileSync(join(userDataDir, 'codex-real-home-hooks'), 'blocks backup directory', 'utf-8')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
 
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe(original)
     expect(grantMock).not.toHaveBeenCalled()
   })
 
-  it.skipIf(process.platform === 'win32')(
-    'preserves restrictive hooks.json permissions',
-    async () => {
-      grantSucceeds()
-      writeFileSync(getRealHooksJsonPath(), '{ "hooks": {} }\n', 'utf-8')
-      chmodSync(getRealHooksJsonPath(), 0o600)
+  it.skipIf(process.platform === 'win32')('preserves restrictive hooks.json permissions', () => {
+    grantSucceeds()
+    writeFileSync(getRealHooksJsonPath(), '{ "hooks": {} }\n', 'utf-8')
+    chmodSync(getRealHooksJsonPath(), 0o600)
 
-      expect(
-        await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-      ).toBe('installed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'installed'
+    )
 
-      expect(statSync(getRealHooksJsonPath()).mode & 0o777).toBe(0o600)
-    }
-  )
+    expect(statSync(getRealHooksJsonPath()).mode & 0o777).toBe(0o600)
+  })
 
   it.skipIf(process.platform === 'win32')(
     'restores restrictive hooks.json permissions after grant fallback',
-    async () => {
+    () => {
       grantUnavailable()
       writeFileSync(getRealHooksJsonPath(), '{ "hooks": {} }\n', 'utf-8')
       chmodSync(getRealHooksJsonPath(), 0o600)
 
-      expect(
-        await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-      ).toBe('unavailable')
+      expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+        'unavailable'
+      )
 
       expect(statSync(getRealHooksJsonPath()).mode & 0o777).toBe(0o600)
     }
   )
 
-  it('rolls the file back byte-exactly when the grant lane is unavailable', async () => {
+  it('rolls the file back byte-exactly when the grant lane is unavailable', () => {
     grantUnavailable()
     const userRaw = `${JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'mine.sh' }] }] } }, null, 2)}\n`
     writeFileSync(getRealHooksJsonPath(), userRaw, 'utf-8')
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: true,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
 
     expect(lane).toBe('unavailable')
     expect(getRealHomeCodexHookLane()).toBe('unavailable')
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe(userRaw)
   })
 
-  it('removes a freshly created hooks.json when the grant lane is unavailable', async () => {
+  it('removes a freshly created hooks.json when the grant lane is unavailable', () => {
     grantUnavailable()
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: true,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
 
     expect(lane).toBe('unavailable')
     expect(existsSync(getRealHooksJsonPath())).toBe(false)
   })
 
-  it('surfaces rollback failures to the retry boundary', async () => {
+  it('surfaces rollback failures to the retry boundary', () => {
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
     grantMock.mockImplementation(() => {
       rmSync(getRealHooksJsonPath())
@@ -313,9 +281,9 @@ describe('ensureRealHomeCodexHookState (install)', () => {
       return { lane: 'fallback', reason: 'unsupported' }
     })
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
 
     expect(warning).toHaveBeenCalledWith(
       '[codex-real-home-hooks] ensure failed; staying on managed lane:',
@@ -323,49 +291,43 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     )
   })
 
-  it('does no hook-file or grant work on repeated unsupported launches', async () => {
+  it('does no hook-file or grant work on repeated unsupported launches', () => {
     grantUnavailable()
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
     expect(existsSync(getRealHooksJsonPath())).toBe(false)
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
 
     expect(grantMock).toHaveBeenCalledTimes(1)
     expect(existsSync(getRealHooksJsonPath())).toBe(false)
   })
 
-  it('leaves an unparseable hooks.json untouched and keeps the managed lane', async () => {
+  it('leaves an unparseable hooks.json untouched and keeps the managed lane', () => {
     writeFileSync(getRealHooksJsonPath(), '{not json', 'utf-8')
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: true,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
 
     expect(lane).toBe('unavailable')
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe('{not json')
     expect(grantMock).not.toHaveBeenCalled()
   })
 
-  it('is idempotent: a second ensure keeps a single appended entry per event', async () => {
+  it('is idempotent: a second ensure keeps a single appended entry per event', () => {
     grantSucceeds()
-    await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
+    ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     const firstRaw = readFileSync(getRealHooksJsonPath(), 'utf-8')
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: true,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
 
     expect(lane).toBe('installed')
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe(firstRaw)
   })
 
-  it('keeps later user hook trust positions stable when reconciling an existing install', async () => {
+  it('keeps later user hook trust positions stable when reconciling an existing install', () => {
     grantSucceeds()
     const userBefore = { hooks: [{ type: 'command', command: 'before.sh' }] }
     writeFileSync(
@@ -373,15 +335,15 @@ describe('ensureRealHomeCodexHookState (install)', () => {
       `${JSON.stringify({ hooks: { Stop: [userBefore] } }, null, 2)}\n`,
       'utf-8'
     )
-    await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
+    ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     const installed = readRealHooksJson()
     const userAfter = { hooks: [{ type: 'command', command: 'after.sh' }] }
     installed.hooks!.Stop!.push(userAfter)
     writeFileSync(getRealHooksJsonPath(), `${JSON.stringify(installed, null, 2)}\n`, 'utf-8')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('installed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'installed'
+    )
 
     const reconciled = readRealHooksJson().hooks?.Stop
     expect(reconciled?.[0]).toEqual(userBefore)
@@ -390,17 +352,17 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     expect(plan.managedEntries.find((entry) => entry.eventLabel === 'stop')?.groupIndex).toBe(1)
   })
 
-  it("keeps later user handler trust positions stable inside Orca's hook group", async () => {
+  it("keeps later user handler trust positions stable inside Orca's hook group", () => {
     grantSucceeds()
-    await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
+    ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     const installed = readRealHooksJson()
     const userAfter = { type: 'command', command: 'after.sh' }
     installed.hooks!.Stop![0]!.hooks!.push(userAfter)
     writeFileSync(getRealHooksJsonPath(), `${JSON.stringify(installed, null, 2)}\n`, 'utf-8')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
-    ).toBe('installed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })).toBe(
+      'installed'
+    )
 
     expect(readRealHooksJson().hooks?.Stop?.[0]?.hooks?.[1]).toEqual(userAfter)
     const plan = grantMock.mock.calls.at(-1)![0] as CodexManagedTrustGrantPlan
@@ -410,37 +372,37 @@ describe('ensureRealHomeCodexHookState (install)', () => {
 })
 
 describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
-  it('keeps the managed lane when hooks.json cannot be read', async () => {
+  it('keeps the managed lane when hooks.json cannot be read', () => {
     mkdirSync(getRealHooksJsonPath())
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
   })
 
-  it('keeps the managed lane when hooks.json is malformed', async () => {
+  it('keeps the managed lane when hooks.json is malformed', () => {
     writeFileSync(getRealHooksJsonPath(), '{ not json', 'utf-8')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe('{ not json')
   })
 
-  it('rebases trust when a user appended hooks after Orca installed', async () => {
+  it('rebases trust when a user appended hooks after Orca installed', () => {
     grantSucceeds()
     const before = { type: 'command', command: 'before.sh' }
     writeFileSync(
       getRealHooksJsonPath(),
       `${JSON.stringify({ hooks: { Stop: [{ hooks: [before] }] } }, null, 2)}\n`
     )
-    await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
+    ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     const installed = readRealHooksJson()
     const after = { type: 'command', command: 'after.sh' }
     installed.hooks!.Stop!.push({ hooks: [after] })
     writeFileSync(getRealHooksJsonPath(), `${JSON.stringify(installed, null, 2)}\n`)
     const operations: string[] = []
-    rebaseInternals.setSessionRunner(async (request) => {
+    rebaseInternals.setSessionRunnerSync((request) => {
       operations.push(request.operation)
       if (request.operation === 'inspect-user-hook-trust') {
         expect(readRealHooksJson().hooks?.Stop?.[2]?.hooks?.[0]?.command).toBe('after.sh')
@@ -458,21 +420,21 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
       return { outcome: 'repaired', repaired: 1 }
     })
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
-    ).toBe('removed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })).toBe(
+      'removed'
+    )
     expect(operations).toEqual(['inspect-user-hook-trust', 'repair-user-hook-trust'])
     expect(readRealHooksJson().hooks?.Stop).toEqual([{ hooks: [before] }, { hooks: [after] }])
   })
 
-  it('aborts without writing when hooks.json changes during the trust inspection', async () => {
+  it('aborts without writing when hooks.json changes during the trust inspection', () => {
     grantSucceeds()
     const before = { type: 'command', command: 'before.sh' }
     writeFileSync(
       getRealHooksJsonPath(),
       `${JSON.stringify({ hooks: { Stop: [{ hooks: [before] }] } }, null, 2)}\n`
     )
-    await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
+    ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     const installed = readRealHooksJson()
     const after = { type: 'command', command: 'after.sh' }
     installed.hooks!.Stop!.push({ hooks: [after] })
@@ -481,7 +443,7 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     writeFileSync(getRealConfigTomlPath(), userTrustToml, 'utf-8')
     const concurrentSave = `${JSON.stringify({ hooks: { Stop: [{ hooks: [before] }] } }, null, 2)}\n`
     const operations: string[] = []
-    rebaseInternals.setSessionRunner(async (request) => {
+    rebaseInternals.setSessionRunnerSync((request) => {
       operations.push(request.operation)
       // A user save (or a second Orca instance) lands while the RPC runs.
       writeFileSync(getRealHooksJsonPath(), concurrentSave, 'utf-8')
@@ -496,16 +458,16 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
       }
     })
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
-    ).toBe('unavailable')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })).toBe(
+      'unavailable'
+    )
 
     expect(operations).toEqual(['inspect-user-hook-trust'])
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe(concurrentSave)
     expect(readFileSync(getRealConfigTomlPath(), 'utf-8')).toBe(userTrustToml)
   })
 
-  it('removes only Orca entries and reports the removed lane', async () => {
+  it('removes only Orca entries and reports the removed lane', () => {
     grantSucceeds()
     const userStop = {
       matcher: 'deploy-*',
@@ -516,13 +478,10 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
       `${JSON.stringify({ hooks: { Stop: [userStop] } }, null, 2)}\n`,
       'utf-8'
     )
-    await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
+    ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     expect(readRealHooksJson().hooks?.Stop).toHaveLength(2)
 
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: false,
-      userDataPath: userDataDir
-    })
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
 
     expect(lane).toBe('removed')
     const config = readRealHooksJson()
@@ -536,17 +495,14 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     }
   })
 
-  it('no-ops the sweep when the real home has no hooks.json', async () => {
-    const lane = await ensureRealHomeCodexHookState({
-      hooksEnabled: false,
-      userDataPath: userDataDir
-    })
+  it('no-ops the sweep when the real home has no hooks.json', () => {
+    const lane = ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
 
     expect(lane).toBe('removed')
     expect(existsSync(getRealHooksJsonPath())).toBe(false)
   })
 
-  it('removes only hash-proven Orca trust from a mixed hook group', async () => {
+  it('removes only hash-proven Orca trust from a mixed hook group', () => {
     const material = getCodexManagedHookInstallMaterial()
     const userCommand = 'my-user-hook.sh'
     writeFileSync(
@@ -588,9 +544,9 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     ]
     writeFileSync(getRealConfigTomlPath(), upsertHookTrustEntriesInContent('', entries), 'utf-8')
 
-    expect(
-      await ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })
-    ).toBe('removed')
+    expect(ensureRealHomeCodexHookState({ hooksEnabled: false, userDataPath: userDataDir })).toBe(
+      'removed'
+    )
 
     expect(readRealHooksJson().hooks?.Stop).toEqual([
       { hooks: [{ type: 'command', command: userCommand }] }

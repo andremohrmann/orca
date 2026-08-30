@@ -13,7 +13,7 @@ const DIRECTORY_ENTRY_SIZE = 12
 // A dump claiming an absurd stream count is corrupt; cap before iterating.
 const MAX_STREAMS = 4_096
 export const MAX_ANNOTATION_VALUE_BYTES = 8_192
-// Cap for Crashpad's per-module info list; the MINIDUMP_MODULE_LIST is capped separately.
+// Shared cap: both the MINIDUMP_MODULE_LIST and Crashpad's per-module info list.
 export const MAX_MODULES = 1_024
 
 export type LocationDescriptor = {

@@ -88,51 +88,31 @@ export const EMPTY_PTY_RENDERER_DELIVERY_DEBUG_SNAPSHOT: PtyRendererDeliveryDebu
   rendererDispatcherReadyForcedCount: 0
 }
 
-// Why null-init + wrapper fns (not `export let fn = noop`): rolldown const-folds the noop into
-// call sites and drops the setter's reassignment, so bridged closures never run in the built app (STA-5661).
-let readPtyRendererDeliveryDebugSnapshotImpl: (() => PtyRendererDeliveryDebugSnapshot) | null = null
-let resetPtyRendererDeliveryDebugSnapshotImpl: (() => void) | null = null
+export let readPtyRendererDeliveryDebugSnapshot = (): PtyRendererDeliveryDebugSnapshot => ({
+  ...EMPTY_PTY_RENDERER_DELIVERY_DEBUG_SNAPSHOT
+})
+export let resetPtyRendererDeliveryDebugSnapshot = (): void => {}
 // Bridged into the registerPtyHandlers closure so the module-scope lifecycle-reset handler can zero closure-owned delivery accounting on renderer reload/crash.
-let resetRendererDeliveryAccountingForLifecycleResetImpl: (() => void) | null = null
+export let resetRendererDeliveryAccountingForLifecycleReset = (): void => {}
 // Bridged so a re-registration can cancel the prior closure's dispatcher-ready watchdog before wiring its own.
-let clearRendererDispatcherReadyWatchdogImpl: (() => void) | null = null
-
-export function readPtyRendererDeliveryDebugSnapshot(): PtyRendererDeliveryDebugSnapshot {
-  return (
-    readPtyRendererDeliveryDebugSnapshotImpl?.() ?? {
-      ...EMPTY_PTY_RENDERER_DELIVERY_DEBUG_SNAPSHOT
-    }
-  )
-}
-
-export function resetPtyRendererDeliveryDebugSnapshot(): void {
-  resetPtyRendererDeliveryDebugSnapshotImpl?.()
-}
-
-export function resetRendererDeliveryAccountingForLifecycleReset(): void {
-  resetRendererDeliveryAccountingForLifecycleResetImpl?.()
-}
-
-export function clearRendererDispatcherReadyWatchdog(): void {
-  clearRendererDispatcherReadyWatchdogImpl?.()
-}
+export let clearRendererDispatcherReadyWatchdog = (): void => {}
 
 export function setReadPtyRendererDeliveryDebugSnapshot(
   fn: () => PtyRendererDeliveryDebugSnapshot
 ): void {
-  readPtyRendererDeliveryDebugSnapshotImpl = fn
+  readPtyRendererDeliveryDebugSnapshot = fn
 }
 
 export function setResetPtyRendererDeliveryDebugSnapshot(fn: () => void): void {
-  resetPtyRendererDeliveryDebugSnapshotImpl = fn
+  resetPtyRendererDeliveryDebugSnapshot = fn
 }
 
 export function setResetRendererDeliveryAccountingForLifecycleReset(fn: () => void): void {
-  resetRendererDeliveryAccountingForLifecycleResetImpl = fn
+  resetRendererDeliveryAccountingForLifecycleReset = fn
 }
 
 export function setClearRendererDispatcherReadyWatchdog(fn: () => void): void {
-  clearRendererDispatcherReadyWatchdogImpl = fn
+  clearRendererDispatcherReadyWatchdog = fn
 }
 
 export function getPtyRendererDeliveryDebugSnapshot(): PtyRendererDeliveryDebugSnapshot {

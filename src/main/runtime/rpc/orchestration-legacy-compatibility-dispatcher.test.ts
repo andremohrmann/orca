@@ -15,7 +15,6 @@ import {
   WORKER_HANDLE,
   WORKER_PANE
 } from './orchestration-legacy-compatibility-dispatcher-test-fixture'
-import { createRootDispatch } from '../orchestration/db/root-dispatch-test-fixture'
 
 afterEach(() => {
   cleanupLegacyCompatibilityDispatcherHarnesses()
@@ -192,8 +191,7 @@ describe('legacy compatibility through RpcDispatcher', () => {
       processIncarnation: 'process-1'
     })
     harness.db.updateTaskStatus(harness.taskId, 'ready')
-    const currentDispatch = createRootDispatch(
-      harness.db,
+    const currentDispatch = harness.db.createDispatchContext(
       harness.taskId,
       'term_current_worker',
       'tab_current_worker:77777777-7777-4777-8777-777777777777',
@@ -397,8 +395,7 @@ describe('legacy compatibility through RpcDispatcher', () => {
       coordinatorPaneKey: 'tab_current_coord:55555555-5555-4555-8555-555555555555'
     })
     const task = harness.db.createTask({ spec: 'current assignment', runId: run.id })
-    const dispatch = createRootDispatch(
-      harness.db,
+    const dispatch = harness.db.createDispatchContext(
       task.id,
       'term_current_worker',
       'tab_current_worker:66666666-6666-4666-8666-666666666666',

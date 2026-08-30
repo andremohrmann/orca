@@ -42,7 +42,6 @@ describe('feature interactions', () => {
       'cmd-j-quick-action',
       'cmd-j-create-workspace',
       'browser',
-      'client-hosted-browser',
       'browser-tab-created',
       'tasks',
       'github-tasks',

@@ -4,7 +4,6 @@ import type { Mock } from 'vitest'
 export type MockSpawner = {
   ensureRunning: Mock
   resetHandle: Mock
-  resetRespawnWindow: Mock
   shutdown: Mock
   getHandle: Mock
   launcher: unknown

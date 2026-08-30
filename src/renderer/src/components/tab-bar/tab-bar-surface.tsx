@@ -23,10 +23,6 @@ import type { TabBarItemProjection } from './use-tab-bar-item-projection'
 import type { TabBarItem } from './tab-bar-item-model'
 import { renderTabBarItems } from './tab-bar-item-surface'
 import { renderTabBarStaticCreateMenu } from './tab-bar-static-create-menu'
-import ClientHostedBrowserTabRows from './ClientHostedBrowserTabRows'
-import type { ClientHostedBrowserRow } from '../../../../shared/client-hosted-browser-rows'
-
-const EMPTY_CLIENT_HOSTED_ROWS: readonly ClientHostedBrowserRow[] = []
 
 export function renderTabBarSurface({
   props,
@@ -35,7 +31,6 @@ export function renderTabBarSurface({
   itemProjection,
   tabStripNavigation,
   tabStripDragScroll,
-  activeClientHostedBrowserRowId,
   togglePinned
 }: {
   props: TabBarProps
@@ -44,7 +39,6 @@ export function renderTabBarSurface({
   itemProjection: TabBarItemProjection
   tabStripNavigation: ReturnType<typeof useTabStripOverflowNavigation>
   tabStripDragScroll: ReturnType<typeof useTabStripDragScrollHandlers>
-  activeClientHostedBrowserRowId: string | null
   togglePinned: (item: TabBarItem) => void
 }): React.JSX.Element {
   const {
@@ -87,7 +81,6 @@ export function renderTabBarSurface({
     showStaticCreateMenuItems
   } = createMenu
   const { orderedItems, sortableIds, dropIndicatorByVisibleId } = itemProjection
-  const clientHostedBrowserRows = props.clientHostedBrowserRows ?? EMPTY_CLIENT_HOSTED_ROWS
   const { tabStripRef, tabStripOverflowState, scrollTabStrip } = tabStripNavigation
   const includeTopTabBorder = tabStripChrome !== 'floating-panel'
   const renderedItems = renderTabBarItems({
@@ -96,7 +89,6 @@ export function renderTabBarSurface({
     runtime,
     dropIndicatorByVisibleId,
     includeTopTabBorder,
-    activeClientHostedBrowserRowId,
     togglePinned
   })
   const standardCreateMenuItems = renderTabBarStaticCreateMenu({
@@ -171,15 +163,6 @@ export function renderTabBarSurface({
               .join(' ')}
           >
             {renderedItems}
-            {clientHostedBrowserRows.length > 0 ? (
-              <ClientHostedBrowserTabRows
-                rows={clientHostedBrowserRows}
-                worktreeId={worktreeId}
-                groupId={resolvedGroupId}
-                groupActiveTabId={props.groupActiveTabId ?? null}
-                includeTopTabBorder={includeTopTabBorder}
-              />
-            ) : null}
           </div>
           <TabStripScrollIndicator metrics={tabStripOverflowState} />
         </div>

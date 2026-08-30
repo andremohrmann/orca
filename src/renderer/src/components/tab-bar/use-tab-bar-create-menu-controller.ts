@@ -3,10 +3,7 @@ import { toast } from 'sonner'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { translate } from '@/i18n/i18n'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
-import {
-  launchAgentInNewTab,
-  shouldQueueTerminalFocusAfterMenuClose
-} from '@/lib/launch-agent-in-new-tab'
+import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import type { WindowsTerminalCapabilities } from '@/lib/windows-terminal-capabilities'
 import { useAppStore } from '../../store'
 import type { TabAgentLaunchOption } from './tab-agent-launch-options'
@@ -105,8 +102,7 @@ export function useTabBarCreateMenuController({
   }
   const focusNewActiveTerminalWhenReady = (
     previousActiveTabId: string | null,
-    expiresAt: number,
-    now: number
+    expiresAt: number
   ): void => {
     const state = useAppStore.getState()
     if (
@@ -117,12 +113,12 @@ export function useTabBarCreateMenuController({
       focusTerminalTabSurface(state.activeTabId)
       return
     }
-    if (now >= expiresAt) {
+    if (Date.now() >= expiresAt) {
       return
     }
     pendingNewTabMenuFocusRetryRef.current = window.setTimeout(() => {
       pendingNewTabMenuFocusRetryRef.current = null
-      focusNewActiveTerminalWhenReady(previousActiveTabId, expiresAt, Date.now())
+      focusNewActiveTerminalWhenReady(previousActiveTabId, expiresAt)
     }, NEW_TAB_MENU_TERMINAL_FOCUS_RETRY_MS)
   }
   const queueNewActiveTerminalFocusAfterNewTabMenuClose = (): void => {
@@ -131,8 +127,7 @@ export function useTabBarCreateMenuController({
       // Why: paired web/SSH tab creation is async; await the host snapshot's new terminal instead of the pre-existing active tab.
       focusNewActiveTerminalWhenReady(
         previousActiveTabId,
-        Date.now() + NEW_TAB_MENU_TERMINAL_FOCUS_TIMEOUT_MS,
-        Date.now()
+        Date.now() + NEW_TAB_MENU_TERMINAL_FOCUS_TIMEOUT_MS
       )
     }
   }
@@ -242,9 +237,7 @@ export function useTabBarCreateMenuController({
       queueTerminalTabFocusAfterNewTabMenuClose(result.tabId)
       return
     }
-    if (shouldQueueTerminalFocusAfterMenuClose(result)) {
-      queueNewActiveTerminalFocusAfterNewTabMenuClose()
-    }
+    queueNewActiveTerminalFocusAfterNewTabMenuClose()
   }
   const runPendingNewTabMenuFocusAfterClose = (): void => {
     const pendingFocus = pendingNewTabMenuFocusRef.current

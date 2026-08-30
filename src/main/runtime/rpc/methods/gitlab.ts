@@ -36,8 +36,7 @@ const WorkItemsList = RepoSelector.extend({
 const IssuesList = RepoSelector.extend({
   state: z.unknown().optional(),
   assignee: OptionalString,
-  limit: OptionalFiniteNumber,
-  page: OptionalFiniteNumber
+  limit: OptionalFiniteNumber
 })
 
 const CreateIssue = RepoSelector.extend({
@@ -73,8 +72,7 @@ const UpdateMr = RepoSelector.extend({
     title: z.string().optional(),
     body: z.string().optional(),
     addLabels: z.array(z.string()).optional(),
-    removeLabels: z.array(z.string()).optional(),
-    readyForReview: z.literal(true).optional()
+    removeLabels: z.array(z.string()).optional()
   }),
   projectRef: GitLabProjectRef
 })
@@ -184,8 +182,7 @@ export const GITLAB_METHODS: RpcMethod[] = [
         params.repo,
         normalized.state,
         normalized.assignee,
-        normalized.limit,
-        normalized.page
+        normalized.limit
       )
     }
   }),

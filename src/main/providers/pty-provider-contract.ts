@@ -11,7 +11,6 @@ import type {
 } from '../../shared/agent-session-host-authority'
 import type { PtyProcessInfo } from './pty-process-info'
 import type { TerminalExitCause } from '../../shared/terminal-exit-cause'
-import type { TerminalOwner } from '../../shared/terminal-owner'
 
 export type {
   PtyBackgroundStreamEvent,
@@ -38,8 +37,6 @@ export type PtyProviderBufferSnapshot = {
    *  boundary. Absent means the source could not prove them; readers must not
    *  rewrite that silence into a known `0`. */
   kittyKeyboardFlags?: number
-  /** Ordered ownership evidence proven at this snapshot's `seq`. */
-  terminalOwner?: TerminalOwner
 }
 
 export type PtySpawnOptions = {
@@ -212,8 +209,6 @@ export type IPtyProvider = {
   getForegroundProcess(id: string): Promise<string | null>
   /** Strong process evidence captured after the caller's command boundary. */
   confirmForegroundProcess?: (id: string) => Promise<string | null>
-  /** Fresh execution-host proof that the spawned shell owns the PTY foreground. */
-  confirmShellForeground?: (id: string) => Promise<boolean>
   serialize(ids: string[]): Promise<string>
   revive(state: string): Promise<void>
   // Why: deadlineMs bounds the underlying RPC exactly like shutdown's deadlineMs.

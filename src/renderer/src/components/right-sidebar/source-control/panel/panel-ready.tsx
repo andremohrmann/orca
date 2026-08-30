@@ -30,7 +30,6 @@ export function SourceControlPanelReady(props: SourceControlPanelReadyProps) {
     handleCopyDiffComments,
     handleCreatePrHeaderClick,
     handleOpenComment,
-    handleRelinkSuppressedGitHubPR,
     handleSourceControlKeyDown,
     handleToggleSourceControlViewMode,
     hostedReview,
@@ -41,6 +40,7 @@ export function SourceControlPanelReady(props: SourceControlPanelReadyProps) {
     openHostedReviewInChecks,
     prGenerating,
     refreshBranchCompare,
+    remoteStatus,
     selectedKeys,
     setBaseRefDialogOpen,
     setDiffCommentsExpanded,
@@ -51,7 +51,6 @@ export function SourceControlPanelReady(props: SourceControlPanelReadyProps) {
     setSourceControlRoot,
     settings,
     sourceControlViewMode,
-    suppressedGitHubPRState,
     visibleCreatePrHeaderAction
   } = model
 
@@ -73,10 +72,6 @@ export function SourceControlPanelReady(props: SourceControlPanelReadyProps) {
           isCreatingPr={isCreatingPr || prGenerating}
           onCreatePrHeaderClick={handleCreatePrHeaderClick}
           onOpenHostedReviewInChecks={openHostedReviewInChecks}
-          suppressedGitHubPRNumber={
-            suppressedGitHubPRState?.status === 'matched' ? suppressedGitHubPRState.number : null
-          }
-          onRelinkSuppressedGitHubPR={handleRelinkSuppressedGitHubPR}
           sourceControlViewMode={sourceControlViewMode}
           viewModeToggleDisabled={settings === null}
           onToggleViewMode={handleToggleSourceControlViewMode}
@@ -89,6 +84,7 @@ export function SourceControlPanelReady(props: SourceControlPanelReadyProps) {
           branchLineTotal={branchLineTotal}
           compareBaseRef={compareBaseRef}
           headDisplay={gitIdentityDisplay}
+          upstreamStatus={remoteStatus}
           manualReviewUrl={manualReviewUrl}
         />
 

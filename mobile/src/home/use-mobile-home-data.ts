@@ -11,10 +11,7 @@ import {
 } from '../onboarding/mobile-onboarding-plan'
 import { totalHomeStats, type HomeStatsSummary } from '../stats/home-stats-total'
 import type { TaskProvider } from '../tasks/mobile-task-providers'
-import {
-  selectConnectableHostProfiles,
-  sortHostsByLastConnected
-} from '../transport/host-catalog-selection'
+import { selectConnectableHostProfiles } from '../transport/host-catalog-selection'
 import { loadHostCatalog } from '../transport/host-store'
 import type { HostCatalogEntry, HostProfile } from '../transport/types'
 import { fetchHomeHostWorktreeInfo } from '../worktree/home-host-worktree-fetch'
@@ -130,8 +127,14 @@ export function useMobileHomeData() {
     }, [router])
   )
 
-  const sortedHosts = useMemo(() => sortHostsByLastConnected(hosts), [hosts])
-  const sortedHostCatalog = useMemo(() => sortHostsByLastConnected(hostCatalog), [hostCatalog])
+  const sortedHosts = useMemo(
+    () => hosts.toSorted((left, right) => right.lastConnected - left.lastConnected),
+    [hosts]
+  )
+  const sortedHostCatalog = useMemo(
+    () => hostCatalog.toSorted((left, right) => right.lastConnected - left.lastConnected),
+    [hostCatalog]
+  )
   const hostIds = useMemo(() => hosts.map((host) => host.id), [hosts])
   const stats = useMemo(() => totalHomeStats(statsByHost, hostIds), [statsByHost, hostIds])
   const resumeCard = useMemo(

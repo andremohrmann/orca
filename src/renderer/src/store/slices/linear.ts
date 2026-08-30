@@ -28,23 +28,21 @@ import {
   linearConnect,
   linearDisconnect,
   linearDisconnectWorkspace,
+  linearGetCustomView,
+  linearGetProject,
+  linearGetIssue,
+  linearListCustomViewIssues,
+  linearListCustomViewProjects,
+  linearListCustomViews,
   linearListIssues,
+  linearListProjectIssues,
+  linearListProjects,
+  linearListTeams,
   linearSearchIssues,
   linearSelectWorkspace,
   linearStatus,
   linearTestConnection
 } from '@/runtime/runtime-linear-client'
-import { linearGetIssue } from '@/runtime/runtime-linear-issue-mutations'
-import {
-  linearGetCustomView,
-  linearGetProject,
-  linearListCustomViewIssues,
-  linearListCustomViewProjects,
-  linearListCustomViews,
-  linearListProjectIssues,
-  linearListProjects,
-  linearListTeams
-} from '@/runtime/runtime-linear-project-client'
 import { getProviderRuntimeContextKey } from '@/lib/provider-runtime-context'
 import { translate } from '@/i18n/i18n'
 import {

@@ -57,7 +57,6 @@ export function reachRenderInternals(terminal: unknown): SentinelRenderInternals
               _canvas?: HTMLCanvasElement
               _charAtlas?: {
                 clearModelGeneration?: number
-                _clearModelGeneration?: number
                 pages?: { version?: number }[]
               }
               _model?: { lineLengths?: number[] | Uint32Array }
@@ -108,10 +107,7 @@ export function reachRenderInternals(terminal: unknown): SentinelRenderInternals
       ],
       rendererState: {
         atlasPages: renderer._charAtlas.pages?.length ?? -1,
-        atlasClearModelGeneration:
-          renderer._charAtlas.clearModelGeneration ??
-          renderer._charAtlas._clearModelGeneration ??
-          null,
+        atlasClearModelGeneration: renderer._charAtlas.clearModelGeneration ?? null,
         atlasPageVersions: renderer._charAtlas.pages?.map((page) => page.version ?? -1) ?? [],
         glyphLastSeenClearModelGeneration: glyphRenderer?._lastSeenClearModelGeneration ?? null,
         glyphTextureVersions:

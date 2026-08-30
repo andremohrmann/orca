@@ -2,8 +2,8 @@ import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
 import { RuntimeClient } from '../../src/cli/runtime/client'
+import type { RuntimeMobileSessionTabsResult } from '../../src/shared/runtime-types'
 import { expect, test } from './helpers/orca-app'
-import { readHostBrowserPageIds, readHostTabs } from './helpers/host-session-tabs'
 import { openFileExplorer } from './helpers/file-explorer'
 import {
   launchHeadlessPairedRuntimeHost,
@@ -42,6 +42,16 @@ type ClientTabState = {
   editorTabIds: string[]
   groupIds: string[]
   terminalTabIds: string[]
+}
+
+async function readHostTabs(
+  hostClient: RuntimeClient,
+  repoPath: string
+): Promise<RuntimeMobileSessionTabsResult> {
+  const response = await hostClient.call<RuntimeMobileSessionTabsResult>('session.tabs.list', {
+    worktree: `path:${repoPath}`
+  })
+  return response.result
 }
 
 async function readClientTabs(page: Page, worktreeId: string): Promise<ClientTabState> {
@@ -124,7 +134,10 @@ async function runReconciliationFailureJourney(args: {
     const baselineClient = await readClientTabs(page, worktreeId)
     expect(baselineClient.editorTabIds).not.toHaveLength(0)
     expect(baselineClient.terminalTabIds).not.toHaveLength(0)
-    const baselineHostBrowserIds = await readHostBrowserPageIds(args.hostClient, args.repoPath)
+    const baselineHost = await readHostTabs(args.hostClient, args.repoPath)
+    const baselineHostBrowserIds = baselineHost.tabs
+      .filter((tab) => tab.type === 'browser')
+      .map((tab) => tab.browserPageId)
 
     await page.evaluate(() => {
       const fault = (window as FaultWindow).__webRuntimeBrowserCreationFault
@@ -154,22 +167,16 @@ async function runReconciliationFailureJourney(args: {
       throw new Error('Held browser creation did not expose its exact host page id')
     }
 
-    expect(await readHostBrowserPageIds(args.hostClient, args.repoPath)).toContain(createdPageId)
-    // Why: the tab is staged on click, so while the create is held the user already sees it —
-    // exactly one of it, in the new split. The rollback assertions after release are what prove
-    // the optimism is unwound rather than stranded.
-    const heldClient = await readClientTabs(page, worktreeId)
-    const addedSince = (baseline: string[], held: string[]): string[] => {
-      expect(held).toEqual(expect.arrayContaining(baseline))
-      return held.filter((id) => !baseline.includes(id))
-    }
-    expect(addedSince(baselineClient.browserTabIds, heldClient.browserTabIds)).toHaveLength(1)
+    const heldHost = await readHostTabs(args.hostClient, args.repoPath)
     expect(
-      addedSince(baselineClient.browserWorkspaceIds, heldClient.browserWorkspaceIds)
-    ).toHaveLength(1)
+      heldHost.tabs.some((tab) => tab.type === 'browser' && tab.browserPageId === createdPageId)
+    ).toBe(true)
+    const heldClient = await readClientTabs(page, worktreeId)
+    expect(heldClient.browserTabIds).toEqual(baselineClient.browserTabIds)
+    expect(heldClient.browserWorkspaceIds).toEqual(baselineClient.browserWorkspaceIds)
     expect(heldClient.editorTabIds).toEqual(baselineClient.editorTabIds)
     expect(heldClient.terminalTabIds).toEqual(baselineClient.terminalTabIds)
-    expect(addedSince(baselineClient.groupIds, heldClient.groupIds)).toHaveLength(1)
+    expect(heldClient.groupIds).toHaveLength(baselineClient.groupIds.length + 1)
 
     await page.screenshot({
       path: args.testInfo.outputPath(`${args.topology}-browser-reconciliation-held.png`),
@@ -185,11 +192,16 @@ async function runReconciliationFailureJourney(args: {
       timeout: 30_000
     })
     await expect
-      .poll(() => readHostBrowserPageIds(args.hostClient, args.repoPath), {
-        timeout: 30_000,
-        message: 'rollback did not close the exact host browser page'
-      })
-      .not.toContain(createdPageId)
+      .poll(
+        async () => {
+          const snapshot = await readHostTabs(args.hostClient, args.repoPath)
+          return snapshot.tabs.some(
+            (tab) => tab.type === 'browser' && tab.browserPageId === createdPageId
+          )
+        },
+        { timeout: 30_000, message: 'rollback did not close the exact host browser page' }
+      )
+      .toBe(false)
     const settledClient = await expect
       .poll(() => readClientTabs(page, worktreeId), {
         timeout: 30_000,
@@ -204,9 +216,11 @@ async function runReconciliationFailureJourney(args: {
       })
       .then(() => readClientTabs(page, worktreeId))
     expect(settledClient).toEqual(baselineClient)
-    expect(await readHostBrowserPageIds(args.hostClient, args.repoPath)).toEqual(
-      baselineHostBrowserIds
-    )
+    expect(
+      (await readHostTabs(args.hostClient, args.repoPath)).tabs
+        .filter((tab) => tab.type === 'browser')
+        .map((tab) => tab.browserPageId)
+    ).toEqual(baselineHostBrowserIds)
     await page.evaluate(() => (window as FaultWindow).__webRuntimeBrowserCreationFault?.reset())
   } finally {
     await client?.dispose()
@@ -315,10 +329,7 @@ test('rolls back a headed-host browser when client reconciliation times out @hea
   const offer = await createRuntimeDesktopPairingOffer(orcaPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   await runReconciliationFailureJourney({
-    // Why 30s: browser.tabList on a headed host with no live browser tab first activates the
-    // browser view and waits up to 8s for a webview registration before answering; a 5s client
-    // times out before the runtime ever replies.
-    hostClient: new RuntimeClient(userDataDir, 30_000),
+    hostClient: new RuntimeClient(userDataDir, 5_000),
     offer,
     repoPath: testRepoPath,
     testInfo,
@@ -342,10 +353,7 @@ test('cleans up a headed-host preview when capability rejects after preflight @h
   const offer = await createRuntimeDesktopPairingOffer(orcaPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   await runCapabilityFailureJourney({
-    // Why 30s: browser.tabList on a headed host with no live browser tab first activates the
-    // browser view and waits up to 8s for a webview registration before answering; a 5s client
-    // times out before the runtime ever replies.
-    hostClient: new RuntimeClient(userDataDir, 30_000),
+    hostClient: new RuntimeClient(userDataDir, 5_000),
     offer,
     repoPath: testRepoPath,
     testInfo,

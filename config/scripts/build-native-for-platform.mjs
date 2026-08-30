@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process'
-import { resolvePnpmCliInvocation } from './pnpm-cli-invocation.mjs'
 
 if (process.platform === 'win32') {
   runNodeScript('config/scripts/build-windows-cli-launcher.mjs')
@@ -19,8 +18,14 @@ runPnpmScript('build:notification-status-macos')
 process.exit(0)
 
 function runPnpmScript(scriptName) {
-  const { command, prefixArgs, shell } = resolvePnpmCliInvocation()
-  const result = spawnSync(command, [...prefixArgs, 'run', scriptName], { stdio: 'inherit', shell })
+  const npmExecPath = process.env.npm_execpath
+  const command = npmExecPath
+    ? process.execPath
+    : process.platform === 'win32'
+      ? 'pnpm.cmd'
+      : 'pnpm'
+  const args = npmExecPath ? [npmExecPath, 'run', scriptName] : ['run', scriptName]
+  const result = spawnSync(command, args, { stdio: 'inherit' })
 
   if (result.signal) {
     process.kill(process.pid, result.signal)

@@ -28,7 +28,6 @@ import {
 } from './repo-lifecycle-operations'
 import { scheduleSave } from './write-scheduling'
 import { removeWorkspaceLineageForFolderParent } from './metadata-lineage-operations'
-import { bumpLocalWorktreeScanGeneration } from '../../local-worktree-scan-generation'
 
 type ProjectCollectionOperationsRuntime = Pick<
   StoreRuntimeState,
@@ -160,7 +159,6 @@ export function getProjectHostOperations(
     new ProjectHostPersistenceOperations({
       state: owner[projectCollectionOperationsContext].runtime.state,
       gitUsernameCache: owner[projectCollectionOperationsContext].runtime.gitUsernameCache,
-      bumpLocalWorktreeScanGeneration,
       hydrateRepo: (repo) => hydrateRepo(owner[projectCollectionOperationsContext].repos, repo),
       updateRepoBackedProjectHostSetup: (setup, repo, updates) =>
         updateRepoBackedProjectHostSetup(

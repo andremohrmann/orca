@@ -33,7 +33,6 @@ import {
 } from './remote-runtime-request-ready-waiters'
 import { openRemoteRuntimeWebSocket } from './remote-runtime-request-websocket'
 import { remoteRuntimeClientCapabilities } from './remote-runtime-client-capabilities'
-import type { RuntimeCapability } from './protocol-version'
 type ConnectionState = 'closed' | 'awaiting_ready' | 'awaiting_authenticated' | 'ready'
 const IDLE_CLOSE_MS = 60_000
 
@@ -46,10 +45,7 @@ export class RemoteRuntimeRequestConnection {
   private readonly readyWaiters: RemoteRuntimeRequestReadyWaiter[] = []
   private idleCloseTimer: ReturnType<typeof setTimeout> | null = null
 
-  constructor(
-    private readonly pairing: PairingOffer,
-    private readonly additionalClientCapabilities: readonly RuntimeCapability[] = []
-  ) {}
+  constructor(private readonly pairing: PairingOffer) {}
 
   request<TResult>(
     method: string,
@@ -237,7 +233,7 @@ export class RemoteRuntimeRequestConnection {
         serializeRemoteRuntimePayload({
           type: 'e2ee_auth',
           deviceToken: this.pairing.deviceToken,
-          clientCapabilities: remoteRuntimeClientCapabilities(this.additionalClientCapabilities)
+          clientCapabilities: remoteRuntimeClientCapabilities()
         }),
         sharedKey
       )

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Activity } from 'lucide-react-native'
+import { Radio } from 'lucide-react-native'
 import { Animated, Easing, StyleSheet, View } from 'react-native'
 import type { AgentWorkingMode } from '../../../src/shared/agent-status-types'
 
@@ -50,7 +50,7 @@ export function AgentSpinner({
   if (monitoring) {
     return (
       <View style={styles.wrapper} accessibilityLabel="Monitoring background tasks">
-        <Activity size={12} color={STATUS_COLORS.working} />
+        <Radio size={12} color={STATUS_COLORS.working} />
       </View>
     )
   }

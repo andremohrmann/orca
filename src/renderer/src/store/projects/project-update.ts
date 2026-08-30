@@ -6,7 +6,6 @@ import { notifyInstalledAgentSkillsChanged } from '@/hooks/installed-agent-skill
 import type { RepoSlice } from '../repos/repo-state'
 import { getProjectUpdateRuntimeTarget } from './project-host-routing'
 import { mergeUpdatedProjectCompatibilityProject } from './project-compatibility-core'
-import { normalizeProjectRow } from '../../../../shared/project-catalog-row-normalization'
 
 export function createProjectUpdateActions(
   set: Parameters<StateCreator<AppState>>[0],
@@ -30,13 +29,11 @@ export function createProjectUpdateActions(
         if (!updatedProject) {
           return false
         }
-        // Why: the merge spreads updatedProject.sourceRepoIds, which throws if the host sent a non-array.
-        const normalizedProject = normalizeProjectRow(updatedProject)
         const runtimePreferenceChanged = 'localWindowsRuntimePreference' in updates
         set((state) => ({
           projects: state.projects.map((project) =>
             project.id === projectId
-              ? mergeUpdatedProjectCompatibilityProject(project, normalizedProject, updates)
+              ? mergeUpdatedProjectCompatibilityProject(project, updatedProject, updates)
               : project
           ),
           folderWorkspacePathStatuses: {}

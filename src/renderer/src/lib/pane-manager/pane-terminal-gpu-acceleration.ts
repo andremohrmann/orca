@@ -6,7 +6,6 @@ import {
   shouldUseTerminalWebgl
 } from './pane-webgl-renderer'
 import { safeFit } from './pane-tree-ops'
-import { resetPaneWebglContextLosses } from './pane-webgl-context-loss-policy'
 
 export function applyTerminalGpuAcceleration(
   panes: Iterable<ManagedPaneInternal>,
@@ -27,7 +26,6 @@ export function applyTerminalGpuAcceleration(
       // renderer; context-loss and attach-failure latches from the old mode
       // should not pin DOM.
       pane.webglDisabledAfterContextLoss = false
-      resetPaneWebglContextLosses(pane)
       pane.webglAttachFailedSinceRecovery = false
     }
     if (!shouldUseTerminalWebgl(pane)) {

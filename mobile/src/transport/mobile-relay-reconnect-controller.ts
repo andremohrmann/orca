@@ -7,7 +7,6 @@ import type { MobileRelayRpcSession } from './mobile-relay-rpc-session'
 import { MobileE2EEAuthenticationError } from './mobile-e2ee-v2-physical-channel'
 import { RelayOuterError } from './mobile-relay-e2ee-link'
 import { RELAY_STABLE_CONNECTION_MS, RelayRetryDelays } from './mobile-relay-retry-delays'
-import { relayDirectorRetryAfterMs } from './mobile-relay-resume-director'
 import { RelayCredentialEligibility } from './relay-credential-eligibility'
 import { RelayPairingRejectionLatch } from './relay-pairing-rejection-latch'
 import { RelayRecoveryFailureCount } from './relay-recovery-failure-count'
@@ -46,7 +45,9 @@ export class RelayReconnectController {
     this.credentials = new RelayCredentialEligibility(dependencies.now)
   }
 
-  getFailureCount = (): number => this.failureCount.current()
+  getFailureCount(): number {
+    return this.failureCount.current()
+  }
 
   reportRecoveryTo(logical: StableLogicalRpcClient): void {
     this.failureCount.reportTo(logical.setRecoveryAttempt)
@@ -79,11 +80,6 @@ export class RelayReconnectController {
     if (this.recoveryGate === 'external-signal') {
       this.liftGate()
     }
-    // Manual app-resume retries bypass transport cooldown, but never a fresh-credential gate.
-    const disconnectedOnResume = reason === 'app-resume' && logical.getState() === 'disconnected'
-    if (disconnectedOnResume && this.recoveryGate !== 'fresh-credential') {
-      this.reset()
-    }
     if (
       this.recoveryGate !== 'fresh-credential' &&
       logical.getActivePath() === 'relay' &&
@@ -95,17 +91,17 @@ export class RelayReconnectController {
     return 'recover'
   }
 
-  handleStateFailure(logical: StableLogicalRpcClient, state: ConnectionState): Error | null {
+  handleStateFailure(logical: StableLogicalRpcClient, state: ConnectionState): void {
     if (!this.needsRecovery(state)) {
-      return null
+      return
     }
-    const failure = this.registerActiveFailure(logical)
+    this.registerActiveFailure(logical)
     this.onRetry()
-    return failure
   }
 
-  needsRecovery = (state: ConnectionState): boolean =>
-    state !== 'connected' && state !== 'connecting' && state !== 'handshaking'
+  needsRecovery(state: ConnectionState): boolean {
+    return state !== 'connected' && state !== 'connecting' && state !== 'handshaking'
+  }
 
   suspendActiveRelay(logical: StableLogicalRpcClient): void {
     if (logical.getActivePath() !== 'relay') {
@@ -205,9 +201,9 @@ export class RelayReconnectController {
 
   recordRejectedCredential = (version: number): void => this.credentials.recordRejected(version)
 
-  registerActiveFailure(logical: StableLogicalRpcClient): Error | null {
+  registerActiveFailure(logical: StableLogicalRpcClient): void {
     if (logical.getActivePath() !== 'relay') {
-      return null
+      return
     }
     const failure = this.activeSession?.getFailure()
     this.activeSession = null
@@ -217,7 +213,6 @@ export class RelayReconnectController {
     } else {
       this.activeRelayConnectedAt = null
     }
-    return failure ?? null
   }
 
   // True when the caller is still inside the cooldown window and must not
@@ -246,9 +241,10 @@ export class RelayReconnectController {
     // replacement dial is not revocation — banking it would fire a false re-pair alarm
     // the moment that healthy session drops for an unrelated transport error.
     this.pairingRejection.record(this.activeSession ? null : error)
+    const code = error instanceof RelayOuterError ? error.code : null
     const recovery =
-      error instanceof RelayOuterError && isMobileRelayCloseCode(error.code)
-        ? mobileRelayRecoveryFor(error.code, 'phone-resume')
+      code != null && isMobileRelayCloseCode(code)
+        ? mobileRelayRecoveryFor(code, 'phone-resume')
         : null
     if (
       this.recoveryGate === 'fresh-credential' ||
@@ -263,12 +259,10 @@ export class RelayReconnectController {
     const failureCount = this.failureCount.recordAfterConnection(this.activeRelayConnectedAt, now)
     // Why: only a stable authenticated Relay resets the failure streak.
     this.activeRelayConnectedAt = null
-    // Why: a director Retry-After is the server pacing a bounded overload, and it
-    // only reaches this branch — a director HTTP error carries no relay close code.
     const delay =
       recovery?.kind === 'retry-after-host-offline'
         ? this.delays.hostOfflineDelayMs()
-        : this.delays.transportDelayMs(failureCount, relayDirectorRetryAfterMs(error))
+        : this.delays.transportDelayMs(failureCount)
     this.nextAttemptAt = now + delay
     if (error instanceof MobileE2EEAuthenticationError) {
       // Why: an E2EE rejection is usually pairing revocation, but it also fires

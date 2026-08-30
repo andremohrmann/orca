@@ -12,7 +12,6 @@ export type FullCreationExecutionInput = Pick<
   | 'normalizedSparseDirectories'
   | 'note'
   | 'onCreated'
-  | 'parentWorktreeId'
   | 'persistDraft'
   | 'persistSetupAgentStartupPolicy'
   | 'prepareFullSubmit'
@@ -48,7 +47,6 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
     normalizedSparseDirectories,
     note,
     onCreated,
-    parentWorktreeId,
     persistDraft,
     persistSetupAgentStartupPolicy,
     prepareFullSubmit,
@@ -157,8 +155,7 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
           nameWasGenerated,
           ...(!backendStartup && startupPlan?.draftPrompt
             ? { startupDraft: startupPlan.draftPrompt }
-            : {}),
-          ...(parentWorktreeId ? { parentWorktreeId } : {})
+            : {})
         }
       )
 
@@ -254,7 +251,6 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
       normalizedSparseDirectories,
       note,
       onCreated,
-      parentWorktreeId,
       persistDraft,
       persistSetupAgentStartupPolicy,
       prepareFullSubmit,

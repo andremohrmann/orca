@@ -291,9 +291,7 @@ export default function ImageViewer({
                     ? 'block h-auto max-h-none max-w-full'
                     : inlineImageLayoutSize
                       ? 'block h-full w-full'
-                      : // Why: the w-max/h-max scroll box makes percentage maxes resolve to
-                        // none, so only viewport units bound the image before onLoad.
-                        'block max-h-[100vh] max-w-[100vw]'
+                      : 'block max-h-full max-w-full'
                 )}
                 onLoad={(event) => {
                   const img = event.currentTarget

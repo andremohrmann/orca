@@ -238,11 +238,7 @@ async function main() {
       throw new Error('daemon readiness did not publish the expected PID ownership record')
     }
     log('PID ownership record matches the ready daemon')
-    const endpointPublished =
-      process.platform === 'win32'
-        ? (await probeEndpoint(socketPath)) === 'connected'
-        : existsSync(socketPath)
-    if (!endpointPublished) {
+    if (!existsSync(socketPath)) {
       throw new Error('daemon did not publish its endpoint at the canonical socket path')
     }
     log('endpoint published at the canonical socket path')

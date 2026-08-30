@@ -8,7 +8,6 @@ import {
 
 export type RuntimeEnvironmentCallRequest = {
   method: string
-  params?: Record<string, unknown>
 }
 
 export function createCompatibleRuntimeStatusResponse(

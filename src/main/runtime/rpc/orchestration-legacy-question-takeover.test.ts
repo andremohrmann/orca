@@ -11,7 +11,6 @@ import { OrcaRuntimeService } from '../orca-runtime'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { ORCHESTRATION_METHODS } from './methods/orchestration'
-import { createRootDispatch } from '../orchestration/db/root-dispatch-test-fixture'
 
 const COORDINATOR_HANDLE = 'term_legacy_coord'
 const CURRENT_COORDINATOR_HANDLE = 'term_current_coord'
@@ -43,7 +42,7 @@ function createHarness(options?: { seedCutoverQuestion?: boolean; seedCutoverAns
     spec: 'legacy assignment',
     createdByTerminalHandle: COORDINATOR_HANDLE
   })
-  const dispatch = createRootDispatch(before, task.id, WORKER_HANDLE, WORKER_PANE)
+  const dispatch = before.createDispatchContext(task.id, WORKER_HANDLE, WORKER_PANE)
   const cutoverQuestion = options?.seedCutoverQuestion
     ? before.insertMessage({
         from: WORKER_HANDLE,

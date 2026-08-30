@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  resolveOuterWrapperForegroundIdentity,
-  resolveOuterWrapperForegroundProcess
-} from './foreground-wrapper-agent'
+import { resolveOuterWrapperForegroundProcess } from './foreground-wrapper-agent'
 
 describe('resolveOuterWrapperForegroundProcess', () => {
   const omp = { agent: 'omp' as const, processName: 'omp' }
@@ -54,23 +51,5 @@ describe('resolveOuterWrapperForegroundProcess', () => {
         { pid: 103, ppid: 102, command: 'pi' }
       ])
     ).toBe('pi')
-  })
-
-  it('carries the wrapper pid with a collapsed name, so liveness tracks the wrapper', () => {
-    // Anchoring 'omp' to pi's pid would read a pi restart as omp's exit.
-    expect(
-      resolveOuterWrapperForegroundIdentity(pi, { pid: 102, ppid: 101, command: 'pi' }, [
-        { pid: 102, ppid: 101, command: 'pi' },
-        { pid: 101, ppid: 100, command: 'omp' }
-      ])
-    ).toEqual({ processName: 'omp', processId: 101 })
-  })
-
-  it('keeps the winner pid when nothing collapses', () => {
-    const barePi = { pid: 101, ppid: 100, command: 'pi' }
-    expect(resolveOuterWrapperForegroundIdentity(pi, barePi, [barePi])).toEqual({
-      processName: 'pi',
-      processId: 101
-    })
   })
 })

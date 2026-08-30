@@ -235,8 +235,6 @@ export function installMultiplexSlotFrames(
         cwd: serialized?.cwd,
         source: serialized?.source,
         kittyKeyboardFlags: serialized?.kittyKeyboardFlags,
-        alternateScreen: serialized?.alternateScreen,
-        terminalOwner: serialized?.terminalOwner,
         oscLinks: serialized?.oscLinks,
         pendingEscapeTailAnsi: serialized?.pendingEscapeTailAnsi,
         truncated: false,

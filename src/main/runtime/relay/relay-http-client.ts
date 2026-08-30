@@ -2,14 +2,6 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type { E2EEKeypair } from '../e2ee-keypair'
 import { cancelUnreadResponseBody } from '../../lib/unread-response-body'
-import { parseRelayRetryAfterMs } from '../../../shared/relay-retry-after-header'
-import {
-  RelayAssignAbortedError,
-  RelayAssignRateLimitedError,
-  relayAssignRateKey,
-  sharedRelayAssignRateGate,
-  type RelayAssignRateGate
-} from './relay-assign-rate-gate'
 import type { RelayRegion } from './relay-region-preference'
 
 const RELAY_HTTP_REQUEST_DEADLINE_MS = 15_000
@@ -50,25 +42,19 @@ export class RelayHttpError extends Error {
   }
 }
 
-// Distinct message so log censuses can tell a locally-enforced wait from a real
-// director 429 — one server 429 would otherwise print several identical lines.
-export class RelayAssignLocallyPacedError extends RelayHttpError {
-  constructor(retryAfterMs: number) {
-    super('assignment', 429, retryAfterMs)
-    this.message = 'relay_assignment_locally_paced_429'
+function relayRetryAfterMs(value: string | null, nowMs = Date.now()): number | null {
+  if (!value) {
+    return null
   }
-}
-
-function relayRetryAfterMs(value: string | null): number | null {
-  return parseRelayRetryAfterMs(value, RELAY_RETRY_AFTER_MAX_MS)
+  const seconds = Number(value)
+  const delayMs = Number.isFinite(seconds) ? seconds * 1_000 : Date.parse(value) - nowMs
+  if (!Number.isFinite(delayMs) || delayMs <= 0) {
+    return null
+  }
+  return Math.min(RELAY_RETRY_AFTER_MAX_MS, Math.ceil(delayMs))
 }
 
 export function shouldRetryRelayConnectionError(error: unknown): boolean {
-  // A staleness abort means the caller was superseded — retrying it would
-  // spend rate-gate slots on work whose owner is gone.
-  if (error instanceof RelayAssignAbortedError) {
-    return false
-  }
   if (!(error instanceof RelayHttpError)) {
     return true
   }
@@ -127,7 +113,7 @@ export async function exchangeRelayAuthorization(input: {
   return parsed.data
 }
 
-type RelayAssignmentRequest = {
+export async function requestRelayAssignment(input: {
   directorUrl: string
   relayToken: string
   relayHostId: string
@@ -135,45 +121,9 @@ type RelayAssignmentRequest = {
   preferredRegion?: RelayRegion
   fetch?: typeof globalThis.fetch
   requestDeadlineMs?: number
-  // Fencing for the throttle wait: a superseded caller aborts instead of assigning.
-  isCurrent?: () => boolean
-  assignRateGate?: RelayAssignRateGate
-}
-
-export async function requestRelayAssignment(
-  input: RelayAssignmentRequest
-): Promise<RelayAssignment> {
+}): Promise<RelayAssignment> {
   if (!isAllowedRelayOrigin(input.directorUrl)) {
     throw new RelayHttpError('assignment', 400)
-  }
-  const gate = input.assignRateGate ?? sharedRelayAssignRateGate
-  const rateKey = relayAssignRateKey(input.directorUrl, input.relayHostId)
-  try {
-    await gate.reserve(rateKey, input.isCurrent)
-  } catch (error) {
-    if (error instanceof RelayAssignRateLimitedError) {
-      // Surface a long local wait as the 429 it stands in for, so the existing
-      // schedulers pace with retryAfterMs instead of parking the caller inline.
-      // Reachable only while a director Retry-After beyond the inline cap is
-      // still in force — local booking alone never exceeds ~5.5s.
-      throw new RelayAssignLocallyPacedError(error.retryAfterMs)
-    }
-    throw error
-  }
-  return await sendRelayAssignment(input, gate, rateKey)
-}
-
-// The field-fallback retries below are one logical attempt against one booked
-// slot; re-entering the gate would stall rolled-back-director compatibility 5s.
-async function sendRelayAssignment(
-  input: RelayAssignmentRequest,
-  gate: RelayAssignRateGate,
-  rateKey: string
-): Promise<RelayAssignment> {
-  // A caller superseded after reserving — or between field-fallback retries —
-  // must not spend more requests on an assignment nobody will consume.
-  if (input.isCurrent && !input.isCurrent()) {
-    throw new RelayAssignAbortedError()
   }
   const response = await (input.fetch ?? globalThis.fetch)(`${input.directorUrl}/v1/assign`, {
     method: 'POST',
@@ -193,18 +143,15 @@ async function sendRelayAssignment(
   })
   if (!response.ok) {
     const retryAfterMs = relayRetryAfterMs(response.headers.get('retry-after'))
-    if (retryAfterMs !== null) {
-      gate.noteRetryAfter(rateKey, retryAfterMs)
-    }
     await cancelUnreadResponseBody(response)
     if (input.preferredRegion && response.status === 400) {
       // A rolled-back director rejects the regional hint; preserve the
       // reconnect lane while retrying without only that field.
-      return await sendRelayAssignment({ ...input, preferredRegion: undefined }, gate, rateKey)
+      return await requestRelayAssignment({ ...input, preferredRegion: undefined })
     }
     if (input.reconnect && response.status === 400) {
       // A rolled-back director rejects unknown fields; retry once unhinted.
-      return await sendRelayAssignment({ ...input, reconnect: false }, gate, rateKey)
+      return await requestRelayAssignment({ ...input, reconnect: false })
     }
     throw new RelayHttpError('assignment', response.status, retryAfterMs)
   }

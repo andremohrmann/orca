@@ -24,7 +24,6 @@ vi.mock('./web-session-tabs-sync', () => ({
   acceptReplayedWebSessionTabsSnapshot: vi.fn(),
   applyWebSessionTabsSnapshot: vi.fn(),
   decideWebSessionTabsSnapshot: vi.fn(() => ({ apply: true, settlesHostMirror: true })),
-  getWebSessionTabsTrackingGeneration: vi.fn(() => 0),
   applyWebSessionTabsStorePatch: vi.fn(() => () => {}),
   resolveHostSessionTabIdForWebSessionTab: vi.fn()
 }))

@@ -1,10 +1,17 @@
 import { join, relative, sep } from 'node:path'
-import { isCodexSessionBackfillDate } from './codex-session-backfill-scan-dates'
 import { listCodexSessionJsonlFilesIncrementally } from './codex-session-file-listing'
 import type {
   CodexSessionBackfillDate,
   CodexSessionBackfillOptions
 } from './codex-session-backfill-types'
+
+export function getCodexSessionBackfillDate(date = new Date()): CodexSessionBackfillDate {
+  return [
+    String(date.getUTCFullYear()).padStart(4, '0'),
+    String(date.getUTCMonth() + 1).padStart(2, '0'),
+    String(date.getUTCDate()).padStart(2, '0')
+  ]
+}
 
 export function isCodexSessionRolloutPath(sessionsRoot: string, filePath: string): boolean {
   const pathParts = relative(sessionsRoot, filePath).split(sep)
@@ -12,7 +19,12 @@ export function isCodexSessionRolloutPath(sessionsRoot: string, filePath: string
     return false
   }
   const [year, month, day, fileName] = pathParts
-  return isCodexSessionBackfillDate([year, month, day]) && /^rollout-.+\.jsonl$/.test(fileName)
+  return (
+    /^\d{4}$/.test(year) &&
+    /^\d{2}$/.test(month) &&
+    /^\d{2}$/.test(day) &&
+    /^rollout-.+\.jsonl$/.test(fileName)
+  )
 }
 
 export async function* listCodexSessionBackfillFilesForDates(
@@ -42,7 +54,9 @@ function resolveCodexSessionBackfillDateRoots(
     return [sessionsRoot]
   }
   return scanDates
-    .filter(isCodexSessionBackfillDate)
+    .filter(
+      ([year, month, day]) => /^\d{4}$/.test(year) && /^\d{2}$/.test(month) && /^\d{2}$/.test(day)
+    )
     .map(([year, month, day]) => join(sessionsRoot, year, month, day))
 }
 

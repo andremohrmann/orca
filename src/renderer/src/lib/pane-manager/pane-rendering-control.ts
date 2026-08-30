@@ -10,11 +10,7 @@ import {
   presentPaneViewport,
   resetWebglTextureAtlas
 } from './pane-webgl-renderer'
-import {
-  clearPaneWebglContextLossForRetry,
-  rebuildAttachedWebgl,
-  reattachWebglIfNeeded
-} from './pane-webgl-reattach'
+import { rebuildAttachedWebgl, reattachWebglIfNeeded } from './pane-webgl-reattach'
 import {
   releaseHiddenWebglRetention,
   tryRetainHiddenPanesWebgl
@@ -58,18 +54,16 @@ export function suspendPaneRendering(
   retention?: { owner: object; livePanes: () => Iterable<ManagedPaneInternal> }
 ): void {
   const suspended = Array.from(panes)
-  // Why: both branches must leave a suspended pane in the same state; only the retention
-  // branch below used to blur. Defence in depth, not a measured cost — display:none and
-  // inert both make Chromium blur the pane itself, and disposeWebgl kills the blink timer
-  // regardless. It only bites under opacity:0 without inert (TerminalOverlaySlot's startup
-  // probe), the one hide mode that keeps focus.
   for (const pane of suspended) {
     pane.webglAttachmentDeferred = true
-    pane.terminal.blur()
   }
   // Keep recent hidden worktrees on live WebGL so switch-back never presents
   // DOM-fallback frames; evicted/over-cap owners fall back to dispose.
   if (retention && tryRetainHiddenPanesWebgl(retention.owner, retention.livePanes)) {
+    // Why: retained WebGL keeps xterm's focused cursor timer alive behind the hidden surface.
+    for (const pane of suspended) {
+      pane.terminal.blur()
+    }
     return
   }
   for (const pane of suspended) {
@@ -85,11 +79,13 @@ export function resumePaneRendering(
     releaseHiddenWebglRetention(retentionOwner)
   }
   for (const pane of panes) {
+    // Why: resume (worktree foreground, window wake) is the WebGL retry
+    // boundary — Chromium may have restored the GPU process since a context
+    // loss, and bounding retries to resume events cannot loop on live loss.
     clearTerminalWebglAttachBackoff(pane)
     const rebuildDeferred = pane.webglRebuildDeferred === true
     pane.webglAttachmentDeferred = false
-    // Reveal can retry before the next resume, so both paths share the bounded loss policy.
-    clearPaneWebglContextLossForRetry(pane)
+    pane.webglDisabledAfterContextLoss = false
     pane.webglRebuildDeferred = false
     if (pane.webglAddon && isPaneWebglContextLost(pane)) {
       disposeWebgl(pane)

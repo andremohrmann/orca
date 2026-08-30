@@ -218,21 +218,6 @@ export function parseAndFilterSearchRefDetails(
     .slice(0, Math.max(0, limit))
 }
 
-export function resolveConfiguredRemoteBranchName(
-  fullRef: string,
-  longestFirstRemoteNames: readonly string[]
-): string | null {
-  const remoteRefPrefix = 'refs/remotes/'
-  if (!fullRef.startsWith(remoteRefPrefix)) {
-    return null
-  }
-  const remoteAndBranch = fullRef.slice(remoteRefPrefix.length)
-  const remote = longestFirstRemoteNames.find((candidate) =>
-    remoteAndBranch.startsWith(`${candidate}/`)
-  )
-  return remote ? remoteAndBranch.slice(remote.length + 1) || null : null
-}
-
 export function resolveLocalBranchName(
   fullRef: string,
   shortRef: string,
@@ -242,11 +227,11 @@ export function resolveLocalBranchName(
   if (!fullRef.startsWith(remoteRefPrefix)) {
     return shortRef
   }
-  const configuredBranch = resolveConfiguredRemoteBranchName(fullRef, remotes)
-  if (configuredBranch) {
-    return configuredBranch
-  }
   const remoteAndBranch = fullRef.slice(remoteRefPrefix.length)
+  const remote = remotes.find((candidate) => remoteAndBranch.startsWith(`${candidate}/`))
+  if (remote) {
+    return remoteAndBranch.slice(remote.length + 1)
+  }
   return remoteAndBranch.split('/').slice(1).join('/') || shortRef
 }
 

@@ -4,7 +4,7 @@ import {
   getCodexAppServerHostKey,
   type CodexAppServerHostKey
 } from './codex-app-server-capability-cache'
-import { runCodexUserHookTrustRebaseSession } from './codex-user-hook-trust-rebase-client'
+import { runCodexUserHookTrustRebaseSessionSync } from './codex-app-server-grant-bridge'
 import { isCodexAppServerUnsupportedError } from './codex-app-server-session'
 import { CODEX_TRUST_GRANT_TRANSIENT_RETRY_INTERVAL_MS } from './codex-hook-trust-grant'
 import { createCodexHookTrustEntry } from './codex-hook-identity'
@@ -14,7 +14,6 @@ import {
   restoreCodexTrustConfig,
   type CodexTrustConfigSnapshot
 } from './codex-trust-config-rollback'
-import { runExclusivelyForCodexTrustConfig } from './codex-trust-config-mutation-queue'
 import { computeTrustKey, type CodexTrustEntry } from './config-toml-trust'
 import type {
   CodexUserHookTrustRebaseRequest,
@@ -24,13 +23,11 @@ import type {
 
 type HooksByEvent = Record<string, HookDefinition[]>
 
-type RebaseSessionRunner = (
+type RebaseSessionRunnerSync = (
   request: CodexUserHookTrustRebaseRequest
-) => Promise<CodexUserHookTrustRebaseResult>
+) => CodexUserHookTrustRebaseResult
 
-// Why (#16441): the session runs in-process; forking it through spawnSync
-// froze the main thread for the whole app-server deadline on every install.
-let runSession: RebaseSessionRunner = runCodexUserHookTrustRebaseSession
+let runSessionSync: RebaseSessionRunnerSync = runCodexUserHookTrustRebaseSessionSync
 
 // Why: launch prep re-runs the callers on every pane spawn. A host stuck
 // without a usable rebase lane (old CLI, unmatched keys) must not pay a codex
@@ -132,25 +129,12 @@ export function mutateRealHomeHooksPreservingUserTrust(args: {
   afterHooks: HooksByEvent
   writeHooks: () => void
   restoreHooks: () => void
-}): Promise<CodexTrustConfigSnapshot | null> {
+}): CodexTrustConfigSnapshot | null {
   const moves = getMovedCodexUserHookTrust(args.sourcePath, args.beforeHooks, args.afterHooks)
   if (moves.length === 0) {
     args.writeHooks()
-    return Promise.resolve(null)
+    return null
   }
-  // Why: capture/mutate/restore on one config.toml is not reentrant.
-  return runExclusivelyForCodexTrustConfig(args.tomlPath, () => rebaseMovedUserTrust(args, moves))
-}
-
-async function rebaseMovedUserTrust(
-  args: {
-    runtimeHomePath: string
-    tomlPath: string
-    writeHooks: () => void
-    restoreHooks: () => void
-  },
-  moves: CodexUserHookTrustMove[]
-): Promise<CodexTrustConfigSnapshot | null> {
   const hostKey = getCodexAppServerHostKey({ kind: 'native' })
   if (!codexAppServerCapabilityCache.shouldTry(hostKey)) {
     throw new Error('codex app-server is marked unsupported on this host; trust rebase skipped')
@@ -164,7 +148,7 @@ async function rebaseMovedUserTrust(
   }
   const snapshot = captureCodexTrustConfig(args.tomlPath)
 
-  const baseRequest = (await resolveCodexTrustGrantHost({ kind: 'native' })).buildRequest({
+  const baseRequest = resolveCodexTrustGrantHost({ kind: 'native' }).buildRequest({
     runtimeHomePath: args.runtimeHomePath,
     managedCommand: '',
     expectedTrustKeys: [],
@@ -174,7 +158,7 @@ async function rebaseMovedUserTrust(
   // without shifting a user's positional trust key.
   let inspected: CodexUserHookTrustRebaseResult
   try {
-    inspected = await runSession({
+    inspected = runSessionSync({
       operation: 'inspect-user-hook-trust',
       invocation: baseRequest.invocation,
       hooksListCwd: baseRequest.hooksListCwd,
@@ -193,7 +177,7 @@ async function rebaseMovedUserTrust(
   try {
     args.writeHooks()
     hooksWritten = true
-    const repaired = await runSession({
+    const repaired = runSessionSync({
       operation: 'repair-user-hook-trust',
       invocation: baseRequest.invocation,
       hooksListCwd: baseRequest.hooksListCwd,
@@ -213,8 +197,8 @@ async function rebaseMovedUserTrust(
 }
 
 export const _internals = {
-  setSessionRunner(runner: RebaseSessionRunner | null): void {
-    runSession = runner ?? runCodexUserHookTrustRebaseSession
+  setSessionRunnerSync(runner: RebaseSessionRunnerSync | null): void {
+    runSessionSync = runner ?? runCodexUserHookTrustRebaseSessionSync
   },
   resetRetryState(): void {
     rebaseRetryAfterByHost.clear()

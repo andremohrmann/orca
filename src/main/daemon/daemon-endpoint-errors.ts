@@ -1,5 +1,4 @@
 import { DAEMON_ENDPOINT_LOST_MESSAGE } from './daemon-endpoint-ownership'
-import { DaemonConnectionLostError } from './daemon-errors'
 import { DAEMON_UNAVAILABLE_RECONNECT_MESSAGE } from './types'
 
 /**
@@ -17,9 +16,6 @@ export function isUnknownRequestTypeError(err: unknown): boolean {
 export function isDaemonGoneError(err: unknown): boolean {
   if (!(err instanceof Error)) {
     return false
-  }
-  if (err instanceof DaemonConnectionLostError) {
-    return true
   }
   const errno = err as NodeJS.ErrnoException
   if ((errno.code === 'ENOENT' || errno.code === 'ECONNREFUSED') && errno.syscall === 'connect') {

@@ -12,11 +12,10 @@ import { settingsForWorktreeOwner } from '../listing/worktree-owner-settings'
 // Why: this runs inside a catch, so letting the refresh reject would replace the failure it recovers from.
 async function refreshWorktreeLineageBestEffort(
   ownerSettings: AppState['settings'],
-  set: WorktreeSliceSet,
-  get: WorktreeSliceGet
+  set: WorktreeSliceSet
 ): Promise<void> {
   try {
-    await refreshWorktreeLineageForSettings(ownerSettings, set, get)
+    await refreshWorktreeLineageForSettings(ownerSettings, set)
   } catch (err) {
     console.error('Failed to refresh worktree lineage after a failed write:', err)
   }
@@ -42,7 +41,7 @@ export function createFetchWorktreeLineage(
       const settings = ownerSettings
         ? { ...ownerSettings, activeRuntimeEnvironmentId }
         : ({ activeRuntimeEnvironmentId } as AppState['settings'])
-      await refreshWorktreeLineageForSettings(settings, set, get, {
+      await refreshWorktreeLineageForSettings(settings, set, {
         reuseRecentCompatibilityFailure: true
       })
     } catch (err) {
@@ -67,7 +66,7 @@ export function createUpdateWorktreeLineage(
       )
     } catch (err) {
       console.error('Failed to update worktree lineage:', err)
-      await refreshWorktreeLineageBestEffort(ownerSettings, set, get)
+      await refreshWorktreeLineageBestEffort(ownerSettings, set)
       throw err
     }
   }
@@ -88,7 +87,7 @@ export function createAssignWorktreeParent(
     } catch (err) {
       console.error('Failed to assign worktree parent:', err)
       // Unlike the update path this rethrows, so the recovery refresh must not mask the original cause.
-      await refreshWorktreeLineageBestEffort(ownerSettings, set, get)
+      await refreshWorktreeLineageBestEffort(ownerSettings, set)
       throw err
     }
   }

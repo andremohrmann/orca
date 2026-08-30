@@ -217,7 +217,6 @@ export class RelaySessionBroker {
       // through to the placement lane.
       reconnect: true,
       preferredRegion,
-      isCurrent: () => this.isCurrent(),
       fetch: this.options.fetch
     })
     this.assertCurrent()

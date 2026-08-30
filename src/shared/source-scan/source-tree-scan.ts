@@ -18,11 +18,7 @@ const IGNORED_DIRECTORIES = new Set(['node_modules', 'dist', 'out', 'build', '.g
 export function isTestFile(relativePath: string): boolean {
   return (
     /\.(?:test|spec)\.tsx?$/.test(relativePath) ||
-    // `repro` must be a whole token: a bare substring exempted the shipped
-    // windows-terminal-capability-reprobe.ts from every guard using this walk.
-    /(?:test-harness|test-utils|test-setup|test-fixture|\brepro\b|reproduction)/.test(
-      relativePath
-    ) ||
+    /(?:test-harness|test-utils|test-setup|test-fixture|repro)/.test(relativePath) ||
     relativePath.includes('/__tests__/')
   )
 }

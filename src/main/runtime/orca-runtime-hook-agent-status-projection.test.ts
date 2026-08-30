@@ -61,8 +61,7 @@ async function createRuntimeWithHookRows(
   rows: AgentStatusIpcPayload[]
 ): Promise<OrcaRuntimeService> {
   const runtime = new OrcaRuntimeService(null, undefined, {
-    getAgentStatusSnapshot: () => rows,
-    getAgentProviderSessionRowsForPane: () => rows
+    getAgentStatusSnapshot: () => rows
   })
   const internals = runtime as unknown as {
     resolveTerminalWorkspaceLaunchScope: (selector: string) => Promise<unknown>
@@ -116,22 +115,6 @@ function lastOscTitleEpochMs(runtime: OrcaRuntimeService): number {
 }
 
 describe('headless hook agent-status projection (#11761)', () => {
-  it('ranks a completed hook below present launch evidence in terminal identity', async () => {
-    const runtime = await createRuntimeWithHookRows([
-      hookRow({
-        agentType: 'codex',
-        state: 'done',
-        prompt: '',
-        toolName: undefined,
-        interactivePrompt: undefined
-      })
-    ])
-
-    expect((await runtime.listTerminals()).terminals).toEqual([
-      expect.objectContaining({ agentIdentity: 'claude' })
-    ])
-  })
-
   it('carries the hook state, tool and interactivePrompt to paired clients', async () => {
     const agentStatus = await projectAgentStatus([hookRow()])
 

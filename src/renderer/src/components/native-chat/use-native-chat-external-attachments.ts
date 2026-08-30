@@ -1,17 +1,14 @@
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useAppStore } from '@/store'
 import {
-  nativeChatLocalAttachmentUnsupportedNotice,
   nativeChatWorktreeNotReadyNotice,
   resolveNativeChatAttachmentOwner,
-  resolveNativeChatAttachmentOwnerForWorktree,
   uploadNativeChatAttachmentPaths,
   type NativeChatAttachmentOwner
 } from './native-chat-attachment-upload'
 
 export type UseNativeChatExternalAttachmentsArgs = {
   terminalTabId: string
-  structuredWorktreeId?: string
   /** Live composer-disabled state; read at await-resume via a ref so a flip
    *  mid-upload doesn't attach into a guarded composer. */
   disabled: boolean
@@ -26,7 +23,6 @@ export type UseNativeChatExternalAttachmentsArgs = {
  */
 export function useNativeChatExternalAttachments({
   terminalTabId,
-  structuredWorktreeId,
   disabled,
   attachResolvedPaths,
   setNotice
@@ -35,21 +31,16 @@ export function useNativeChatExternalAttachments({
   resolveAttachmentOwner: () => NativeChatAttachmentOwner
 } {
   const disabledRef = useRef(disabled)
-  useLayoutEffect(() => {
-    disabledRef.current = disabled
-  }, [disabled])
+  disabledRef.current = disabled
 
   const resolveAttachmentOwner = useCallback(
-    () =>
-      structuredWorktreeId
-        ? resolveNativeChatAttachmentOwnerForWorktree(useAppStore.getState(), structuredWorktreeId)
-        : resolveNativeChatAttachmentOwner(useAppStore.getState(), terminalTabId),
-    [structuredWorktreeId, terminalTabId]
+    () => resolveNativeChatAttachmentOwner(useAppStore.getState(), terminalTabId),
+    [terminalTabId]
   )
 
   const attachExternalPaths = useCallback(
     (paths: string[]) => {
-      if (paths.length === 0 || disabledRef.current) {
+      if (paths.length === 0) {
         return
       }
       const owner = resolveAttachmentOwner()
@@ -57,11 +48,9 @@ export function useNativeChatExternalAttachments({
         setNotice(nativeChatWorktreeNotReadyNotice())
         return
       }
-      if (owner.kind === 'runtime') {
-        setNotice(nativeChatLocalAttachmentUnsupportedNotice())
-        return
-      }
       if (owner.kind !== 'ssh') {
+        // 'runtime' proceeds so attachResolvedPaths' existing remote-session
+        // gate reports the unsupported state.
         attachResolvedPaths(paths)
         return
       }

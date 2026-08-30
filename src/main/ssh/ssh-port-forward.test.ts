@@ -42,7 +42,7 @@ function createSystemSshConn() {
   return {
     getClient: vi.fn().mockReturnValue(null),
     usesSystemSshTransport: vi.fn().mockReturnValue(true),
-    getSystemSshBuildArgsOptions: vi.fn().mockReturnValue({}),
+    getSystemSshResolvedConfig: vi.fn().mockReturnValue(null),
     getTarget: vi.fn().mockReturnValue({
       id: 'target-1',
       label: 'container',
@@ -153,8 +153,7 @@ describe('SshPortForwardManager', () => {
       conn.getTarget(),
       3000,
       '127.0.0.1',
-      8080,
-      {}
+      8080
     )
     expect(forward.waitForStartup).toHaveBeenCalled()
     expect(entry).toMatchObject({
@@ -170,18 +169,16 @@ describe('SshPortForwardManager', () => {
     const forward = createFakeSystemSshForward()
     startSystemSshPortForwardProcessMock.mockReturnValue(forward)
     const conn = createSystemSshConn()
-    conn.getSystemSshBuildArgsOptions.mockReturnValue({
-      resolvedConfig: {
-        hostname: 'resolved.example.com',
-        port: 2222,
-        user: 'vscode',
-        identityFile: ['/home/user/.ssh/work'],
-        forwardAgent: false,
-        identitiesOnly: true,
-        proxyUseFdpass: true,
-        controlMaster: 'no',
-        controlPersist: 'no'
-      }
+    conn.getSystemSshResolvedConfig.mockReturnValue({
+      hostname: 'resolved.example.com',
+      port: 2222,
+      user: 'vscode',
+      identityFile: ['/home/user/.ssh/work'],
+      forwardAgent: false,
+      identitiesOnly: true,
+      proxyUseFdpass: true,
+      controlMaster: 'no',
+      controlPersist: 'no'
     })
 
     await manager.addForward('conn-1', conn as never, 3000, '127.0.0.1', 8080)

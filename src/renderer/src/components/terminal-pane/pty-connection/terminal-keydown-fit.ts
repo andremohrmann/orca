@@ -2,6 +2,7 @@ import { useAppStore } from '@/store'
 import { safeFit } from '@/lib/pane-manager/pane-tree-ops'
 import { bindPanePtyId, getFitOverrideForPty } from '@/lib/pane-manager/mobile-fit-overrides'
 import { inspectRuntimeTerminalProcess } from '@/runtime/runtime-terminal-inspection'
+import { parseAppSshPtyId } from '../../../../../shared/ssh-pty-id'
 import { isFreshNonDoneAgentStatus } from '../../../../../shared/agent-status-types'
 import { isCtrlCKeyEvent, isPlainEscapeKeyEvent } from '../agent-interrupt-inference'
 import { createAgentCompletionCoordinator } from '../agent-completion-coordinator'
@@ -11,7 +12,6 @@ import { resolveCompatibleAgentTypeForOwner } from '../../../../../shared/agent-
 import { registerTerminalSideEffectFactConsumer } from '../terminal-side-effect-facts-handler'
 
 import { isAgentTaskCompleteTrackingEnabled } from './agent-task-complete-settings'
-import { isRemoteExecutionHostPtyId } from '../remote-execution-host-pty'
 import { isRemoteRuntimePtyId } from './paired-parked-terminal-restore'
 
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
@@ -238,7 +238,7 @@ export function installTerminalKeydownFit(session: ConnectPanePtySession): void 
         return false
       }
       const ptyId = session.transport.getPtyId()
-      return ptyId !== null && !isRemoteExecutionHostPtyId(ptyId)
+      return ptyId !== null && !isRemoteRuntimePtyId(ptyId) && parseAppSshPtyId(ptyId) === null
     },
     isLive: () => {
       if (session.disposed) {

@@ -1,8 +1,4 @@
-import {
-  MAX_SSH_RELAY_GRACE_PERIOD_SECONDS,
-  type SshTargetCreateInput,
-  type SshTargetUpdateInput
-} from '../../../../shared/ssh-types'
+import { MAX_SSH_RELAY_GRACE_PERIOD_SECONDS, type SshTarget } from '../../../../shared/ssh-types'
 import {
   getSshTargetDraftConnectionFields,
   isRelayGracePeriodValid,
@@ -12,8 +8,8 @@ import {
 import { translate } from '../../i18n/i18n'
 
 type SshTargetSavePayload = {
-  target: SshTargetCreateInput
-  updates: SshTargetUpdateInput
+  target: Omit<SshTarget, 'id'>
+  updates: Partial<Omit<SshTarget, 'id'>>
 }
 
 type SshTargetSavePayloadResult =
@@ -59,7 +55,7 @@ export function buildSshTargetSavePayload(form: EditingTarget): SshTargetSavePay
   const jumpHost = form.jumpHost.trim() || undefined
   const systemSshConnectionReuse = form.systemSshConnectionReuse ? undefined : false
 
-  const target: SshTargetCreateInput = {
+  const target: Omit<SshTarget, 'id'> = {
     label: form.label.trim() || (username ? `${username}@${host}` : configHost),
     configHost,
     host,

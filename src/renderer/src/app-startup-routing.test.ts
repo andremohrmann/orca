@@ -19,20 +19,6 @@ const SESSION_PERSISTENCE_PATH = 'src/renderer/src/app-shell/use-app-session-per
 const PERSISTED_UI_WRITER_PATH = 'src/renderer/src/app-shell/use-persisted-ui-writer.ts'
 
 describe('renderer startup runtime routing', () => {
-  it('routes packaged terminal restore through the daemon adoption gate', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'src/renderer/src/components/Terminal.tsx'),
-      'utf8'
-    )
-    const gateStart = source.indexOf('const startupActivationGateWorktreeIdsRef')
-    const gateEnd = source.indexOf('const startupResumeWorktreeIdsRef', gateStart)
-    const gateEffect = source.slice(gateStart, gateEnd)
-
-    expect(gateStart).toBeGreaterThanOrEqual(0)
-    expect(gateEffect).toContain('void gateWorktreeAgentActivation(activeWorktreeId)')
-    expect(gateEffect).not.toContain('resumeSleepingAgentSessionsForWorktree')
-  })
-
   it('hydrates persisted UI before local catalog and worktree hydration', () => {
     const source = readSource(STARTUP_HYDRATION_PATH)
     const startupBlockStart = source.indexOf('void (async () => {')
@@ -339,46 +325,6 @@ describe('renderer startup runtime routing', () => {
     expect(reconnectIndex).toBeGreaterThan(capabilityIndex)
   })
 
-  it('orders packaged restoration before adoption, projection, and default creation', () => {
-    // Why this file: the startup sequence moved out of App.tsx into the hydration hook;
-    // the ordering it asserts is unchanged, only the module that now spells it out.
-    const appSource = readFileSync(
-      join(process.cwd(), 'src/renderer/src/app-shell/use-app-startup-hydration.ts'),
-      'utf8'
-    )
-    const terminalSource = readFileSync(
-      join(process.cwd(), 'src/renderer/src/components/Terminal.tsx'),
-      'utf8'
-    )
-    const hydrateIndex = appSource.indexOf("timeRendererStartupSyncStep('hydrate-session-stores'")
-    const prepareIndex = appSource.indexOf(
-      "timeRendererStartupStep('prepare-terminal-startup-restoration'"
-    )
-    const reconnectIndex = appSource.indexOf("timeRendererStartupStep('reconnect-terminals'")
-    const projectIndex = appSource.indexOf(
-      "timeRendererStartupStep('project-structured-session-tabs'"
-    )
-    const readyIndex = appSource.indexOf('actions.setTerminalStartupRestorationReady(true)')
-    const gateStart = terminalSource.indexOf('const startupActivationGateWorktreeIdsRef')
-    const gateEnd = terminalSource.indexOf('const startupResumeWorktreeIdsRef', gateStart)
-    const gateBlock = terminalSource.slice(gateStart, gateEnd)
-    const gateIndex = gateBlock.indexOf('gateWorktreeAgentActivation(activeWorktreeId)')
-    const createIndex = gateBlock.indexOf(
-      'createTab(activeWorktreeId, undefined, undefined, { pendingActivationSpawn: true })'
-    )
-
-    expect(hydrateIndex).toBeGreaterThanOrEqual(0)
-    expect(hydrateIndex).toBeLessThan(prepareIndex)
-    expect(prepareIndex).toBeLessThan(reconnectIndex)
-    expect(reconnectIndex).toBeLessThan(projectIndex)
-    expect(projectIndex).toBeLessThan(readyIndex)
-    expect(gateBlock).toContain('terminalStartupRestorationReady')
-    expect(gateBlock).not.toContain('hydrationSucceeded')
-    expect(gateIndex).toBeGreaterThanOrEqual(0)
-    expect(gateIndex).toBeLessThan(createIndex)
-    expect(gateBlock.slice(gateIndex, createIndex)).toContain("outcome !== 'empty'")
-  })
-
   it('does not load the terminal workbench on the no-workspace landing path', () => {
     const shellSource = readSource(WORKSPACE_SHELL_PATH)
     const layoutSource = readSource(CHROME_LAYOUT_PATH)
@@ -542,7 +488,7 @@ describe('renderer startup runtime routing', () => {
   it('checkpoints activeView and all session snapshots through one beforeunload handler (#9002)', () => {
     const source = readSource(SESSION_PERSISTENCE_PATH)
     const checkpointStart = source.indexOf(
-      'const shutdownCheckpointPersist = createShutdownCheckpointPersist({'
+      'const shutdownCheckpoint = createShutdownCheckpointGuard('
     )
     const checkpointEnd = source.indexOf(
       'const persistBeforeUnload = createShutdownCheckpointBeforeUnloadHandler(shutdownCheckpoint)',
@@ -553,33 +499,25 @@ describe('renderer startup runtime routing', () => {
     const checkpointBlock = source.slice(checkpointStart, checkpointEnd)
 
     expect(checkpointBlock).toContain(
-      'const shutdownCheckpointPersist = createShutdownCheckpointPersist({'
+      'let sessionSnapshots: ReturnType<typeof buildWorkspaceSessionHostSnapshots> = []'
     )
     expect(checkpointBlock).toContain(
-      'buildWorkspaceSessionHostSnapshots(\n          buildWorkspaceSessionPayload(freshState),\n          freshState\n        )'
+      'buildWorkspaceSessionHostSnapshots(buildWorkspaceSessionPayload(freshState), freshState)'
     )
-    expect(checkpointBlock).toContain('buildUiPatch: () => buildActiveViewUnloadPatch(')
-    // Why pin the exact gate: the degrade tiers must arm only for intentional
-    // restarts and app-level closes, never for arbitrary unloads.
+    expect(checkpointBlock).toContain('window.api.app.stageBeforeUnloadSync({')
+    expect(checkpointBlock).toContain('sessions: sessionSnapshots')
+    expect(checkpointBlock).toContain('ui: buildActiveViewUnloadPatch(freshState)')
+    expect(checkpointBlock).toContain('!isIntentionalAppRestartInProgress()')
+    expect(checkpointBlock).toContain('freshState.openFiles.some((file) => file.isDirty)')
+    expect(checkpointBlock).toContain('sessions: []')
     expect(checkpointBlock).toContain(
-      'isIntentionalAppRestartInProgress() || isWindowCloseCheckpointInProgress()'
-    )
-    expect(checkpointBlock).toContain(
-      'useAppStore.getState().openFiles.some((file) => file.isDirty)'
-    )
-    expect(checkpointBlock).toContain(
-      'stageBeforeUnloadSync: (args) => window.api.app.stageBeforeUnloadSync(args)'
-    )
-    expect(checkpointBlock).toContain('shutdownCheckpointPersist.run')
-    expect(checkpointBlock).toContain('shutdownCheckpointPersist.abandonAttempt')
-    expect(source).toContain(
-      'window.addEventListener(ORCA_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.abandonAttempt)'
+      'return\n      }\n      window.api.app.stageBeforeUnloadSync({\n        sessions: sessionSnapshots'
     )
     expect(source).toContain(
-      'ORCA_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,\n      shutdownCheckpoint.abortAfterCheckpointFailure'
+      'window.addEventListener(ORCA_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.reset)'
     )
     expect(source).toContain(
-      'window.addEventListener(ORCA_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.abandonAttempt)'
+      'window.addEventListener(ORCA_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.reset)'
     )
     expect(source).toContain("window.addEventListener('beforeunload', persistBeforeUnload)")
     expect(source.match(/window\.addEventListener\('beforeunload'/g) ?? []).toHaveLength(1)

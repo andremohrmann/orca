@@ -174,7 +174,6 @@ export function applyOpenFileToState(
         editorDrafts: nextEditorDrafts,
         editorCursorLine: nextEditorCursorLine,
         markdownViewMode: nextMarkdownViewMode,
-        markdownRichModeSizeOverride: nextMarkdownRichModeSizeOverride,
         editorViewMode: nextEditorViewMode,
         markdownFrontmatterVisible: nextMarkdownFrontmatterVisible,
         markdownTableOfContentsVisible: nextMarkdownTableOfContentsVisible
@@ -236,7 +235,6 @@ export function applyOpenFileToState(
         editorDrafts: nextEditorDrafts,
         editorCursorLine: nextEditorCursorLine,
         markdownViewMode: nextMarkdownViewMode,
-        markdownRichModeSizeOverride: nextMarkdownRichModeSizeOverride,
         editorViewMode: nextEditorViewMode,
         markdownFrontmatterVisible: nextMarkdownFrontmatterVisible,
         markdownTableOfContentsVisible: nextMarkdownTableOfContentsVisible,

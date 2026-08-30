@@ -114,7 +114,6 @@ describe('useIpcEvents browser tab close routing', () => {
       dispatchEvent: vi.fn(),
       api: {
         repos: { onChanged: () => () => {} },
-        automations: { onChanged: () => () => {} },
         worktrees: {
           onChanged: () => () => {},
           onBaseStatus: () => () => {},
@@ -221,9 +220,7 @@ describe('useIpcEvents browser tab close routing', () => {
           getBrowserDrivers: () => Promise.resolve([]),
           onTerminalFitOverrideChanged: () => () => {},
           onTerminalDriverChanged: () => () => {},
-          onBrowserDriverChanged: () => () => {},
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          onBrowserDriverChanged: () => () => {}
         },
         agentStatus: { onSet: () => () => {} }
       }
@@ -340,7 +337,6 @@ describe('useIpcEvents browser tab close routing', () => {
       dispatchEvent: vi.fn(),
       api: {
         repos: { onChanged: () => () => {} },
-        automations: { onChanged: () => () => {} },
         worktrees: {
           onChanged: () => () => {},
           onBaseStatus: () => () => {},
@@ -447,9 +443,7 @@ describe('useIpcEvents browser tab close routing', () => {
           getBrowserDrivers: () => Promise.resolve([]),
           onTerminalFitOverrideChanged: () => () => {},
           onTerminalDriverChanged: () => () => {},
-          onBrowserDriverChanged: () => () => {},
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          onBrowserDriverChanged: () => () => {}
         },
         agentStatus: { onSet: () => () => {} }
       }
@@ -561,7 +555,6 @@ describe('useIpcEvents browser tab close routing', () => {
       dispatchEvent: vi.fn(),
       api: {
         repos: { onChanged: () => () => {} },
-        automations: { onChanged: () => () => {} },
         worktrees: {
           onChanged: () => () => {},
           onBaseStatus: () => () => {},
@@ -668,9 +661,7 @@ describe('useIpcEvents browser tab close routing', () => {
           getBrowserDrivers: () => Promise.resolve([]),
           onTerminalFitOverrideChanged: () => () => {},
           onTerminalDriverChanged: () => () => {},
-          onBrowserDriverChanged: () => () => {},
-          onClientHostedBrowserRowsChanged: () => () => {},
-          getClientHostedBrowserRows: async () => []
+          onBrowserDriverChanged: () => () => {}
         },
         agentStatus: { onSet: () => () => {} }
       }

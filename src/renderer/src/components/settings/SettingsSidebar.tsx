@@ -50,7 +50,15 @@ type SettingsSidebarProps = {
   searchInputRef?: RefObject<HTMLInputElement | null>
   searchAutoFocus?: boolean
   onBack: () => void
-  onSelectSection: (sectionId: string) => void
+  onSelectSection: (
+    sectionId: string,
+    modifiers: {
+      metaKey: boolean
+      ctrlKey: boolean
+      shiftKey: boolean
+      altKey: boolean
+    }
+  ) => void
 }
 
 function SettingsSearchField({
@@ -108,7 +116,12 @@ function isVisibleInstallStatus(
 type SettingsSetupGuideRowProps = {
   progress: SettingsSetupGuideProgress
   setupActive: boolean
-  onSelect: () => void
+  onSelect: (modifiers: {
+    metaKey: boolean
+    ctrlKey: boolean
+    shiftKey: boolean
+    altKey: boolean
+  }) => void
 }
 
 function SettingsSetupGuideNavRow({
@@ -125,7 +138,14 @@ function SettingsSetupGuideNavRow({
         'Onboarding checklist, {{value0}} of {{value1}} done. Show setup guide.',
         { value0: progress.doneCount, value1: progress.total }
       )}
-      onClick={() => onSelect()}
+      onClick={(event) =>
+        onSelect({
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey
+        })
+      }
       className={cn(
         'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-worktree-sidebar-ring/50',
         setupActive
@@ -218,7 +238,7 @@ export function SettingsSidebar({
           <SettingsSetupGuideNavRow
             progress={setupGuideProgress}
             setupActive={setupActive}
-            onSelect={() => onSelectSection('setup-guide')}
+            onSelect={(modifiers) => onSelectSection('setup-guide', modifiers)}
           />
         </div>
       ) : null}
@@ -242,7 +262,14 @@ export function SettingsSidebar({
                         key={section.id}
                         aria-current={isActive ? 'page' : undefined}
                         data-current={isActive ? 'true' : undefined}
-                        onClick={() => onSelectSection(section.id)}
+                        onClick={(event) =>
+                          onSelectSection(section.id, {
+                            metaKey: event.metaKey,
+                            ctrlKey: event.ctrlKey,
+                            shiftKey: event.shiftKey,
+                            altKey: event.altKey
+                          })
+                        }
                         className={navItemClassName(isActive)}
                       >
                         <Icon className="size-4 shrink-0" />
@@ -278,7 +305,14 @@ export function SettingsSidebar({
                       key={section.id}
                       aria-current={isActive ? 'page' : undefined}
                       data-current={isActive ? 'true' : undefined}
-                      onClick={() => onSelectSection(section.id)}
+                      onClick={(event) =>
+                        onSelectSection(section.id, {
+                          metaKey: event.metaKey,
+                          ctrlKey: event.ctrlKey,
+                          shiftKey: event.shiftKey,
+                          altKey: event.altKey
+                        })
+                      }
                       className={navItemClassName(isActive)}
                     >
                       <RepoIconGlyph

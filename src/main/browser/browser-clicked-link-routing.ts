@@ -75,9 +75,8 @@ export function installBrowserClickedLinkRouting(
     const baseTarget = document.querySelector('base[target]')?.getAttribute('target') ?? ''
     const ownTarget = link.getAttribute('target')
     const effectiveTarget = (ownTarget === null ? baseTarget : ownTarget).trim().toLowerCase()
-    // target=_blank is a new-tab request, exactly as it is in every other
-    // browser; the modifiers are the other two ways to ask for one.
-    if (!(middleClick || modifierClick || effectiveTarget === '_blank')) {
+    const opensNewContext = middleClick || modifierClick
+    if (!opensNewContext && effectiveTarget !== '_blank') {
       return
     }
 
@@ -97,6 +96,13 @@ export function installBrowserClickedLinkRouting(
       return
     }
 
+    if (!opensNewContext) {
+      // Why: changing only the browsing context keeps Chromium's native anchor
+      // navigation, including referrer policy, attribution, and history.
+      link.setAttribute('target', '_self')
+      return
+    }
+
     // Why: Electron reports direct link clicks and featureless window.open()
     // with the same disposition. The private frame name preserves that one
     // distinction without weakening OAuth popups that need window.opener.
@@ -112,8 +118,8 @@ export function installBrowserClickedLinkRouting(
 }
 
 /**
- * Same routing for links inside child frames, which Electron's isolated-world
- * API cannot reach, so this runs in the page world against a one-use token.
+ * Keeps plain target=_blank clicks inside the top-level guest when Electron's
+ * isolated-world API cannot target a child frame.
  */
 export function installBrowserIframeClickedLinkRouting(
   frameName: string,
@@ -155,7 +161,8 @@ export function installBrowserIframeClickedLinkRouting(
     const baseTarget = document.querySelector('base[target]')?.getAttribute('target') ?? ''
     const ownTarget = link.getAttribute('target')
     const effectiveTarget = (ownTarget === null ? baseTarget : ownTarget).trim().toLowerCase()
-    if (!(middleClick || modifierClick || effectiveTarget === '_blank')) {
+    const opensNewContext = middleClick || modifierClick
+    if (!opensNewContext && effectiveTarget !== '_blank') {
       return
     }
 
@@ -172,6 +179,13 @@ export function installBrowserIframeClickedLinkRouting(
       return
     }
     if (targetUrl.protocol !== 'http:' && targetUrl.protocol !== 'https:') {
+      return
+    }
+
+    if (!opensNewContext) {
+      // Why: WebContents isolated worlds only cover the main frame. Rewriting
+      // to `_top` preserves native anchor semantics without opening a popup.
+      link.setAttribute('target', '_top')
       return
     }
 

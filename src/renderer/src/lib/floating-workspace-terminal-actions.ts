@@ -9,7 +9,6 @@ import {
   type TypeCyclableTab
 } from '@/components/terminal/tab-type-cycle'
 import type { AppState } from '@/store/types'
-import { resolveBrowserWorkspaceOwner } from './browser-workspace-source-resolution'
 import { TOGGLE_FLOATING_TERMINAL_EVENT } from './floating-terminal'
 import { focusTerminalTabSurface } from './focus-terminal-tab-surface'
 import { keybindingMatchesAction, type KeybindingOverrides } from '../../../shared/keybindings'
@@ -144,10 +143,17 @@ export function resolveFloatingWorkspaceBrowserWorkspaceId(
   store: Pick<AppState, 'browserTabsByWorktree' | 'browserPagesByWorkspace'>,
   sourceId: string
 ): string | null {
-  return (
-    resolveBrowserWorkspaceOwner(store, sourceId, FLOATING_TERMINAL_WORKTREE_ID)?.workspaceId ??
-    null
-  )
+  const workspaces = store.browserTabsByWorktree[FLOATING_TERMINAL_WORKTREE_ID] ?? []
+  const pagesByWorkspace = store.browserPagesByWorkspace ?? {}
+  for (const workspace of workspaces) {
+    if (workspace.id === sourceId) {
+      return workspace.id
+    }
+    if ((pagesByWorkspace[workspace.id] ?? []).some((page) => page.id === sourceId)) {
+      return workspace.id
+    }
+  }
+  return null
 }
 
 function activateFloatingWorkspaceCyclableTab(

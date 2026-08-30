@@ -118,7 +118,6 @@ describe('registerWorktreeHandlers', () => {
       '/workspace/improve-dashboard',
       'pnpm worktree:setup',
       undefined,
-      undefined,
       undefined
     )
     expect(result).toMatchObject({
@@ -169,7 +168,6 @@ describe('registerWorktreeHandlers', () => {
       expect.objectContaining({ id: 'repo-1' }),
       '/workspace/improve-dashboard',
       'pnpm worktree:setup # worktree',
-      undefined,
       undefined,
       undefined
     )

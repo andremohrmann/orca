@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildSettingsNavigationMetadata } from './useSettingsNavigationMetadata'
@@ -45,22 +45,6 @@ describe('settings navigation metadata', () => {
       'integrations',
       'mobile'
     ])
-  })
-
-  it('owns nested worker depth under Orchestration on desktop', () => {
-    const sections = buildSettingsNavigationMetadata({
-      isMac: false,
-      isWindows: false,
-      isWebClient: false,
-      repos: [repo]
-    })
-    const agents = sections.find((section) => section.id === 'agents')
-    const orchestration = sections.find((section) => section.id === 'orchestration')
-
-    expect(agents?.searchEntries.map((entry) => entry.title)).not.toContain('Nested worker depth')
-    expect(orchestration?.searchEntries.map((entry) => entry.title)).toContain(
-      'Nested worker depth'
-    )
   })
 
   it('adds the Linear capability section right after Orchestration only when connected', () => {
@@ -172,12 +156,6 @@ describe('settings navigation metadata', () => {
     expect(shortcuts?.searchEntries.map((entry) => entry.title)).not.toContain('New browser tab')
     expect(shortcuts?.searchEntries.map((entry) => entry.title)).not.toContain(
       'New mobile emulator tab'
-    )
-    const agents = webSections.find((section) => section.id === 'agents')
-    expect(agents?.searchEntries.map((entry) => entry.title)).not.toContain('Nested worker depth')
-    const orchestration = webSections.find((section) => section.id === 'orchestration')
-    expect(orchestration?.searchEntries.map((entry) => entry.title)).not.toContain(
-      'Nested worker depth'
     )
   })
 
@@ -408,17 +386,9 @@ describe('settings navigation metadata', () => {
 
   it('does not import Settings page or pane UI modules from the metadata hook', () => {
     const testDir = import.meta.dirname
-    // Why: the section tables live in sibling settings-navigation-* modules, so reading only the
-    // hook would scan a file that no longer holds the imports this guard exists to police.
-    const sourceFiles = [
-      'useSettingsNavigationMetadata.ts',
-      ...readdirSync(testDir).filter(
-        (name) => name.startsWith('settings-navigation-') && name.endsWith('.ts')
-      )
-    ]
-    expect(sourceFiles.length).toBeGreaterThan(1)
-    const importLines = sourceFiles
-      .flatMap((name) => readFileSync(resolve(testDir, name), 'utf8').split('\n'))
+    const hookSource = readFileSync(resolve(testDir, 'useSettingsNavigationMetadata.ts'), 'utf8')
+    const importLines = hookSource
+      .split('\n')
       .filter((line) => line.trim().startsWith('import '))
       .join('\n')
 

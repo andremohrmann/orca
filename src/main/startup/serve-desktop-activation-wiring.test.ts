@@ -21,19 +21,12 @@ describe('serve desktop activation wiring', () => {
     )
     const serveIndex = source.indexOf('if (serveOptions) {', appReadyIndex)
     const ptyReadyIndex = source.indexOf('await localPtyStartupReady', serveIndex)
-    const providerReadyIndex = source.indexOf('await localPtyProviderStartupReady', serveIndex)
-    const headlessRegistrationIndex = source.indexOf(
-      'await registerHeadlessPtyRuntime(',
-      serveIndex
-    )
-    const rpcIndex = source.indexOf('await runtimeRpc.start()', serveIndex)
+    const headlessRegistrationIndex = source.indexOf('registerHeadlessPtyRuntime(', serveIndex)
 
     expect(startupIndex).toBeGreaterThanOrEqual(0)
     expect(startupIndex).toBeLessThan(serveIndex)
     expect(ptyReadyIndex).toBeGreaterThan(serveIndex)
-    expect(providerReadyIndex).toBeGreaterThan(ptyReadyIndex)
-    expect(headlessRegistrationIndex).toBeGreaterThan(providerReadyIndex)
-    expect(headlessRegistrationIndex).toBeLessThan(rpcIndex)
+    expect(headlessRegistrationIndex).toBeGreaterThan(ptyReadyIndex)
     expect(source).not.toContain(
       'if (!isServeMode) {\n    startDesktopFirstWindowStartupServices()'
     )

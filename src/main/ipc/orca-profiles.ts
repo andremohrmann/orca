@@ -169,13 +169,17 @@ export function registerOrcaProfileHandlers(
   store: Store,
   options: RegisterOrcaProfileHandlersOptions = {}
 ): void {
-  ipcMain.handle('orcaProfiles:list', (): OrcaProfileListResult => ({
-    ...getOrcaProfileListState(),
-    multiProfileUi: isMultiProfileUiEnabled()
-  }))
+  ipcMain.handle(
+    'orcaProfiles:list',
+    (): OrcaProfileListResult => ({
+      ...getOrcaProfileListState(),
+      multiProfileUi: isMultiProfileUiEnabled()
+    })
+  )
 
-  ipcMain.handle('orcaProfiles:authStatus', (): OrcaProfileAuthStatus =>
-    getCurrentOrcaProfileAuthStatus(getProfileUserDataPath())
+  ipcMain.handle(
+    'orcaProfiles:authStatus',
+    (): OrcaProfileAuthStatus => getCurrentOrcaProfileAuthStatus(getProfileUserDataPath())
   )
 
   ipcMain.handle(

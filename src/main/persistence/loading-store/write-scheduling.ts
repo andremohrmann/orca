@@ -8,7 +8,6 @@ const SAVE_MAX_WAIT_MS = 5_000
 type WriteSchedulingOperationsRuntime = Pick<
   StoreRuntimeState,
   | 'activeViewPreference'
-  | 'automationListProjectionCache'
   | 'firstPendingSaveAt'
   | 'pendingWrite'
   | 'quitFlushStarted'
@@ -38,7 +37,6 @@ export class WriteSchedulingOperations {
 }
 
 export function scheduleSave(owner: WriteSchedulingOperations): void {
-  owner[writeSchedulingOperationsContext].runtime.automationListProjectionCache = null
   // Why: once the quit flush has snapshotted, a newly debounced write would fire during
   // teardown with nothing awaiting it, and the process can exit mid-rename. The quit
   // flush is the last write by construction.

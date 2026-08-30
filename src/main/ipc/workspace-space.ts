@@ -114,8 +114,10 @@ export function registerWorkspaceSpaceHandlers(store: Store): void {
     return inFlightScan.promise
   })
 
-  ipcMain.handle('workspaceSpace:getCachedAnalysis', (): Promise<WorkspaceSpaceAnalysis | null> =>
-    readWorkspaceSpaceAnalysisSnapshot(snapshotDirectory)
+  ipcMain.handle(
+    'workspaceSpace:getCachedAnalysis',
+    (): Promise<WorkspaceSpaceAnalysis | null> =>
+      readWorkspaceSpaceAnalysisSnapshot(snapshotDirectory)
   )
 
   ipcMain.handle('workspaceSpace:cancel', async (): Promise<boolean> => {

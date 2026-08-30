@@ -122,9 +122,6 @@ vi.mock('@/store', () => ({
     (selector: (state: Record<string, unknown>) => unknown) =>
       selector({
         worktreesByRepo: {},
-        settings: {},
-        markdownRichModeSizeOverride: {},
-        setMarkdownRichModeSizeOverride: vi.fn(),
         openFile: vi.fn(),
         openMarkdownPreview: vi.fn(),
         openConflictReviewFile: vi.fn(),
@@ -184,7 +181,6 @@ function props(activeFile: OpenFile, content: string) {
     isCsv: false,
     isNotebook: false,
     mdViewMode: 'rich' as const,
-    inlineMarkdownRenderState: null,
     isChangesMode: false,
     sideBySide: false,
     pendingEditorReveal: null,
@@ -327,10 +323,6 @@ describe('EditorContent Monaco lifecycle boundary', () => {
         resolvedLanguage="markdown"
         isMarkdown
         mdViewMode="rich"
-        inlineMarkdownRenderState={{
-          renderMode: 'rich-editor',
-          richModeUnsupportedMessage: null
-        }}
       />
     )
 

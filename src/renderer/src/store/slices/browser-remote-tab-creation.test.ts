@@ -108,10 +108,7 @@ describe('createBrowserSlice runtime guard', () => {
       worktreeId: 'wt-remote',
       environmentId: 'env-1',
       url: 'about:blank',
-      targetGroupId: 'group-1',
-      // Why: desktop pane groups are client-owned; without the client group the local
-      // reconciler lands the new tab in the first group.
-      clientTargetGroupId: 'group-1'
+      targetGroupId: 'group-1'
     })
     expect(store.getState().createUnifiedTab).not.toHaveBeenCalled()
     expect(store.getState().browserTabsByWorktree['wt-remote']).toBeUndefined()
@@ -175,8 +172,7 @@ describe('createBrowserSlice runtime guard', () => {
       worktreeId: 'wt-remote',
       environmentId: 'env-1',
       url: 'about:blank',
-      targetGroupId: 'group-1',
-      clientTargetGroupId: 'group-1'
+      targetGroupId: 'group-1'
     })
     // No local tab created, no unified tab, no feature interaction recorded.
     expect(store.getState().browserTabsByWorktree['wt-remote']).toBeUndefined()

@@ -1,5 +1,3 @@
-import { getShortcutPlatform } from './shortcut-platform'
-
 // Why: shared across global keyboard listeners (App-level shortcuts and the
 // onboarding flow) so an in-progress text edit never gets hijacked by a
 // capture-phase keydown handler.
@@ -22,16 +20,4 @@ export function isEditableTarget(target: EventTarget | null): boolean {
     target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]') !==
     null
   )
-}
-
-export function isSelectAllShortcut(
-  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>
-): boolean {
-  if (event.key.toLowerCase() !== 'a' || event.altKey || event.shiftKey) {
-    return false
-  }
-  const platform = getShortcutPlatform()
-  return platform === 'darwin'
-    ? Boolean(event.metaKey) && !event.ctrlKey
-    : Boolean(event.ctrlKey) && !event.metaKey
 }

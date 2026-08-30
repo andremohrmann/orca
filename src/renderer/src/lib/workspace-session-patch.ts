@@ -4,23 +4,18 @@ import type {
 } from '../../../shared/workspace-session-state-types'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
 import { normalizeBrowserHistoryEntries } from '../../../shared/workspace-session-browser-history'
-import { normalizeWorkspaceDocHistoryEntries } from '../../../shared/workspace-doc-history'
 import {
   buildActiveConnectionIdsAtShutdown,
   buildEditorSessionData,
+  buildPersistedBrowserPagesByWorkspace,
+  buildPersistedBrowserTabsByWorktree,
   buildSanitizedTabsByWorktree,
   buildTerminalSessionData,
   type WorkspaceSessionSnapshot
 } from './workspace-session'
-import {
-  buildPersistedBrowserPagesByWorkspace,
-  buildPersistedBrowserTabsByWorktree
-} from './workspace-session-browser-tabs'
-import { withoutStagedBrowserTabs } from './workspace-session-staged-browser-tabs'
 import { buildPersistedUnifiedTabSessionData } from './workspace-session-unified-tabs'
 import { buildLastVisitedAtByWorktreeId } from './workspace-session-focus-recency'
 import { buildSleepingAgentSessionData } from './workspace-session-sleeping-agents'
-import { buildPersistedClosedTerminalTabTombstones } from './workspace-session-closed-tab-tombstones'
 
 type SessionRelevantField = keyof WorkspaceSessionSnapshot
 
@@ -47,10 +42,9 @@ function buildPrunedTerminalLayoutsByTabId(
 }
 
 export function buildWorkspaceSessionPatch(
-  fullSnapshot: WorkspaceSessionSnapshot,
+  snapshot: WorkspaceSessionSnapshot,
   changedFields: Iterable<SessionRelevantField>
 ): WorkspaceSessionPatch {
-  const snapshot = withoutStagedBrowserTabs(fullSnapshot)
   const changed = new Set(changedFields)
   const patch: WorkspaceSessionPatch = {}
 
@@ -117,35 +111,23 @@ export function buildWorkspaceSessionPatch(
       )
     )
   }
-  // Why: withoutStagedBrowserTabs hides rows based on the handle map, so clearing a staged flag
-  // changes which browser and tab rows persist even when the rows themselves are untouched.
-  const stagedVisibilityChanged = changed.has('remoteBrowserPageHandlesByPageId')
-  if (stagedVisibilityChanged || changed.has('browserTabsByWorktree')) {
+  if (changed.has('browserTabsByWorktree')) {
     patch.browserTabsByWorktree = buildPersistedBrowserTabsByWorktree(
       snapshot.browserTabsByWorktree
     )
   }
-  if (stagedVisibilityChanged || changed.has('browserPagesByWorkspace')) {
+  if (changed.has('browserPagesByWorkspace')) {
     patch.browserPagesByWorkspace = buildPersistedBrowserPagesByWorkspace(
-      snapshot.browserPagesByWorkspace,
-      snapshot.remoteBrowserPageHandlesByPageId
+      snapshot.browserPagesByWorkspace
     )
   }
-  if (stagedVisibilityChanged || changed.has('activeBrowserTabIdByWorktree')) {
+  if (changed.has('activeBrowserTabIdByWorktree')) {
     patch.activeBrowserTabIdByWorktree = snapshot.activeBrowserTabIdByWorktree
   }
   if (changed.has('browserUrlHistory')) {
     patch.browserUrlHistory = normalizeBrowserHistoryEntries(snapshot.browserUrlHistory)
   }
-  if (changed.has('workspaceDocHistory')) {
-    patch.workspaceDocHistory = normalizeWorkspaceDocHistoryEntries(snapshot.workspaceDocHistory)
-  }
-  if (changed.has('clientHostedBrowserCloseIntentsByEnvironment')) {
-    patch.clientHostedBrowserCloseIntentsByEnvironment =
-      snapshot.clientHostedBrowserCloseIntentsByEnvironment
-  }
   if (
-    stagedVisibilityChanged ||
     hasAnyChangedField(changed, [
       'activeGroupIdByWorktree',
       'groupsByWorktree',
@@ -164,11 +146,6 @@ export function buildWorkspaceSessionPatch(
       Object.keys(snapshot.defaultTerminalTabsAppliedByWorktreeId).length > 0
         ? snapshot.defaultTerminalTabsAppliedByWorktreeId
         : undefined
-  }
-  if (changed.has('closedTerminalTabTombstonesByTabId')) {
-    patch.closedTerminalTabTombstonesByTabId = buildPersistedClosedTerminalTabTombstones(
-      snapshot.closedTerminalTabTombstonesByTabId
-    )
   }
   if (changed.has('sleepingAgentSessionsByPaneKey')) {
     patch.sleepingAgentSessionsByPaneKey =

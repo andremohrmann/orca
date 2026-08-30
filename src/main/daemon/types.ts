@@ -1,13 +1,11 @@
 import type {
   ConfirmForegroundProcessRequest,
-  ConfirmShellForegroundRequest,
   GetForegroundProcessRequest,
   InspectProcessRequest
 } from './daemon-foreground-process-protocol'
 
 export type {
   ConfirmForegroundProcessRequest,
-  ConfirmShellForegroundRequest,
   GetForegroundProcessRequest,
   InspectProcessRequest
 } from './daemon-foreground-process-protocol'
@@ -319,7 +317,6 @@ export type DaemonRequest =
   | GetForegroundProcessRequest
   | InspectProcessRequest
   | ConfirmForegroundProcessRequest
-  | ConfirmShellForegroundRequest
   | ClearScrollbackRequest
   | ShutdownRequest
   | PingRequest

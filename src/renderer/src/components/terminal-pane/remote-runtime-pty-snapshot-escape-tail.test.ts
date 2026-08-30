@@ -97,9 +97,7 @@ describe('remote transport snapshot escape-tail threading (#7329)', () => {
           rows: 24,
           seq: 7,
           source: 'headless',
-          pendingEscapeTailAnsi: '\x1b[3',
-          alternateScreen: false,
-          terminalOwner: 'shell'
+          pendingEscapeTailAnsi: '\x1b[3'
         })
       }),
       encodeTerminalStreamFrame({
@@ -122,11 +120,7 @@ describe('remote transport snapshot escape-tail threading (#7329)', () => {
     await expect.poll(() => onReplayData.mock.calls.length, { timeout: 5000 }).toBeGreaterThan(0)
     expect(onReplayData).toHaveBeenCalledWith(
       'user@host:~$ ',
-      expect.objectContaining({
-        pendingEscapeTailAnsi: '\x1b[3',
-        alternateScreen: false,
-        terminalOwner: 'shell'
-      })
+      expect.objectContaining({ pendingEscapeTailAnsi: '\x1b[3' })
     )
   })
 })

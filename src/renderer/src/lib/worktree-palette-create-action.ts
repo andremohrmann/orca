@@ -66,8 +66,7 @@ const SELECTABLE_ENTRY_TYPES = [
   'browser-page',
   'workspace-tab',
   'simulator-tab',
-  'project-target',
-  'hint'
+  'project-target'
 ] as const
 
 type WorktreePaletteSelectableEntryType = (typeof SELECTABLE_ENTRY_TYPES)[number]
@@ -86,7 +85,7 @@ export function getWorktreePaletteSelectionItemIds<
   T extends WorktreePaletteSelectionCandidateEntry
 >(entries: readonly T[], renderKeys: readonly string[] = []): string[] {
   // Why: keyboard focus should mirror rendered order, including synthetic
-  // action rows, while skipping only section headers.
+  // action rows, while skipping headers and explanatory hint rows.
   // Why renderKeys wins: rows render under de-duplicated keys, so naming the bare
   // id here would leave a duplicate row absent from the list the `includes` check
   // above consults — arrowing onto it would snap the highlight back to the top.

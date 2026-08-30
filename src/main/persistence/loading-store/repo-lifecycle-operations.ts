@@ -15,7 +15,6 @@ import { pruneWorktreeStateForRepo as pruneWorktreeStateForRepoOperation } from 
 import { hydrateRepo as hydrateRepoOperation } from '../tracking-repos/repo-hydration'
 import { RepoUpdatePersistenceOperations } from '../tracking-repos/repo-update-operations'
 import { ProjectHostSetupPersistenceOperations } from '../tracking-repos/project-host-setup-update'
-import { bumpLocalWorktreeScanGeneration } from '../../local-worktree-scan-generation'
 
 import type { StoreRuntimeState } from './store-runtime-state'
 import type { WriteSchedulingOperations } from './write-scheduling'
@@ -44,7 +43,6 @@ export class RepoLifecycleOperations {
   }
 
   addRepo(repo: Repo): void {
-    bumpLocalWorktreeScanGeneration(repo.id)
     getRepoOrderOperations(this).addRepo(repo)
   }
 
@@ -57,15 +55,9 @@ export class RepoLifecycleOperations {
   }
 
   removeProject(id: string): void {
-    const repoRemoved = this[repoLifecycleOperationsContext].runtime.state.repos.some(
-      (repo) => repo.id === id
-    )
     this[repoLifecycleOperationsContext].runtime.state.repos = this[
       repoLifecycleOperationsContext
     ].runtime.state.repos.filter((r) => r.id !== id)
-    if (repoRemoved) {
-      bumpLocalWorktreeScanGeneration(id)
-    }
     syncProjectHostSetupCompatibilityState(this)
     // Why: presets are repo-scoped and unreachable once the repo is gone, so drop them with it.
     delete this[repoLifecycleOperationsContext].runtime.state.sparsePresetsByRepo[id]
@@ -85,15 +77,9 @@ export class RepoLifecycleOperations {
   }
 
   removeProjectForHost(id: string, hostId: ExecutionHostId): void {
-    const repoRemoved = this[repoLifecycleOperationsContext].runtime.state.repos.some(
-      (repo) => repo.id === id && getRepoExecutionHostId(repo) === hostId
-    )
     this[repoLifecycleOperationsContext].runtime.state.repos = this[
       repoLifecycleOperationsContext
     ].runtime.state.repos.filter((r) => !(r.id === id && getRepoExecutionHostId(r) === hostId))
-    if (repoRemoved) {
-      bumpLocalWorktreeScanGeneration(id)
-    }
     const idStillPresent = this[repoLifecycleOperationsContext].runtime.state.repos.some(
       (r) => r.id === id
     )
@@ -218,7 +204,6 @@ export function getRepoUpdateOperations(
   owner[repoLifecycleOperationsContext].runtime.repoUpdateOperations ??=
     new RepoUpdatePersistenceOperations({
       state: owner[repoLifecycleOperationsContext].runtime.state,
-      bumpLocalWorktreeScanGeneration,
       syncProjectHostSetupCompatibilityState: () => syncProjectHostSetupCompatibilityState(owner),
       scheduleSave: () => scheduleSave(owner[repoLifecycleOperationsContext].scheduling),
       hydrateRepo: (repo) => hydrateRepo(owner, repo)

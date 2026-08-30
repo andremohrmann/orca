@@ -9,7 +9,6 @@ import {
 } from '../../shared/remote-pairing-verification'
 import { RemoteRuntimeClientError } from '../../shared/remote-runtime-client-error'
 import { sendRemoteRuntimeRequest } from '../../shared/remote-runtime-client'
-import { ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES } from '../../shared/protocol-version'
 import { redactRuntimeEnvironment } from '../../shared/runtime-environments'
 import type { RuntimeStatus } from '../../shared/runtime-types'
 
@@ -41,10 +40,7 @@ export async function verifyAndAddRuntimeEnvironmentFromPairingCode(
       parsed.value.pairing,
       'status.get',
       undefined,
-      15_000,
-      undefined,
-      undefined,
-      ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
+      15_000
     )
     if (!response.ok) {
       return {

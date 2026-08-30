@@ -5,18 +5,10 @@ import type { ChecksPanelComposerState } from './use-checks-panel-composer-state
 import type { ChecksPanelCreateReviewState } from './use-checks-panel-create-review'
 import type { ChecksPanelBranchActionsState } from './use-checks-panel-branch-actions'
 import type { ChecksPanelRefreshState } from './use-checks-panel-manual-refresh'
-import type { ChecksPanelCheckAndReviewActionsState } from './use-checks-panel-check-and-review-actions'
 
 export type ChecksPanelEmptyContentModel = Pick<
   ChecksPanelContextState,
-  | 'activeReview'
-  | 'isFolder'
-  | 'linkedGitLabMR'
-  | 'linkedPR'
-  | 'linkedReviewNumber'
-  | 'prNumber'
-  | 'prRefreshState'
-  | 'suppressedGitHubPR'
+  'activeReview' | 'isFolder' | 'linkedGitLabMR' | 'prRefreshState'
 > &
   Pick<
     ChecksPanelControllerState,
@@ -82,5 +74,4 @@ export type ChecksPanelEmptyContentModel = Pick<
   > &
   Pick<ChecksPanelCreateReviewState, 'handleCreatePullRequest'> &
   Pick<ChecksPanelBranchActionsState, 'handlePublishBranch' | 'handleSyncBranch'> &
-  Pick<ChecksPanelRefreshState, 'handleRefresh'> &
-  Pick<ChecksPanelCheckAndReviewActionsState, 'handleLinkSuppressedPullRequest'>
+  Pick<ChecksPanelRefreshState, 'handleRefresh'>

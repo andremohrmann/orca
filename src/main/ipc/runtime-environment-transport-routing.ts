@@ -1,6 +1,5 @@
 import { waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
 import { getPreferredPairingOffer } from '../../shared/runtime-environments'
-import { ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES } from '../../shared/protocol-version'
 import { resolveEnvironment, markEnvironmentUsed } from '../../shared/runtime-environment-store'
 import { isOrchestrationMutation } from '../../shared/orchestration-rpc-contract'
 import type {
@@ -50,10 +49,7 @@ export async function getRuntimeEnvironmentStatus(
       pairing,
       'status.get',
       undefined,
-      timeoutMs ?? DEFAULT_REMOTE_RUNTIME_TIMEOUT_MS,
-      undefined,
-      undefined,
-      ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
+      timeoutMs ?? DEFAULT_REMOTE_RUNTIME_TIMEOUT_MS
     )
   } catch (error) {
     // Why: the status UI needs shared-control diagnostics most when the
@@ -129,8 +125,7 @@ export async function callRuntimeEnvironment(
             params,
             effectiveTimeoutMs,
             envelope,
-            options?.signal,
-            ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
+            options?.signal
           )
           markEnvironmentUsedFromResponse(userDataPath, currentEnvironment.id, response)
           return response
@@ -175,8 +170,7 @@ export async function callRuntimeEnvironment(
           params,
           effectiveTimeoutMs,
           sharedControlEnvelope,
-          options?.signal,
-          ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
+          options?.signal
         )
         markEnvironmentUsedFromResponse(userDataPath, currentEnvironment.id, response)
         return response
@@ -261,8 +255,7 @@ export async function subscribeRuntimeEnvironment(
       method,
       params,
       effectiveTimeoutMs,
-      callbacksWithMarkUsed,
-      { clientCapabilities: ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES }
+      callbacksWithMarkUsed
     )
   } catch (error) {
     if (error instanceof Error) {

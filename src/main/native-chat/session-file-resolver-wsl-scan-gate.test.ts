@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type * as WslRunningPathFilterModule from '../wsl-running-path-filter'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as WslTranscriptFsGateModule from './wsl-transcript-fs-gate'
 
 const WSL_SESSIONS_DIR = '\\\\wsl.localhost\\Ubuntu\\home\\ada\\.codex\\sessions'
@@ -7,7 +6,6 @@ const DEBIAN_SESSIONS_DIR = '\\\\wsl.localhost\\Debian\\home\\ada\\.codex\\sessi
 const LOCAL_SESSIONS_DIR = 'C:\\Users\\ada\\.codex\\sessions'
 
 const mocks = vi.hoisted(() => ({
-  filterPathsToRunningWslDistrosAsync: vi.fn(async (paths: readonly string[]) => [...paths]),
   gate: vi.fn(async (_options: { path: string }) => []),
   walk: vi.fn(
     async (
@@ -29,33 +27,14 @@ vi.mock('./wsl-transcript-fs-gate', async (importOriginal) => ({
 vi.mock('../ai-vault/session-scanner-discovery', () => ({
   walkSessionFiles: mocks.walk
 }))
-vi.mock('../wsl', () => ({
-  getWslHomeAsync: vi.fn(async () => '\\\\wsl.localhost\\Ubuntu\\home\\ada'),
-  listRunningWslDistrosAsync: vi.fn(async () => ['Ubuntu']),
-  listRunningWslHomeDirsAsync: vi.fn(async () => ['\\\\wsl.localhost\\Ubuntu\\home\\ada'])
-}))
-vi.mock('../wsl-running-path-filter', async (importOriginal) => ({
-  ...(await importOriginal<typeof WslRunningPathFilterModule>()),
-  filterPathsToRunningWslDistrosAsync: mocks.filterPathsToRunningWslDistrosAsync
-}))
 
 import { resolveSessionFilePath } from './session-file-resolver'
 import { WslTranscriptFsError } from './wsl-transcript-fs-gate'
 
-const realPlatform = process.platform
-
-function setPlatform(platform: NodeJS.Platform): void {
-  Object.defineProperty(process, 'platform', { value: platform, configurable: true })
-}
-
 beforeEach(() => {
-  setPlatform('win32')
-  mocks.filterPathsToRunningWslDistrosAsync.mockClear()
   mocks.gate.mockClear()
   mocks.walk.mockClear()
 })
-
-afterEach(() => setPlatform(realPlatform))
 
 describe('Codex WSL scan gate', () => {
   it('routes WSL session-tree scans through the shared filesystem gate', async () => {
@@ -110,13 +89,17 @@ describe('Codex WSL scan gate', () => {
     ).rejects.toBe(refusal)
   })
 
-  it('does not scan by id after an authoritative WSL hook path is refused', async () => {
-    const refusal = new WslTranscriptFsError('timeout', 'slow share')
+  it('falls through a gate-refused hook path to an id-based hit', async () => {
+    const hit = `${DEBIAN_SESSIONS_DIR}\\2026\\rollout-1-session-id.jsonl`
     mocks.gate.mockImplementation(async (options: { operation?: string; path: string }) => {
       if (options.operation === 'access') {
-        throw refusal
+        throw new WslTranscriptFsError('timeout', 'slow share')
       }
       return []
+    })
+    mocks.walk.mockImplementation(async (dir, _agent, _issues, options) => {
+      await options.readDirectory?.(dir)
+      return dir === DEBIAN_SESSIONS_DIR ? [hit] : []
     })
 
     await expect(
@@ -124,8 +107,7 @@ describe('Codex WSL scan gate', () => {
         transcriptPath: `${WSL_SESSIONS_DIR}\\2026\\rollout-1-session-id.jsonl`,
         codexSessionsDirs: [DEBIAN_SESSIONS_DIR]
       })
-    ).rejects.toBe(refusal)
-    expect(mocks.walk).not.toHaveBeenCalled()
+    ).resolves.toBe(hit)
   })
 
   it('surfaces the hook-path refusal when the id search also misses', async () => {

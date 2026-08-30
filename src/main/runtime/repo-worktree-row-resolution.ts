@@ -1,14 +1,5 @@
-import {
-  splitWorktreeId,
-  splitWorktreeIdForFilesystem,
-  worktreeIdComparisonKey
-} from '../../shared/worktree/id'
+import { splitWorktreeId, splitWorktreeIdForFilesystem } from '../../shared/worktree/id'
 import { getRepoExecutionHostId, type ExecutionHostId } from '../../shared/execution-host'
-import {
-  readAllWorktreeMetaForHost,
-  readWorktreeMetaForHost,
-  writeWorktreeMetaForHost
-} from '../persistence/host-qualified-worktree-meta'
 import { isFolderRepo } from '../../shared/repo-kind'
 import { projectResolvedWorktreeLineage } from '../../shared/resolved-worktree-lineage'
 import { withTimeout } from '../../shared/promise-timeout-fallback'
@@ -67,9 +58,7 @@ export function listStoredWorktreeRowsForRepo(
 ): GitWorktreeInfo[] {
   const expectedHostId = getRepoExecutionHostId(repo)
   const byWorktreeId = new Map<string, GitWorktreeInfo>()
-  for (const [worktreeId, meta] of Object.entries(
-    readAllWorktreeMetaForHost(store, expectedHostId)
-  )) {
+  for (const [worktreeId, meta] of Object.entries(store.getAllWorktreeMeta())) {
     const parsed = splitWorktreeId(worktreeId)
     if (!parsed || parsed.repoId !== repo.id) {
       continue
@@ -141,18 +130,15 @@ export async function resolveRepoWorktreeRows(
     const worktreeId = `${repo.id}::${gitWorktree.path}`
     // Why: lineage validation needs a durable instance ID even when the runtime sees a workspace before renderer discovery-stamp.
     const existingMeta = metaById[worktreeId]
-    // A host-qualified row is exact; the locator-keyed one is only trustworthy when this repo owns it.
-    const ownedExistingMeta =
-      readWorktreeMetaForHost(store, worktreeId, expectedHostId) ??
-      getRepoOwnedWorktreeMeta(repo, worktreeId, metaById, repoOwnerCount)
+    const ownedExistingMeta = getRepoOwnedWorktreeMeta(repo, worktreeId, metaById, repoOwnerCount)
     const meta = ownedExistingMeta?.instanceId
       ? ownedExistingMeta
       : ownedExistingMeta || (!existingMeta && repoOwnerCount === 1)
-        ? writeWorktreeMetaForHost(store, worktreeId, expectedHostId, {})
+        ? store.setWorktreeMeta(worktreeId, {})
         : undefined
     const merged = {
       ...mergeWorktree(repo.id, gitWorktree, meta, repo.displayName),
-      hostId: meta?.hostId ?? expectedHostId
+      hostId: repoOwnerCount === 1 ? (existingMeta?.hostId ?? expectedHostId) : expectedHostId
     }
     return {
       ...merged,
@@ -209,18 +195,5 @@ export async function resolveScopedWorktreeIdRow(
     resolveLocalProjectRuntimesForRepos(store, [repo])
   )
   const projected = projectResolvedWorktreeLineage(rows, store.getAllWorktreeLineage?.() ?? {})
-  const exact = projected.find((worktree) => worktree.id === worktreeId)
-  if (exact) {
-    return exact
-  }
-  // Why (#16243): the scan can spell this id's path differently — the divergence `path:` absorbs.
-  // One equivalent row may stand in; two is an ambiguity a scoped lookup must refuse, not guess.
-  const comparisonKey = worktreeIdComparisonKey(worktreeId)
-  if (comparisonKey === null) {
-    return null
-  }
-  const equivalent = projected.filter(
-    (worktree) => worktreeIdComparisonKey(worktree.id) === comparisonKey
-  )
-  return equivalent.length === 1 ? equivalent[0] : null
+  return projected.find((worktree) => worktree.id === worktreeId) ?? null
 }

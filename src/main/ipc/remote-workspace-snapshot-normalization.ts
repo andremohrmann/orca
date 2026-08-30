@@ -62,11 +62,6 @@ function normalizeRemoteSession(raw: unknown): RemoteWorkspaceSession {
     ),
     lastVisitedAtByWorktreePath: normalizeOptionalRecord<Record<string, number>>(
       input.lastVisitedAtByWorktreePath
-    ),
-    // Dropping this made the field write-only: every read stripped it, and the patch guard below
-    // compares normalized sessions, so a change that only sets it looked like no change at all.
-    defaultTerminalTabsAppliedByWorktreePath: normalizeOptionalRecord<Record<string, true>>(
-      input.defaultTerminalTabsAppliedByWorktreePath
     )
   }
 }

@@ -1,13 +1,9 @@
 import type { PreloadApi } from '../../../../preload/api-types'
-import {
-  GITHUB_MARK_PR_READY_RUNTIME_CAPABILITY,
-  GITHUB_MARK_PR_READY_UPDATE_REQUIRED_MESSAGE
-} from '../../../../shared/protocol-version'
 import { translate } from '@/i18n/i18n'
 import { GITHUB_WEB_RPC_METHODS } from './web-github-routes'
 import type { WebGitHubRuntimeMethod } from './web-github-routes'
 import { mapRepoPathArg } from './web-review-api'
-import { callRuntimeResult, getRemoteRuntimeStatus } from './web-runtime-calls'
+import { callRuntimeResult } from './web-runtime-calls'
 import { noopUnsubscribe } from './web-storage'
 
 export type WebGitHubApi = NonNullable<PreloadApi['gh']>
@@ -87,16 +83,6 @@ export function createGitHubApi(): WebGitHubApi {
     updatePRTitle: (args) =>
       route<WebGitHubResult<'updatePRTitle'>>(GITHUB_WEB_RPC_METHODS.updatePRTitle, args),
     mergePR: (args) => route<WebGitHubResult<'mergePR'>>(GITHUB_WEB_RPC_METHODS.mergePR, args),
-    markPRReadyForReview: async (args) => {
-      const status = await getRemoteRuntimeStatus().catch(() => null)
-      if (!status?.capabilities?.includes(GITHUB_MARK_PR_READY_RUNTIME_CAPABILITY)) {
-        return { ok: false, error: GITHUB_MARK_PR_READY_UPDATE_REQUIRED_MESSAGE }
-      }
-      return route<WebGitHubResult<'markPRReadyForReview'>>(
-        GITHUB_WEB_RPC_METHODS.markPRReadyForReview,
-        args
-      )
-    },
     setPRAutoMerge: (args) =>
       route<WebGitHubResult<'setPRAutoMerge'>>(GITHUB_WEB_RPC_METHODS.setPRAutoMerge, args),
     updatePRState: (args) =>

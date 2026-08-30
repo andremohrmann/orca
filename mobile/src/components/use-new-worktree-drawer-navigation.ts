@@ -23,10 +23,11 @@ export function useNewWorktreeDrawerNavigation(modalVisible: boolean): {
   openSourceDrawer: () => void
 } {
   const [drawerView, setDrawerView] = useState<NewWorktreeDrawerView>('form')
+  const formPinnedUnderSourceRef = useRef(false)
   const drawerTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Why: cancel any queued transition and reset when the modal closes, so a
-  // timer can't land after close and leave a stale drawer for the next open.
+  // timer can't land after close and leave a stale drawer/pin for the next open.
   useEffect(() => {
     if (modalVisible) {
       return
@@ -35,6 +36,7 @@ export function useNewWorktreeDrawerNavigation(modalVisible: boolean): {
       clearTimeout(drawerTransitionTimerRef.current)
       drawerTransitionTimerRef.current = null
     }
+    formPinnedUnderSourceRef.current = false
     setDrawerView('form')
   }, [modalVisible])
 
@@ -53,23 +55,31 @@ export function useNewWorktreeDrawerNavigation(modalVisible: boolean): {
     setDrawerView('transition')
     drawerTransitionTimerRef.current = setTimeout(() => {
       drawerTransitionTimerRef.current = null
+      if (nextView === 'form') {
+        formPinnedUnderSourceRef.current = false
+      }
       setDrawerView(nextView)
     }, NEW_WORKTREE_DRAWER_TRANSITION_MS)
   }
 
   function openSourceDrawer(): void {
-    // Why: same-beat open; the form stays mounted underneath so the outer
-    // content height is preserved when the fill picker dismisses.
+    // Why: same-beat open; pin form under fill picker so outer content height
+    // is preserved when the name dialog dismisses.
     if (drawerTransitionTimerRef.current) {
       clearTimeout(drawerTransitionTimerRef.current)
     }
     drawerTransitionTimerRef.current = null
+    formPinnedUnderSourceRef.current = true
     setDrawerView('source')
   }
 
   return {
     drawerView,
-    formSheetVisible: resolveNewWorktreeFormSheetVisible({ modalVisible, drawerView }),
+    formSheetVisible: resolveNewWorktreeFormSheetVisible({
+      modalVisible,
+      drawerView,
+      formPinnedUnderSource: formPinnedUnderSourceRef.current
+    }),
     formSheetInteractive: drawerView === 'form',
     transitionDrawer,
     openSourceDrawer

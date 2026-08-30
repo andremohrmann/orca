@@ -25,7 +25,6 @@ type AutomationProjectComboboxProps = {
   placeholder?: string
   triggerClassName?: string
   getRepoHostLabel?: (repo: Repo) => string | null | undefined
-  allowAddProject?: boolean
 }
 
 function getRepoDetail(repo: Repo, hostLabel?: string | null): string {
@@ -54,8 +53,7 @@ export default function AutomationProjectCombobox({
   onValueChange,
   placeholder = 'Select project',
   triggerClassName,
-  getRepoHostLabel,
-  allowAddProject = true
+  getRepoHostLabel
 }: AutomationProjectComboboxProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -377,32 +375,30 @@ export default function AutomationProjectCombobox({
               )
             })}
           </CommandList>
-          {allowAddProject ? (
-            <div className="border-t border-border">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={isAdding}
-                onClick={() => void handleAddFolder()}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setCommandValue('')}
-                className="h-8 w-full justify-start rounded-none px-3 text-xs font-normal"
-              >
-                <FolderPlus className="size-3.5 text-muted-foreground" />
-                <span>
-                  {isAdding
-                    ? translate(
-                        'auto.components.automations.AutomationProjectCombobox.adding',
-                        'Adding project…'
-                      )
-                    : translate(
-                        'auto.components.automations.AutomationProjectCombobox.addProject',
-                        'Add project'
-                      )}
-                </span>
-              </Button>
-            </div>
-          ) : null}
+          <div className="border-t border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isAdding}
+              onClick={() => void handleAddFolder()}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setCommandValue('')}
+              className="h-8 w-full justify-start rounded-none px-3 text-xs font-normal"
+            >
+              <FolderPlus className="size-3.5 text-muted-foreground" />
+              <span>
+                {isAdding
+                  ? translate(
+                      'auto.components.automations.AutomationProjectCombobox.adding',
+                      'Adding project…'
+                    )
+                  : translate(
+                      'auto.components.automations.AutomationProjectCombobox.addProject',
+                      'Add project'
+                    )}
+              </span>
+            </Button>
+          </div>
         </Command>
       </PopoverContent>
     </Popover>

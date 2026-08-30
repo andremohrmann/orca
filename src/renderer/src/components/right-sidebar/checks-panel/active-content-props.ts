@@ -46,7 +46,7 @@ export type ChecksPanelActiveContentModel = Pick<
     | 'activeConflictReview'
     | 'activeGitLabReview'
     | 'activeReview'
-    | 'linkedGitLabMR'
+    | 'linkedPR'
     | 'pr'
     | 'prRefreshState'
     | 'setChecksPanelContentRef'
@@ -85,10 +85,10 @@ export type ChecksPanelActiveContentModel = Pick<
   Pick<
     ChecksPanelCheckAndReviewActionsState,
     | 'handleFixChecksWithAI'
-    | 'handleLinkAnotherReview'
+    | 'handleLinkAnotherPullRequest'
     | 'handleOpenPR'
     | 'handleOpenStackPR'
-    | 'handleUnlinkReview'
+    | 'handleUnlinkPullRequest'
   > &
   Pick<ChecksPanelRefreshState, 'handleRefresh'> &
   Pick<ChecksPanelAiQueueState, 'handleResolveCommentsWithAI' | 'handleResolveConflictsWithAI'> &

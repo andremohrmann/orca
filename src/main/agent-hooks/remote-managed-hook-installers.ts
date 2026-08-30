@@ -16,10 +16,11 @@ import { kimiHookService } from '../kimi/hook-service'
 import { openClaudeHookService } from '../openclaude/hook-service'
 
 export type RemoteManagedHookInstallOptions = {
-  /** Explicit CODEX_HOME dir for redirected runtimes (for example WSL's managed runtime home). */
+  /** Explicit CODEX_HOME dir for redirected runtimes (WSL managed runtime
+   *  home). Codex-only: it is the one agent whose home Orca redirects. Also
+   *  defers the config.toml trust write until that file exists, so the
+   *  launch path's only-if-absent seed is never pre-empted. */
   codexHomeDir?: string
-  /** Skip the trust write when a redirected runtime config is seeded by the launch path. */
-  deferTrustUntilConfigToml?: boolean
   /** Explicit GROK_HOME for remote runtimes that redirect Grok's config. */
   grokHomeDir?: string
   /** Stops before starting the next installer when the owning relay request
@@ -45,10 +46,13 @@ const REMOTE_MANAGED_HOOK_INSTALLERS: readonly RemoteManagedHookInstaller[] = [
   [
     'codex',
     (sftp, remoteHome, options) =>
-      codexHookService.installRemote(sftp, remoteHome, {
-        codexHomeDir: options?.codexHomeDir,
-        deferTrustUntilConfigToml: options?.deferTrustUntilConfigToml
-      })
+      codexHookService.installRemote(
+        sftp,
+        remoteHome,
+        options?.codexHomeDir
+          ? { codexHomeDir: options.codexHomeDir, deferTrustUntilConfigToml: true }
+          : undefined
+      )
   ],
   ['gemini', (sftp, remoteHome) => geminiHookService.installRemote(sftp, remoteHome)],
   ['antigravity', (sftp, remoteHome) => antigravityHookService.installRemote(sftp, remoteHome)],

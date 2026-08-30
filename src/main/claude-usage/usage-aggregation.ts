@@ -30,7 +30,6 @@ export function mergeClaudeSessions(
     existing.totalOutputTokens += session.totalOutputTokens
     existing.totalCacheReadTokens += session.totalCacheReadTokens
     existing.totalCacheWriteTokens += session.totalCacheWriteTokens
-    existing.totalCacheWrite1hTokens += session.totalCacheWrite1hTokens
 
     for (const location of session.locationBreakdown) {
       const existingLocation =
@@ -42,7 +41,6 @@ export function mergeClaudeSessions(
         existingLocation.outputTokens += location.outputTokens
         existingLocation.cacheReadTokens += location.cacheReadTokens
         existingLocation.cacheWriteTokens += location.cacheWriteTokens
-        existingLocation.cacheWrite1hTokens += location.cacheWrite1hTokens
       } else {
         existing.locationBreakdown.push({ ...location })
       }
@@ -67,7 +65,6 @@ export function mergeClaudeDailyAggregates(
     existing.outputTokens += aggregate.outputTokens
     existing.cacheReadTokens += aggregate.cacheReadTokens
     existing.cacheWriteTokens += aggregate.cacheWriteTokens
-    existing.cacheWrite1hTokens += aggregate.cacheWrite1hTokens
   }
 }
 
@@ -116,7 +113,6 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
         totalOutputTokens: 0,
         totalCacheReadTokens: 0,
         totalCacheWriteTokens: 0,
-        totalCacheWrite1hTokens: 0,
         locationBreakdown: []
       })
     }
@@ -136,7 +132,6 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
     session.totalOutputTokens += turn.outputTokens
     session.totalCacheReadTokens += turn.cacheReadTokens
     session.totalCacheWriteTokens += turn.cacheWriteTokens
-    session.totalCacheWrite1hTokens += turn.cacheWrite1hTokens
 
     const location =
       session.locationBreakdown.find((entry) => entry.locationKey === turn.projectKey) ?? null
@@ -146,7 +141,6 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
       location.outputTokens += turn.outputTokens
       location.cacheReadTokens += turn.cacheReadTokens
       location.cacheWriteTokens += turn.cacheWriteTokens
-      location.cacheWrite1hTokens += turn.cacheWrite1hTokens
     } else {
       session.locationBreakdown.push({
         locationKey: turn.projectKey,
@@ -157,8 +151,7 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
         inputTokens: turn.inputTokens,
         outputTokens: turn.outputTokens,
         cacheReadTokens: turn.cacheReadTokens,
-        cacheWriteTokens: turn.cacheWriteTokens,
-        cacheWrite1hTokens: turn.cacheWrite1hTokens
+        cacheWriteTokens: turn.cacheWriteTokens
       })
     }
 
@@ -173,7 +166,6 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
       existingDaily.outputTokens += turn.outputTokens
       existingDaily.cacheReadTokens += turn.cacheReadTokens
       existingDaily.cacheWriteTokens += turn.cacheWriteTokens
-      existingDaily.cacheWrite1hTokens += turn.cacheWrite1hTokens
     } else {
       dailyByKey.set(dailyKey, {
         day: turn.day,
@@ -187,8 +179,7 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
         inputTokens: turn.inputTokens,
         outputTokens: turn.outputTokens,
         cacheReadTokens: turn.cacheReadTokens,
-        cacheWriteTokens: turn.cacheWriteTokens,
-        cacheWrite1hTokens: turn.cacheWrite1hTokens
+        cacheWriteTokens: turn.cacheWriteTokens
       })
     }
   }

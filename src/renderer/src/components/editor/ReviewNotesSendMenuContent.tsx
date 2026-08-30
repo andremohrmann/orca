@@ -26,7 +26,7 @@ import {
   agentTypeToIconAgent
 } from '@/lib/agent-status'
 import { track } from '@/lib/telemetry'
-import { useNow } from '@/hooks/use-now'
+import { useNow } from '@/components/dashboard/useNow'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/useDashboardData'
 import { lastEnteredDoneAt } from '@/components/dashboard/agent-finished-timestamp'
 import { selectLivePtyIdsForWorktree } from '@/components/sidebar/worktree-card-status-inputs'
@@ -247,7 +247,6 @@ function AgentTargetMenuItem({
   const tabTitle = target.tabTitle.trim()
   const state = asDotState(agent?.state ?? 'idle', agent?.entry.workingMode)
   const timeAgo = agent ? formatAgentRelativeTime(agent, now) : null
-  const disabledReason = target.status === 'disabled' ? target.disabledReason : undefined
   const secondaryParts = [
     agentStateLabel(state),
     ...(timeAgo ? [timeAgo] : []),
@@ -260,16 +259,10 @@ function AgentTargetMenuItem({
       // Why: surface the ineligibility reason (permission/stale/no-terminal) as a
       // hover tooltip rather than inline text, matching DashboardAgentRow's
       // title-attribute treatment of the same disabledReason.
-      title={disabledReason}
+      title={target.status === 'disabled' ? target.disabledReason : undefined}
       className="min-w-[240px] gap-2 rounded-[7px] px-2 py-1.5 text-[12px] leading-5 font-medium"
     >
-      {/* Why: the ancestor's actionable disabled reason must win on every hit area. */}
-      <AgentStateDot
-        state={state}
-        size="sm"
-        className="shrink-0"
-        title={disabledReason ? null : undefined}
-      />
+      <AgentStateDot state={state} size="sm" className="shrink-0" />
       <AgentIcon agent={agentTypeToIconAgent(target.agentType ?? agent?.agentType)} size={14} />
       <span className="grid min-w-0 flex-1 text-left">
         <span className="truncate">

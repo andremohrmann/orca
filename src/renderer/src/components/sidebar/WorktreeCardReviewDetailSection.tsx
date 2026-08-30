@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Copy, Ellipsis, ExternalLink, Globe, MonitorUp } from 'lucide-react'
+import { Copy, Ellipsis, ExternalLink, MonitorUp, Unlink } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import {
   WorktreeCardDetailSection,
@@ -17,7 +17,6 @@ import { DetailHeader, MetadataActionIcon } from './WorktreeCardMetadataControls
 import { ReviewChecksBadge, ReviewStateBadge } from './WorktreeCardMetadataStatusBadges'
 import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
 import { getProviderName, getReviewLabel, ReviewIcon } from './worktree-review-helpers'
-import { HostedReviewUnlinkMenuItem } from '@/components/HostedReviewUnlinkMenuItem'
 
 type WorktreeCardReviewDetailSectionProps = {
   review: WorktreeCardPrDisplay | null
@@ -25,7 +24,6 @@ type WorktreeCardReviewDetailSectionProps = {
   onReviewMenuOpenChange: (open: boolean) => void
   onOpenReviewInOrca?: (event: React.MouseEvent) => void
   onCopyReviewLink?: () => void
-  onOpenReviewInBrowser?: (url: string) => void
   onUnlinkReview?: () => void
   closeHover: () => void
 }
@@ -36,7 +34,6 @@ export function WorktreeCardReviewDetailSection({
   onReviewMenuOpenChange,
   onOpenReviewInOrca,
   onCopyReviewLink,
-  onOpenReviewInBrowser,
   onUnlinkReview,
   closeHover
 }: WorktreeCardReviewDetailSectionProps): React.JSX.Element | null {
@@ -81,7 +78,7 @@ export function WorktreeCardReviewDetailSection({
         )}
         actions={
           <>
-            {(onCopyReviewLink || onOpenReviewInBrowser || onUnlinkReview) && (
+            {(onCopyReviewLink || onUnlinkReview) && (
               <DropdownMenu
                 modal={false}
                 open={reviewMenuOpen}
@@ -97,21 +94,7 @@ export function WorktreeCardReviewDetailSection({
                     </TooltipContent>
                   </Tooltip>
                 )}
-                <DropdownMenuContent align="end" className="w-52">
-                  {onOpenReviewInBrowser && (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        closeHover()
-                        onOpenReviewInBrowser(review.url!)
-                      }}
-                    >
-                      <Globe className="size-3.5" />
-                      {translate(
-                        'auto.components.sidebar.WorktreeCardMeta.openInOrcaBrowser',
-                        'Open in Orca browser'
-                      )}
-                    </DropdownMenuItem>
-                  )}
+                <DropdownMenuContent align="end" className="w-40">
                   {onCopyReviewLink && (
                     <DropdownMenuItem
                       onSelect={() => {
@@ -127,15 +110,19 @@ export function WorktreeCardReviewDetailSection({
                     </DropdownMenuItem>
                   )}
                   {onUnlinkReview && (
-                    <HostedReviewUnlinkMenuItem
-                      reviewLabel={reviewLabel}
-                      reviewIdentifier={`${reviewLabel === 'MR' ? '!' : '#'}${review.number}`}
-                      providerLabel={reviewProvider}
+                    <DropdownMenuItem
                       onSelect={() => {
                         closeHover()
                         onUnlinkReview()
                       }}
-                    />
+                    >
+                      <Unlink className="size-3.5" />
+                      {translate(
+                        'auto.components.sidebar.WorktreeCardMeta.ae76907ca6',
+                        'Unlink {{value0}}',
+                        { value0: reviewLabel }
+                      )}
+                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -7,9 +7,7 @@ import type {
   SshConfigImportResult,
   SshConnectionState,
   SshTarget,
-  SshTargetAddResult,
-  SshTargetCreateInput,
-  SshTargetUpdateInput
+  SshTargetAddResult
 } from '../../shared/ssh-types'
 import type { FilesystemPathFlavor } from '../../shared/filesystem-entry-types'
 
@@ -17,8 +15,11 @@ export type SshApi = {
   listTargets: () => Promise<SshTarget[]>
   // Removed-target id → last known label, for a friendly host name on workspaces still pinned to a removed target.
   listRemovedTargetLabels: () => Promise<Record<string, string>>
-  addTarget: (args: { target: SshTargetCreateInput }) => Promise<SshTargetAddResult>
-  updateTarget: (args: { id: string; updates: SshTargetUpdateInput }) => Promise<SshTarget>
+  addTarget: (args: { target: Omit<SshTarget, 'id'> }) => Promise<SshTargetAddResult>
+  updateTarget: (args: {
+    id: string
+    updates: Partial<Omit<SshTarget, 'id'>>
+  }) => Promise<SshTarget>
   removeTarget: (args: { id: string }) => Promise<void>
   importConfig: (args?: { reAdopt?: boolean }) => Promise<SshConfigImportResult>
   listConfigHosts: (args?: SshConfigHostListArgs) => Promise<SshConfigHostListResult>

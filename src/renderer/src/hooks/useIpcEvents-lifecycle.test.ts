@@ -8,7 +8,6 @@ const EXPECTED_DIRECT_CALLBACK_METHODS = [
   'agentStatus.onMigrationUnsupported',
   'agentStatus.onMigrationUnsupportedClear',
   'agentStatus.onSet',
-  'automations.onChanged',
   'browser.onActivateView',
   'browser.onCertificateFailureChanged',
   'browser.onGuestLoadFailed',
@@ -23,8 +22,6 @@ const EXPECTED_DIRECT_CALLBACK_METHODS = [
   'remoteWorkspace.onChanged',
   'repos.onChanged',
   'runtime.onBrowserDriverChanged',
-  'runtime.onBrowserRemoteViewersChanged',
-  'runtime.onClientHostedBrowserRowsChanged',
   'runtime.onNativeChatLaunchDraftResolved',
   'runtime.onTerminalDriverChanged',
   'runtime.onTerminalFitOverrideChanged',
@@ -101,7 +98,6 @@ const EXPECTED_DIRECT_CALLBACK_METHODS = [
 
 const EXPECTED_CALLBACK_REGISTRATION_SEQUENCE = [
   'ui.onMobileMarkdownRequest',
-  'automations.onChanged',
   'repos.onChanged',
   'worktrees.onChanged',
   'worktrees.onHeadIdentitiesChanged',
@@ -193,9 +189,7 @@ const EXPECTED_CALLBACK_REGISTRATION_SEQUENCE = [
   'runtime.onTerminalFitOverrideChanged',
   'runtime.onTerminalDriverChanged',
   'runtime.onNativeChatLaunchDraftResolved',
-  'runtime.onBrowserDriverChanged',
-  'runtime.onBrowserRemoteViewersChanged',
-  'runtime.onClientHostedBrowserRowsChanged'
+  'runtime.onBrowserDriverChanged'
 ] as const
 
 type ListenerRecord = {
@@ -373,9 +367,8 @@ describe('useIpcEvents App-lifetime lifecycle', () => {
       )
     ).toEqual([
       'ui.onMobileMarkdownRequest',
-      'automations.onChanged',
       'runtimeEnvironments.subscribe',
-      ...EXPECTED_CALLBACK_REGISTRATION_SEQUENCE.slice(2)
+      ...EXPECTED_CALLBACK_REGISTRATION_SEQUENCE.slice(1)
     ])
     const groupOrder = (names: readonly string[]): string[] =>
       registrationOrder.filter((entry) => names.includes(entry))
@@ -430,26 +423,18 @@ describe('useIpcEvents App-lifetime lifecycle', () => {
         'runtime.onTerminalDriverChanged',
         'runtime.onNativeChatLaunchDraftResolved',
         'runtime.onBrowserDriverChanged',
-        'runtime.onBrowserRemoteViewersChanged',
-        'runtime.onClientHostedBrowserRowsChanged',
-        'runtime.getClientHostedBrowserRows',
         'runtime.getTerminalFitOverrides',
         'runtime.getTerminalDrivers',
-        'runtime.getBrowserDrivers',
-        'runtime.getBrowserRemoteViewerPages'
+        'runtime.getBrowserDrivers'
       ])
     ).toEqual([
       'runtime.onTerminalFitOverrideChanged',
       'runtime.onTerminalDriverChanged',
       'runtime.onNativeChatLaunchDraftResolved',
       'runtime.onBrowserDriverChanged',
-      'runtime.onBrowserRemoteViewersChanged',
-      'runtime.onClientHostedBrowserRowsChanged',
-      'runtime.getClientHostedBrowserRows',
       'runtime.getTerminalFitOverrides',
       'runtime.getTerminalDrivers',
-      'runtime.getBrowserDrivers',
-      'runtime.getBrowserRemoteViewerPages'
+      'runtime.getBrowserDrivers'
     ])
     expect(
       [...listeners.values()].every((records) => records.filter((item) => item.active).length === 1)

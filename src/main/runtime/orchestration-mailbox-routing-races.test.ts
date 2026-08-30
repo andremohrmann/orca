@@ -19,7 +19,6 @@ import {
   temporaryDirectories,
   TERMINAL_HANDLE
 } from './orchestration-mailbox-notification-test-harness'
-import { createRootDispatch } from './orchestration/db/root-dispatch-test-fixture'
 
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => tmpdir()), isPackaged: false },
@@ -70,7 +69,7 @@ describe('orchestration mailbox routing races', () => {
       coordinatorPaneKey: SECOND_PANE_KEY
     })
     const task = db.createTask({ spec: 'Worker task', runId: run.id })
-    const dispatch = createRootDispatch(db, task.id, TERMINAL_HANDLE, PANE_KEY)
+    const dispatch = db.createDispatchContext(task.id, TERMINAL_HANDLE, PANE_KEY)
     for (let index = 0; index < 151; index += 1) {
       insertDirectRunMessage(db, run.id, `Before completion ${index}`)
     }
@@ -153,7 +152,7 @@ describe('orchestration mailbox routing races', () => {
       coordinatorPaneKey: SECOND_PANE_KEY
     })
     const task = db.createTask({ spec: 'Waiting worker', runId: run.id })
-    const dispatch = createRootDispatch(db, task.id, TERMINAL_HANDLE, PANE_KEY)
+    const dispatch = db.createDispatchContext(task.id, TERMINAL_HANDLE, PANE_KEY)
     const status = insertDirectRunMessage(db, run.id, 'Filtered-out status')
     const controller = new AbortController()
     const waiting = dispatchMailboxCheck(harness.runtime, {
@@ -202,7 +201,7 @@ describe('orchestration mailbox routing races', () => {
       coordinatorPaneKey: SECOND_PANE_KEY
     })
     const task = db.createTask({ spec: 'Cancelled worker check', runId: run.id })
-    const dispatch = createRootDispatch(db, task.id, TERMINAL_HANDLE, PANE_KEY)
+    const dispatch = db.createDispatchContext(task.id, TERMINAL_HANDLE, PANE_KEY)
     for (let index = 0; index < 151; index += 1) {
       insertDirectRunMessage(db, run.id, `Before cancelled migration ${index}`)
     }
@@ -297,7 +296,7 @@ describe('orchestration mailbox routing races', () => {
         '55555555-5555-4555-8555-555555555555:66666666-6666-4666-8666-666666666666'
     })
     const task = db.createTask({ spec: 'Worker task', runId: run.id })
-    createRootDispatch(db, task.id, 'term_previous_worker', PANE_KEY)
+    db.createDispatchContext(task.id, 'term_previous_worker', PANE_KEY)
     const current = insertDirectRunMessage(db, run.id, 'Current worker handle')
     const previous = db.insertMessage({
       from: 'term_coordinator',
@@ -422,9 +421,9 @@ describe('orchestration mailbox routing races', () => {
         '55555555-5555-4555-8555-555555555555:66666666-6666-4666-8666-666666666666'
     })
     const task = db.createTask({ spec: 'Valid worker', runId: run.id })
-    const valid = createRootDispatch(db, task.id, 'term_old', PANE_KEY)
+    const valid = db.createDispatchContext(task.id, 'term_old', PANE_KEY)
     const collisionTask = db.createTask({ spec: 'Malformed collision', runId: run.id })
-    createRootDispatch(db, collisionTask.id, 'term_collision', `:${LEAF_ID}`)
+    db.createDispatchContext(collisionTask.id, 'term_collision', `:${LEAF_ID}`)
 
     expect(db.getActiveDispatchForIdentity('term_reminted', PANE_KEY)?.id).toBe(valid.id)
     const plan = sqliteFor(db)

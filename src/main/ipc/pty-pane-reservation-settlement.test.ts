@@ -119,8 +119,7 @@ describe('registerPtyHandlers', () => {
       persistPtyBinding: vi.fn(),
       upsertSshRemotePtyLease: vi.fn(),
       removeSshRemotePtyLease: vi.fn(),
-      markSshRemotePtyLease: vi.fn(),
-      clearSshRemotePtyKillIntent: vi.fn()
+      markSshRemotePtyLease: vi.fn()
     }
     const runtime = {
       setPtyController: vi.fn(),
@@ -478,8 +477,7 @@ describe('registerPtyHandlers', () => {
       upsertSshRemotePtyLease: vi.fn(),
       persistPtyBinding: vi.fn(),
       removeSshRemotePtyLease: vi.fn(),
-      markSshRemotePtyLease: vi.fn(),
-      clearSshRemotePtyKillIntent: vi.fn()
+      markSshRemotePtyLease: vi.fn()
     }
     let controller: RuntimeSpawnController | null = null
     const runtime = {

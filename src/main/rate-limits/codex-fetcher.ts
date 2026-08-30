@@ -37,7 +37,6 @@ import {
   getHiddenRateLimitWslCwdSetupCommands,
   resolveHiddenRateLimitPtyCwd
 } from './hidden-rate-limit-pty-cwd'
-import { quoteHiddenRateLimitShellValue } from './hidden-rate-limit-shell'
 
 const RPC_TIMEOUT_MS = 10_000
 const WSL_RPC_TIMEOUT_MS = 25_000
@@ -45,6 +44,10 @@ const RPC_INIT_TIMEOUT_MS = 30_000
 const WSL_RPC_INIT_TIMEOUT_MS = 40_000
 
 export type FetchCodexRateLimitsOptions = CodexRateLimitFetchOptions
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`
+}
 
 function buildWslCodexCommand(
   codexHomePath: string,
@@ -57,9 +60,9 @@ function buildWslCodexCommand(
   }
   const setupCommands = [
     ...getHiddenRateLimitWslCwdSetupCommands(),
-    `export CODEX_HOME=${quoteHiddenRateLimitShellValue(wslInfo.linuxPath)}`
+    `export CODEX_HOME=${shellQuote(wslInfo.linuxPath)}`
   ].join(' && ')
-  const execSuffix = `${args.map(quoteHiddenRateLimitShellValue).join(' ')}${
+  const execSuffix = `${args.map(shellQuote).join(' ')}${
     isolateRpcStdio ? ' <&3 >&4 3<&- 4>&-' : ''
   }`
   const loginShellCommand = buildWslLoginShellCommand(

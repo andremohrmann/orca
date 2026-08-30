@@ -1,4 +1,3 @@
-import { createElement } from 'react'
 import { Globe, Terminal as TerminalIcon } from 'lucide-react'
 import { getFileTypeIcon } from '@/lib/file-type-icons'
 import { AgentIcon } from '@/lib/agent-catalog'
@@ -12,7 +11,7 @@ function LeadingIcon({ drag }: { drag: TabDragItemData }): React.JSX.Element {
   }
   if (drag.tabType === 'editor') {
     const FileIcon = getFileTypeIcon(drag.iconPath ?? drag.label)
-    return createElement(FileIcon, { className: 'h-3.5 w-3.5 shrink-0' })
+    return <FileIcon className="h-3.5 w-3.5 shrink-0" />
   }
   if (drag.agent) {
     return <AgentIcon agent={drag.agent} size={14} />

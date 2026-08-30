@@ -4,7 +4,6 @@ import type {
   BrowserDownloadProgressEvent
 } from '../../../../../shared/browser-guest-events'
 import type { BrowserDownloadState } from './browser-download-progress'
-import { emitBrowserRemoteDownloadToast } from '../browser-download-destination-toast'
 
 export function useBrowserPageDownloadEvents({
   browserTabId,
@@ -74,7 +73,6 @@ export function useBrowserPageDownloadEvents({
       if (event.browserPageId && event.browserPageId !== browserTabId) {
         return
       }
-      emitBrowserRemoteDownloadToast(event)
       setDownloadStates((current) =>
         current.map((download) =>
           download.downloadId === event.downloadId

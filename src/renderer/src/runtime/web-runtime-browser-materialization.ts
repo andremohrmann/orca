@@ -18,13 +18,7 @@ export function hasMaterializedWebRuntimeBrowserPage(
   return (state.browserTabsByWorktree[worktreeId] ?? []).some((workspace) => {
     const hasRemotePage = (state.browserPagesByWorkspace[workspace.id] ?? []).some((page) => {
       const handle = state.remoteBrowserPageHandlesByPageId[page.id]
-      // Why: a staged handle is this client's own optimistic guess, not proof the host published
-      // the page — treating it as materialized would let the create path confirm itself.
-      return (
-        handle?.environmentId === environmentId &&
-        handle.remotePageId === remotePageId &&
-        handle.staged !== true
-      )
+      return handle?.environmentId === environmentId && handle.remotePageId === remotePageId
     })
     if (!hasRemotePage) {
       return false

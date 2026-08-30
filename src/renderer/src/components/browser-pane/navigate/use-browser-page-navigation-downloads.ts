@@ -11,14 +11,17 @@ import {
 } from 'react'
 import { translate } from '@/i18n/i18n'
 import { getWorkspaceFileBrowserOpenTarget } from '@/lib/file-preview'
-import { routeWorkspaceDocAddressSubmission } from './workspace-doc-address-submission'
 import {
   getWorkspaceFileDragRejectionMessage,
   readWorkspaceFileDragPaths,
   WORKSPACE_FILE_PATH_MIME
 } from '@/lib/workspace-file-drag'
+import { useAppStore } from '@/store'
+import {
+  normalizeBrowserNavigationUrl,
+  redactKagiSessionToken
+} from '../../../../../shared/browser-url'
 import type { BrowserLoadError } from '../../../../../shared/browser-workspace-types'
-import { resolveBrowserAddressBarSubmission } from './browser-address-bar-navigation'
 import { navigateBrowserPageToUrl } from './navigate-browser-page-url'
 import type { BrowserDownloadState } from './browser-download-progress'
 import { toDisplayUrl } from '../describe-page/browser-page-url-display'
@@ -128,21 +131,26 @@ export function useBrowserPageNavigationDownloads({
 
   const submitAddressBar = (): void => {
     keepAddressBarFocusRef.current = false
-    const consumedAsWorkspaceDoc = routeWorkspaceDocAddressSubmission({
-      worktreeId,
-      pageId: browserTabId,
-      value: addressBarValue,
-      onLoadError: (loadError) => onUpdatePageStateRef.current(browserTabId, { loadError })
+    const searchEngine = useAppStore.getState().browserDefaultSearchEngine
+    const kagiSessionLink = useAppStore.getState().browserKagiSessionLink
+    const nextUrl = normalizeBrowserNavigationUrl(addressBarValue, searchEngine, {
+      kagiSessionLink
     })
-    if (consumedAsWorkspaceDoc) {
+    if (!nextUrl) {
+      onUpdatePageStateRef.current(browserTabId, {
+        loadError: {
+          code: 0,
+          description: translate(
+            'auto.components.browser.pane.BrowserPane.87eb75f7d2',
+            'Enter a valid http(s) or localhost URL.'
+          ),
+          // Why: redact a possible Kagi session token before persisting into loadError.
+          validatedUrl: redactKagiSessionToken(addressBarValue.trim()) || 'about:blank'
+        }
+      })
       return
     }
-    const submission = resolveBrowserAddressBarSubmission(addressBarValue)
-    if (submission.status === 'invalid') {
-      onUpdatePageStateRef.current(browserTabId, { loadError: submission.loadError })
-      return
-    }
-    navigateToUrl(submission.url)
+    navigateToUrl(nextUrl)
   }
 
   const handleInternalFileDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {

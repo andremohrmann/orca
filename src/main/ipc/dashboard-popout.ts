@@ -11,7 +11,6 @@ import {
   onDashboardPopoutOpenChanged
 } from '../window/dashboard-popout-window'
 import { safelyRevealWindow } from '../window/focus-existing-window'
-import { isBackgroundLaunch } from '../window/foreground-activation-policy'
 import { getTrustedUIRendererWindow, isTrustedUIRenderer, sendToTrustedUIRenderer } from './ui'
 import {
   admitDashboardSnapshot,
@@ -150,12 +149,10 @@ export function registerDashboardPopoutHandlers(
     }
     safelyRevealWindow(mainWindow)
     mainWindow.webContents.send('ui:revealDashboardAgent', args)
-    if (!isBackgroundLaunch()) {
-      try {
-        app.focus({ steal: true })
-      } catch {
-        // Best-effort; the per-window focus above may still bring it forward.
-      }
+    try {
+      app.focus({ steal: true })
+    } catch {
+      // Best-effort; the per-window focus above may still bring it forward.
     }
   })
 

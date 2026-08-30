@@ -1,7 +1,6 @@
 import { useCallback, type KeyboardEvent, type RefObject } from 'react'
 
 import { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
-import { isSelectAllShortcut } from '@/lib/editable-target'
 
 type SearchInputOptions<TCommand> = {
   commandListRef: RefObject<HTMLDivElement | null>
@@ -32,10 +31,6 @@ export function useTabBarQuickCommandSearchInput<TCommand>({
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (imeEnter.ownsKeyDown(event)) {
-        return
-      }
-      if (isSelectAllShortcut(event)) {
-        event.stopPropagation()
         return
       }
       if (event.key === 'Enter' && selectedCommand) {

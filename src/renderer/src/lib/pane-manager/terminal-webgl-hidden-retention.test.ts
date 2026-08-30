@@ -47,13 +47,7 @@ describe('terminal-webgl-hidden-retention', () => {
     suspendPaneRendering(panes)
     expect(addon?.dispose).toHaveBeenCalled()
     expect(panes[0].webglAddon).toBeNull()
-  })
-
-  // Why: the retained branch's blur is already pinned above; only the dispose branch changed.
-  it('blurs a suspended pane on the dispose branch', () => {
-    const panes = [createPane()]
-    suspendPaneRendering(panes)
-    expect(panes[0].terminal.blur).toHaveBeenCalledTimes(1)
+    expect(panes[0].terminal.blur).not.toHaveBeenCalled()
   })
 
   it('evicts the least-recently-hidden owner over the context cap', () => {

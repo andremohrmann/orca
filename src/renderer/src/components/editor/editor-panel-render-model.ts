@@ -12,8 +12,9 @@ import { getEditorHeaderOpenFileState } from './editor-header'
 import type { EditorToggleValue } from './EditorViewToggle'
 import type { FileContent } from './editor-panel-content-types'
 import { canUseChangesModeForFile } from './editor-panel-file-mode'
-import { getMarkdownRenderMode, type MarkdownRenderState } from './markdown-render-mode'
-import { getMarkdownRichModeEligibility } from './markdown-rich-mode'
+import { getMarkdownRenderMode } from './markdown-render-mode'
+import { getMarkdownRichModeUnsupportedMessage } from './markdown-rich-mode'
+import { exceedsMarkdownRichModeSizeLimit } from './markdown-rich-size-limit'
 
 type StoreState = ReturnType<typeof useAppStore.getState>
 
@@ -24,7 +25,6 @@ type EditorPanelRenderModelParams = {
   gitStatusEntries: StoreState['gitStatusByWorktree'][string] | undefined
   gitBranchEntries: StoreState['gitBranchChangesByWorktree'][string] | undefined
   markdownViewMode: StoreState['markdownViewMode']
-  markdownRichModeSizeOverride: StoreState['markdownRichModeSizeOverride']
   isChangesMode: boolean
   canOpenWorkspaceFileBrowser: boolean
 }
@@ -36,7 +36,6 @@ export function getEditorPanelRenderModel({
   gitStatusEntries,
   gitBranchEntries,
   markdownViewMode,
-  markdownRichModeSizeOverride,
   isChangesMode,
   canOpenWorkspaceFileBrowser
 }: EditorPanelRenderModelParams) {
@@ -128,36 +127,15 @@ export function getEditorPanelRenderModel({
   const shouldShowMarkdownExportAction =
     viewerLanguage === 'markdown' &&
     (activeFile.mode === 'edit' || activeFile.mode === 'markdown-preview')
-  const inlineFileContent = activeFile.mode === 'edit' ? fileContents[activeFile.id] : undefined
-  const canRenderInlineMarkdown =
-    viewerLanguage === 'markdown' &&
-    activeFile.mode === 'edit' &&
-    inlineMarkdownContent !== null &&
-    !isChangesMode &&
-    inlineFileContent !== undefined &&
-    inlineFileContent.isBinary !== true &&
-    !inlineFileContent.loadError &&
-    activeFile.conflict?.kind !== 'conflict-placeholder' &&
-    activeFile.conflict?.conflictStatus !== 'unresolved'
-  let inlineMarkdownRenderState: MarkdownRenderState | null = null
-  if (canRenderInlineMarkdown) {
-    const shouldClassifyRichMode = mdViewMode === 'rich'
-    const richModeEligibility = shouldClassifyRichMode
-      ? getMarkdownRichModeEligibility({
-          content: inlineMarkdownContent,
-          sizeOverridden: markdownRichModeSizeOverride[activeFile.id] === true
+  const inlineMarkdownRenderMode =
+    activeFile.mode === 'edit' && inlineMarkdownContent !== null
+      ? getMarkdownRenderMode({
+          exceedsRichModeSizeLimit: exceedsMarkdownRichModeSizeLimit(inlineMarkdownContent),
+          hasRichModeUnsupportedContent:
+            getMarkdownRichModeUnsupportedMessage(inlineMarkdownContent) !== null,
+          viewMode: mdViewMode
         })
       : null
-    const richModeUnsupportedMessage = richModeEligibility?.unsupportedMessage ?? null
-    inlineMarkdownRenderState = {
-      renderMode: getMarkdownRenderMode({
-        exceedsRichModeSizeLimit: richModeEligibility?.exceedsSizeLimit ?? false,
-        hasRichModeUnsupportedContent: richModeUnsupportedMessage !== null,
-        viewMode: mdViewMode
-      }),
-      richModeUnsupportedMessage
-    }
-  }
   const canExportMarkdownToPdf =
     shouldShowMarkdownExportAction &&
     ((activeFile.mode === 'markdown-preview' &&
@@ -167,8 +145,8 @@ export function getEditorPanelRenderModel({
       (activeFile.mode === 'edit' &&
         fileContents[activeFile.id] !== undefined &&
         !isChangesMode &&
-        inlineMarkdownRenderState !== null &&
-        inlineMarkdownRenderState.renderMode !== 'source' &&
+        inlineMarkdownRenderMode !== null &&
+        inlineMarkdownRenderMode !== 'source' &&
         fileContents[activeFile.id]?.isBinary !== true &&
         !fileContents[activeFile.id]?.loadError &&
         activeFile.conflict?.conflictStatus !== 'unresolved'))
@@ -198,7 +176,6 @@ export function getEditorPanelRenderModel({
     isMarkdownTableOfContentsDisabled: hasViewModeToggle && mdViewMode === 'source',
     shouldShowMarkdownExportAction,
     canExportMarkdownToPdf,
-    inlineMarkdownRenderState,
     canShowMarkdownTableOfContents:
       viewerLanguage === 'markdown' &&
       (hasViewModeToggle || activeFile.mode === 'markdown-preview'),

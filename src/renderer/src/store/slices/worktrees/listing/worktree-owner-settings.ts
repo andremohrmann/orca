@@ -10,7 +10,6 @@ import {
 } from '../../../../../../shared/execution-host'
 import {
   resolveWorktreeOperationRoute,
-  resolveWorktreeOperationRouteForHost,
   settingsForWorktreeOperationRoute
 } from '@/lib/worktree-operation-route'
 import { WORKTREE_REMOVAL_AMBIGUOUS_ERROR } from './worktree-slice-constants'
@@ -98,12 +97,9 @@ export function trySettingsForWorktreeOwner(
     | 'runtimeEnvironmentCatalogHydrated'
     | 'removedRuntimeEnvironmentIds'
   >,
-  worktreeId: string,
-  executionHostId?: ExecutionHostId
+  worktreeId: string
 ): AppState['settings'] | null {
-  const route = executionHostId
-    ? resolveWorktreeOperationRouteForHost(state, worktreeId, executionHostId)
-    : resolveWorktreeOperationRoute(state, worktreeId)
+  const route = resolveWorktreeOperationRoute(state, worktreeId)
   if (!route) {
     return null
   }
@@ -112,10 +108,9 @@ export function trySettingsForWorktreeOwner(
 
 export function settingsForWorktreeOwner(
   state: Parameters<typeof trySettingsForWorktreeOwner>[0],
-  worktreeId: string,
-  executionHostId?: ExecutionHostId
+  worktreeId: string
 ) {
-  const settings = trySettingsForWorktreeOwner(state, worktreeId, executionHostId)
+  const settings = trySettingsForWorktreeOwner(state, worktreeId)
   if (!settings) {
     throw new Error(WORKTREE_REMOVAL_AMBIGUOUS_ERROR)
   }

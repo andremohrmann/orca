@@ -4,7 +4,6 @@ import { parseAppSshPtyId } from '../../../providers/ssh-pty-id'
 import { ptyOwnership, ptyIncarnationById } from '../provider/ownership-state'
 import { getProvider, getProviderForPty } from '../provider/registry'
 import { isPtyAlreadyGoneError, delay, verifyPtyStopped } from '../provider/liveness'
-import { recordUndeliveredSshPtyKill } from './undelivered-ssh-kill'
 import type { PtyRuntimeControllerDeps } from './controller-deps'
 
 export function killPtyFromRuntimeController(
@@ -19,22 +18,12 @@ export function killPtyFromRuntimeController(
     rememberSyntheticKillExit,
     sendPtyExitToRenderer,
     finishPtyShutdown,
-    retiredRejectedPtyIds,
-    reversibleStopOwnersByPtyId
+    retiredRejectedPtyIds
   } = deps
   runtime?.markPtyStopRequested?.(ptyId)
   let connectionId: string | null | undefined = ptyOwnership.get(ptyId)
   const parsedSshId = connectionId === undefined ? parseAppSshPtyId(ptyId) : null
   connectionId ??= parsedSshId?.connectionId
-  const recordUndelivered = (incarnationId?: string): void => {
-    recordUndeliveredSshPtyKill({
-      store,
-      ptyId,
-      connectionId,
-      reversible: reversibleStopOwnersByPtyId.has(ptyId),
-      incarnationId
-    })
-  }
   const killWithCurrentProvider = (): boolean => {
     let provider: IPtyProvider
     try {
@@ -45,8 +34,6 @@ export function killPtyFromRuntimeController(
         // provider was unregistered. Tombstone the lease so reconnect does
         // not revive a terminal the user explicitly closed.
         const incarnationId = finishPtyShutdown(ptyId, connectionId, store)
-        // The relay was never asked, so the remote shell is still running. Keep the order.
-        recordUndelivered(incarnationId)
         runtime?.onPtyExit(ptyId, -1, incarnationId)
         rememberSyntheticKillExit(ptyId)
         sendPtyExitToRenderer({
@@ -103,9 +90,6 @@ export function killPtyFromRuntimeController(
           }
           runtime?.onPtyExit(ptyId, -1, ptyIncarnationById.get(ptyId))
         }
-        // Outside the `retired` guard: the remote process outlives this client's bookkeeping
-        // either way, and the intent is what the next handshake replays.
-        recordUndelivered()
       })
     return true
   }
@@ -125,7 +109,6 @@ export function killPtyFromRuntimeController(
         }
         runtime?.onPtyExit(ptyId, -1, ptyIncarnationById.get(ptyId))
       }
-      recordUndelivered()
     })
     return true
   }
@@ -208,14 +191,6 @@ export function markReversibleStopsFromRuntimeController(
   }
 }
 
-/**
- * Deliberately records no undelivered-stop intent, unlike `killPtyFromRuntimeController`.
- *
- * Only a caller that gives the PTY up for good may leave a replayable kill order behind. This one
- * hands its failures back instead: worktree sleep marks these stops reversible and leaves the pane
- * live and usable when one does not land, so a durable order recorded here would come back on a
- * later handshake and destroy a terminal the user had gone back to using.
- */
 export async function stopAndWaitPtyFromRuntimeController(
   deps: PtyRuntimeControllerDeps,
   ptyId: string,

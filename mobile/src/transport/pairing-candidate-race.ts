@@ -1,9 +1,7 @@
 import type { PairingCandidateClient } from './mobile-relay-physical-client'
 
-export type PairingCandidatePath = 'direct' | 'relay'
-
 export type PairingCandidate = {
-  path: PairingCandidatePath
+  path: 'direct' | 'relay'
   client: PairingCandidateClient
 }
 

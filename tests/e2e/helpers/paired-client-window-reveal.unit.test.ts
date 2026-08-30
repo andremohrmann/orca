@@ -32,13 +32,13 @@ describe('assertPairedClientWindowRevealed', () => {
     ).toThrow(/no BrowserWindow/)
   })
 
-  it('rejects a window that stays hidden after showInactive()', () => {
+  it('rejects a window that stays hidden after show()', () => {
     expect(() =>
       assertPairedClientWindowRevealed({
         isVisible: false,
         wasVisible: false,
         windowCount: 2
       })
-    ).toThrow(/stayed hidden after showInactive\(\)/)
+    ).toThrow(/stayed hidden after show\(\)/)
   })
 })

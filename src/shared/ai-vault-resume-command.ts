@@ -210,8 +210,6 @@ function buildAgentResumeInvocation(
       return `${baseCommand} --session ${sessionArg}`
     case 'copilot':
       return `${baseCommand} --resume=${sessionArg}`
-    case 'cline':
-      return `${baseCommand} --id ${sessionArg}`
     case 'claude':
     case 'cursor':
     case 'gemini':

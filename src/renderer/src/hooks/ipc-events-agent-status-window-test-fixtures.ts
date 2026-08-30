@@ -23,7 +23,6 @@ export function buildWindowApi(args: {
   return {
     api: {
       repos: { onChanged: () => () => {} },
-      automations: { onChanged: () => () => {} },
       worktrees: {
         onChanged: () => () => {},
         onBaseStatus: () => () => {},
@@ -110,13 +109,10 @@ export function buildWindowApi(args: {
         onTerminalFitOverrideChanged: () => () => {},
         onTerminalDriverChanged: () => () => {},
         onBrowserDriverChanged: () => () => {},
-        onClientHostedBrowserRowsChanged: () => () => {},
-        getClientHostedBrowserRows: async () => [],
         ...args.runtime
       },
       ssh: {
         listTargets: () => Promise.resolve([]),
-        listRemovedTargetLabels: () => Promise.resolve({}),
         listPortForwards: () => Promise.resolve([]),
         listDetectedPorts: () => Promise.resolve([]),
         getState: () => Promise.resolve(null),

@@ -3,19 +3,14 @@ import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
 import { buildAutomationRunContextForRepo } from './automation-run-context'
 
-function repo(id: string, path = `/repos/${id}`, executionHostId?: Repo['executionHostId']): Repo {
+function repo(id: string, path = `/repos/${id}`): Repo {
   return {
     id,
     path,
     displayName: id,
     badgeColor: '#000000',
-    addedAt: 1,
-    executionHostId
+    addedAt: 1
   }
-}
-
-function remoteRepo(id: string, path = `/repos/${id}`): Repo {
-  return { ...repo(id, path), executionHostId: 'runtime:env-1' }
 }
 
 function setup(overrides: Partial<ProjectHostSetup> = {}): ProjectHostSetup {
@@ -39,10 +34,7 @@ describe('buildAutomationRunContextForRepo', () => {
     expect(
       buildAutomationRunContextForRepo({
         repoId: 'repo-builder',
-        repos: [
-          repo('repo-local', '/local/orca'),
-          repo('repo-builder', '/remote/orca', 'ssh:builder')
-        ],
+        repos: [repo('repo-local', '/local/orca'), repo('repo-builder', '/remote/orca')],
         projectHostSetups: [
           setup({
             id: 'setup-local',
@@ -77,16 +69,6 @@ describe('buildAutomationRunContextForRepo', () => {
         repoId: 'repo-builder',
         repos: [],
         projectHostSetups: [setup()]
-      })
-    ).toBeNull()
-  })
-
-  it('fails closed when the same repo id exists on more than one authority', () => {
-    expect(
-      buildAutomationRunContextForRepo({
-        repoId: 'same-id',
-        repos: [repo('same-id', '/local/orca'), remoteRepo('same-id', '/remote/orca')],
-        projectHostSetups: []
       })
     ).toBeNull()
   })

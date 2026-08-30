@@ -36,57 +36,8 @@ describe('parseClaudeUsageRecord', () => {
       inputTokens: 100,
       outputTokens: 25,
       cacheReadTokens: 10,
-      cacheWriteTokens: 5,
-      cacheWrite1hTokens: 0
+      cacheWriteTokens: 5
     })
-  })
-
-  it('splits the cache-write total by TTL when the breakdown is present', () => {
-    const parsed = parseClaudeUsageRecord(
-      JSON.stringify({
-        type: 'assistant',
-        sessionId: 'session-1',
-        timestamp: '2026-04-09T10:00:00.000Z',
-        message: {
-          model: 'claude-sonnet-4-6',
-          usage: {
-            input_tokens: 100,
-            output_tokens: 25,
-            cache_read_input_tokens: 10,
-            cache_creation_input_tokens: 1000,
-            cache_creation: {
-              ephemeral_5m_input_tokens: 600,
-              ephemeral_1h_input_tokens: 400
-            }
-          }
-        }
-      })
-    )
-
-    expect(parsed?.cacheWriteTokens).toBe(1000)
-    expect(parsed?.cacheWrite1hTokens).toBe(400)
-  })
-
-  it('clamps a 1-hour breakdown that exceeds the reported cache-write total', () => {
-    const parsed = parseClaudeUsageRecord(
-      JSON.stringify({
-        type: 'assistant',
-        sessionId: 'session-1',
-        timestamp: '2026-04-09T10:00:00.000Z',
-        message: {
-          model: 'claude-sonnet-4-6',
-          usage: {
-            input_tokens: 100,
-            output_tokens: 25,
-            cache_creation_input_tokens: 100,
-            cache_creation: { ephemeral_1h_input_tokens: 400 }
-          }
-        }
-      })
-    )
-
-    expect(parsed?.cacheWriteTokens).toBe(100)
-    expect(parsed?.cacheWrite1hTokens).toBe(100)
   })
 
   it('merges duplicate streamed assistant usage by message and request id', async () => {
@@ -141,8 +92,7 @@ describe('parseClaudeUsageRecord', () => {
           inputTokens: 120,
           outputTokens: 30,
           cacheReadTokens: 12,
-          cacheWriteTokens: 7,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 7
         }
       ])
     } finally {
@@ -164,8 +114,7 @@ describe('Claude usage aggregation', () => {
           inputTokens: 100,
           outputTokens: 20,
           cacheReadTokens: 10,
-          cacheWriteTokens: 5,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 5
         },
         {
           sessionId: 'session-1',
@@ -176,8 +125,7 @@ describe('Claude usage aggregation', () => {
           inputTokens: 50,
           outputTokens: 10,
           cacheReadTokens: 0,
-          cacheWriteTokens: 0,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 0
         }
       ],
       new Map([
@@ -206,8 +154,7 @@ describe('Claude usage aggregation', () => {
         inputTokens: 100,
         outputTokens: 20,
         cacheReadTokens: 10,
-        cacheWriteTokens: 5,
-        cacheWrite1hTokens: 0
+        cacheWriteTokens: 5
       },
       {
         locationKey: 'cwd:/outside/repo-b',
@@ -218,8 +165,7 @@ describe('Claude usage aggregation', () => {
         inputTokens: 50,
         outputTokens: 10,
         cacheReadTokens: 0,
-        cacheWriteTokens: 0,
-        cacheWrite1hTokens: 0
+        cacheWriteTokens: 0
       }
     ])
   })
@@ -236,8 +182,7 @@ describe('Claude usage aggregation', () => {
           inputTokens: 100,
           outputTokens: 20,
           cacheReadTokens: 10,
-          cacheWriteTokens: 5,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 5
         }
       ],
       new Map([

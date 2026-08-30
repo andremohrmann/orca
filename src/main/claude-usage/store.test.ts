@@ -101,7 +101,6 @@ describe('ClaudeUsageStore', () => {
           totalOutputTokens: 20,
           totalCacheReadTokens: 10,
           totalCacheWriteTokens: 5,
-          totalCacheWrite1hTokens: 0,
           locationBreakdown: [
             {
               locationKey: 'cwd:/outside/repo',
@@ -112,8 +111,7 @@ describe('ClaudeUsageStore', () => {
               inputTokens: 100,
               outputTokens: 20,
               cacheReadTokens: 10,
-              cacheWriteTokens: 5,
-              cacheWrite1hTokens: 0
+              cacheWriteTokens: 5
             }
           ]
         }
@@ -131,8 +129,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 100,
           outputTokens: 20,
           cacheReadTokens: 10,
-          cacheWriteTokens: 5,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 5
         }
       ]
     })
@@ -162,7 +159,6 @@ describe('ClaudeUsageStore', () => {
           totalOutputTokens: 20,
           totalCacheReadTokens: 10,
           totalCacheWriteTokens: 5,
-          totalCacheWrite1hTokens: 0,
           locationBreakdown: [
             {
               locationKey: 'worktree:repo-1::/workspace/repo-a',
@@ -173,8 +169,7 @@ describe('ClaudeUsageStore', () => {
               inputTokens: 100,
               outputTokens: 20,
               cacheReadTokens: 10,
-              cacheWriteTokens: 5,
-              cacheWrite1hTokens: 0
+              cacheWriteTokens: 5
             }
           ]
         }
@@ -192,8 +187,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 100,
           outputTokens: 20,
           cacheReadTokens: 10,
-          cacheWriteTokens: 5,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 5
         }
       ]
     })
@@ -219,8 +213,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 100,
           outputTokens: 20,
           cacheReadTokens: 10,
-          cacheWriteTokens: 5,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 5
         }
       ]
     })
@@ -246,8 +239,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         }
       ]
     })
@@ -259,37 +251,6 @@ describe('ClaudeUsageStore', () => {
     expect(
       breakdown.find((row) => row.key === 'claude-opus-4-7-20260416')?.estimatedCostUsd
     ).toBeCloseTo(36.75)
-  })
-
-  it('prices the 1-hour cache-write share above the 5-minute rate', async () => {
-    const store = createStoreWithState({
-      dailyAggregates: [
-        {
-          day: '2026-04-09',
-          model: 'claude-opus-4-7-20260416',
-          projectKey: 'worktree:repo-1::/workspace/repo-a',
-          projectLabel: 'Repo A',
-          repoId: 'repo-1',
-          worktreeId: 'repo-1::/workspace/repo-a',
-          turnCount: 1,
-          zeroCacheReadTurnCount: 0,
-          inputTokens: 1_000_000,
-          outputTokens: 1_000_000,
-          cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 400_000
-        }
-      ]
-    })
-
-    const summary = await store.getSummary('orca', '30d')
-    const breakdown = await store.getBreakdown('orca', '30d', 'model')
-
-    // 5 + 25 + 0.5 + (0.6 * 6.25 + 0.4 * 10); the flat 5m rate would give 36.75.
-    expect(summary.estimatedCostUsd).toBeCloseTo(38.25)
-    expect(
-      breakdown.find((row) => row.key === 'claude-opus-4-7-20260416')?.estimatedCostUsd
-    ).toBeCloseTo(38.25)
   })
 
   it('prices Claude Opus 4.8 with current Anthropic rates', async () => {
@@ -307,8 +268,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         },
         {
           day: '2026-04-09',
@@ -322,8 +282,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         }
       ]
     })
@@ -355,8 +314,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         },
         {
           day: '2026-04-09',
@@ -370,8 +328,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         },
         {
           day: '2026-04-09',
@@ -385,8 +342,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         }
       ]
     })
@@ -401,7 +357,7 @@ describe('ClaudeUsageStore', () => {
     ).toBeCloseTo(73.5)
     expect(
       breakdown.find((row) => row.key === 'claude-sonnet-5-thinking')?.estimatedCostUsd
-    ).toBeCloseTo(14.7)
+    ).toBeCloseTo(22.05)
   })
 
   it('prices Sonnet 5 long-context usage at flat rates', async () => {
@@ -419,8 +375,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 300_000,
           outputTokens: 300_000,
           cacheReadTokens: 300_000,
-          cacheWriteTokens: 300_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 300_000
         }
       ]
     })
@@ -428,7 +383,7 @@ describe('ClaudeUsageStore', () => {
     const summary = await store.getSummary('orca', '30d')
 
     // Why: Sonnet 4.6 and earlier bill above 200k at a premium; Sonnet 5 does not.
-    expect(summary.estimatedCostUsd).toBeCloseTo(4.41)
+    expect(summary.estimatedCostUsd).toBeCloseTo(6.615)
   })
 
   it('does not collapse Opus 4.5 or Sonnet 4.5 usage into Claude 5 pricing', async () => {
@@ -445,8 +400,7 @@ describe('ClaudeUsageStore', () => {
         inputTokens: 300_000,
         outputTokens: 300_000,
         cacheReadTokens: 300_000,
-        cacheWriteTokens: 300_000,
-        cacheWrite1hTokens: 0
+        cacheWriteTokens: 300_000
       }))
     })
 
@@ -479,8 +433,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         },
         {
           day: '2026-04-09',
@@ -494,8 +447,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         }
       ]
     })
@@ -520,8 +472,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         },
         {
           day: '2026-04-09',
@@ -535,8 +486,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 1_000_000,
           outputTokens: 1_000_000,
           cacheReadTokens: 1_000_000,
-          cacheWriteTokens: 1_000_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 1_000_000
         }
       ]
     })
@@ -561,8 +511,7 @@ describe('ClaudeUsageStore', () => {
           inputTokens: 300_000,
           outputTokens: 300_000,
           cacheReadTokens: 300_000,
-          cacheWriteTokens: 300_000,
-          cacheWrite1hTokens: 0
+          cacheWriteTokens: 300_000
         }
       ]
     })
@@ -597,7 +546,6 @@ describe('ClaudeUsageStore', () => {
           totalOutputTokens: 500,
           totalCacheReadTokens: 200,
           totalCacheWriteTokens: 100,
-          totalCacheWrite1hTokens: 0,
           locationBreakdown: [
             {
               locationKey: `worktree:${worktreeId}`,
@@ -608,8 +556,7 @@ describe('ClaudeUsageStore', () => {
               inputTokens: 1000,
               outputTokens: 500,
               cacheReadTokens: 200,
-              cacheWriteTokens: 100,
-              cacheWrite1hTokens: 0
+              cacheWriteTokens: 100
             }
           ]
         }

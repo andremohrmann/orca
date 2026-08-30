@@ -36,18 +36,12 @@ vi.mock('../linear/client', () => ({
   testConnection: testConnectionMock
 }))
 
-vi.mock('../linear/linear-issue-lookups', () => ({
+vi.mock('../linear/issues', () => ({
   getIssue: vi.fn(),
-  searchIssues: vi.fn()
-}))
-vi.mock('../linear/linear-issue-listing', () => ({
-  listIssues: listIssuesMock
-}))
-vi.mock('../linear/linear-issue-mutations', () => ({
+  searchIssues: vi.fn(),
+  listIssues: listIssuesMock,
   createIssue: vi.fn(),
-  updateIssue: vi.fn()
-}))
-vi.mock('../linear/linear-issue-comments', () => ({
+  updateIssue: vi.fn(),
   addIssueComment: vi.fn(),
   getIssueComments: vi.fn()
 }))

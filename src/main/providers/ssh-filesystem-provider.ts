@@ -37,7 +37,6 @@ import {
   readSshTerminalArtifact,
   writeSshTerminalArtifact
 } from './ssh-filesystem-terminal-artifact'
-import { readSshDocPreviewFile } from './ssh-filesystem-doc-preview'
 const WORKSPACE_SPACE_SCAN_TIMEOUT_MS = 130_000
 export class SshFilesystemProvider implements IFilesystemProvider {
   private connectionId: string
@@ -119,12 +118,6 @@ export class SshFilesystemProvider implements IFilesystemProvider {
       }
       throw err
     }
-  }
-
-  readDocPreviewFile(
-    request: Parameters<NonNullable<IFilesystemProvider['readDocPreviewFile']>>[0]
-  ): ReturnType<NonNullable<IFilesystemProvider['readDocPreviewFile']>> {
-    return readSshDocPreviewFile(this.mux, request)
   }
 
   readFileRange(

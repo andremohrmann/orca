@@ -49,7 +49,6 @@ import {
   useWebSessionTabsSync,
   WEB_SESSION_TABS_VISIBILITY_RESUME_STAGGER_MS
 } from './web-session-tabs-sync'
-import { clearRuntimeEnvironmentConnectionGenerationsForTests } from '@/store/slices/runtime-status'
 import {
   WINDOW_VISIBILITY_SUBSCRIPTION_PARK_DELAY_BACKOFF_LIMIT,
   WINDOW_VISIBILITY_SUBSCRIPTION_PARK_DELAY_MS
@@ -60,7 +59,7 @@ const ENV_B = 'env-b'
 const WORKTREE = 'repo-a::worktree-a'
 const REVISION_A = 101
 const REVISION_B = 201
-const MIRROR_KEY = `${ENV_A}\u0001runtime-a\u00010\u0001${REVISION_A}\u0000${ENV_B}\u0001runtime-b\u00010\u0001${REVISION_B}`
+const MIRROR_KEY = `${ENV_A}\u0001runtime-a\u00011\u0001${REVISION_A}\u0000${ENV_B}\u0001runtime-b\u00012\u0001${REVISION_B}`
 const initialState = useAppStore.getInitialState()
 
 type RuntimeSubscribe = typeof window.api.runtimeEnvironments.subscribe
@@ -239,7 +238,6 @@ describe('useWebSessionTabsSync window visibility', () => {
     useAppStore.setState(initialState, true)
     replaceRuntimeEnvironmentRevisions([])
     resetWebSessionTabsSnapshotFreshnessForTests()
-    clearRuntimeEnvironmentConnectionGenerationsForTests()
     resetStaleDocumentVisibilityForTesting()
     setDocumentVisibility('visible')
     vi.useRealTimers()
@@ -629,7 +627,7 @@ describe('useWebSessionTabsSync window visibility', () => {
       vi.advanceTimersByTime(WINDOW_VISIBILITY_SUBSCRIPTION_PARK_DELAY_MS)
     })
     mocks.runtimeSessionMirrorEnvironmentKey.mockReturnValue(
-      MIRROR_KEY.replace('runtime-b\u00010', 'runtime-b\u00013')
+      MIRROR_KEY.replace('runtime-b\u00012', 'runtime-b\u00013')
     )
     hook.rerender()
     await act(settle)
@@ -797,7 +795,7 @@ describe('useWebSessionTabsSync window visibility', () => {
     expect(useAppStore.getState().browserTabsByWorktree[WORKTREE]).toBeUndefined()
 
     mocks.runtimeSessionMirrorEnvironmentKey.mockReturnValue(
-      MIRROR_KEY.replace('runtime-b\u00010', 'runtime-b\u00013')
+      MIRROR_KEY.replace('runtime-b\u00012', 'runtime-b\u00013')
     )
     hook.rerender()
     await act(settle)

@@ -129,12 +129,6 @@ describe('useMobileNativeChatController handleNativeChatSend', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    clientStub.sendRequest.mockResolvedValue({
-      id: 'send',
-      ok: true,
-      result: { send: { accepted: true } },
-      _meta: { runtimeId: 'r' }
-    })
     resetMobileNativeChatStaleInputForTests()
     captureSendOrigin.mockReturnValue(ORIGIN)
     act(() => {
@@ -163,10 +157,12 @@ describe('useMobileNativeChatController handleNativeChatSend', () => {
       accepted = await controller!.handleNativeChatSend('answer')
     })
     expect(accepted).toBe(true)
-    expect(clientStub.sendRequest).toHaveBeenCalledTimes(2)
-    for (const call of clientStub.sendRequest.mock.calls) {
-      expect(call[1]).toMatchObject({ terminal: 'term-1', text: '\x15', enter: false })
-    }
+    expect(clientStub.sendRequest).toHaveBeenCalledTimes(1)
+    expect(clientStub.sendRequest.mock.calls[0]?.[1]).toMatchObject({
+      terminal: 'term-1',
+      text: '\x15',
+      enter: false
+    })
     expect(isMobileNativeChatInputStale('term-1')).toBe(false)
   })
 
@@ -232,7 +228,7 @@ describe('useMobileNativeChatController handleNativeChatSend', () => {
     expect(restoreRejectedDraft).not.toHaveBeenCalled()
   })
 
-  it('pre-clears separately for a text-only send but never for an image send', async () => {
+  it('pre-clears the input line for a text-only send but never for an image send', async () => {
     // The image path pastes the image behind its OWN leading Ctrl+U and then calls
     // this send; a second clear here wipes the image off the input line and the
     // agent receives text alone while the echo bubble still shows the thumbnail.
@@ -241,23 +237,16 @@ describe('useMobileNativeChatController handleNativeChatSend', () => {
     await act(async () => {
       await controller!.handleNativeChatSend('answer')
     })
-    expect(clientStub.sendRequest).toHaveBeenCalledWith(
-      'terminal.send',
-      expect.objectContaining({ text: '\x15', enter: false }),
-      expect.any(Object)
-    )
     expect(sendWithOutcome).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({ clearInputFirst: expect.anything() })
+      expect.objectContaining({ text: 'answer', clearInputFirst: true })
     )
-
-    clientStub.sendRequest.mockClear()
 
     await act(async () => {
       await controller!.handleNativeChatSend('look', ['file:///a.jpg'])
     })
-    expect(clientStub.sendRequest).not.toHaveBeenCalled()
-    expect(sendWithOutcome).toHaveBeenLastCalledWith(expect.objectContaining({ text: 'look' }))
-    expect(sendWithOutcome.mock.calls.at(-1)?.[0]).not.toHaveProperty('clearInputFirst')
+    expect(sendWithOutcome).toHaveBeenLastCalledWith(
+      expect.objectContaining({ text: 'look', clearInputFirst: false })
+    )
   })
 
   it('holds an unknown-outcome send without posting the optimistic echo', async () => {

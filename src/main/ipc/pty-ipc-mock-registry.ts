@@ -87,7 +87,6 @@ export const fsModuleMock = () => ({
   chmodSync: chmodSyncMock,
   renameSync: renameSyncMock,
   rmSync: rmSyncMock,
-  mkdtempSync: () => '/tmp/orca-watcher-canary-test',
   constants: {
     X_OK: 1,
     R_OK: 4

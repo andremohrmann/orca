@@ -27,29 +27,15 @@ describe('gpu-fallback-marker', () => {
   })
 
   it('round-trips a written marker', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 123, crashesInWindow: 3, userConfirmed: false },
-      environment
-    )
+    writeGpuFallbackMarker(userDataPath, { engagedAt: 123, crashesInWindow: 3 }, environment)
     expect(readGpuFallbackMarker(userDataPath)).toEqual({
-      schemeVersion: 3,
+      schemeVersion: 2,
       engagedAt: 123,
       crashesInWindow: 3,
-      userConfirmed: false,
       appVersion: '1.2.3',
       electronVersion: '42.3.3',
       platform: 'win32'
     })
-  })
-
-  it('persists explicit safe-graphics consent across launches', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 123, crashesInWindow: 3, userConfirmed: true },
-      environment
-    )
-    expect(readActiveGpuFallbackMarker(userDataPath, environment)?.userConfirmed).toBe(true)
   })
 
   it('returns null when no marker exists', () => {
@@ -58,11 +44,7 @@ describe('gpu-fallback-marker', () => {
   })
 
   it('keeps an active marker for repeated launches on the same build', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 1, crashesInWindow: 4, userConfirmed: false },
-      environment
-    )
+    writeGpuFallbackMarker(userDataPath, { engagedAt: 1, crashesInWindow: 4 }, environment)
     expect(existsSync(join(userDataPath, GPU_FALLBACK_MARKER_FILE))).toBe(true)
 
     const firstRead = readActiveGpuFallbackMarker(userDataPath, environment)
@@ -74,11 +56,7 @@ describe('gpu-fallback-marker', () => {
   })
 
   it('clears an active marker when the app build changes', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 1, crashesInWindow: 4, userConfirmed: false },
-      environment
-    )
+    writeGpuFallbackMarker(userDataPath, { engagedAt: 1, crashesInWindow: 4 }, environment)
 
     expect(
       readActiveGpuFallbackMarker(userDataPath, {
@@ -90,11 +68,7 @@ describe('gpu-fallback-marker', () => {
   })
 
   it('clears an active marker outside Windows', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 1, crashesInWindow: 4, userConfirmed: false },
-      environment
-    )
+    writeGpuFallbackMarker(userDataPath, { engagedAt: 1, crashesInWindow: 4 }, environment)
 
     expect(
       readActiveGpuFallbackMarker(userDataPath, {
@@ -109,11 +83,7 @@ describe('gpu-fallback-marker', () => {
   // carries the macOS disable-skia-graphite fix. A marker that survived on darwin would silently
   // strip the fix from the Macs it targets, so pin the platform gate for darwin specifically.
   it('clears an active marker on macOS so the Graphite fix is never skipped', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 1, crashesInWindow: 4, userConfirmed: false },
-      environment
-    )
+    writeGpuFallbackMarker(userDataPath, { engagedAt: 1, crashesInWindow: 4 }, environment)
 
     expect(
       readActiveGpuFallbackMarker(userDataPath, {
@@ -140,11 +110,7 @@ describe('gpu-fallback-marker', () => {
   })
 
   it('can explicitly clear the marker', () => {
-    writeGpuFallbackMarker(
-      userDataPath,
-      { engagedAt: 1, crashesInWindow: 4, userConfirmed: false },
-      environment
-    )
+    writeGpuFallbackMarker(userDataPath, { engagedAt: 1, crashesInWindow: 4 }, environment)
     clearGpuFallbackMarker(userDataPath)
     expect(readGpuFallbackMarker(userDataPath)).toBeNull()
   })
