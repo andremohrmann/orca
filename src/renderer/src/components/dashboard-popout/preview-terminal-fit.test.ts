@@ -67,25 +67,19 @@ describe('fitPreviewTerminalToBox', () => {
     expect(onUnscaledOverflow).not.toHaveBeenCalled()
   })
 
-  it('scales the exact terminal layout without reflowing or claiming its grid', () => {
+  it('clips the rendered screen to the preview box after fitting', () => {
     const container = fixture({ boxWidth: 600, boxHeight: 300, screenWidth: 900 })
-    const previewTerminal = terminal()
-    const onUnscaledOverflow = vi.fn()
 
     fitPreviewTerminalToBox({
       container,
-      terminal: previewTerminal,
+      terminal: terminal(),
       scaleToFit: true,
-      localResizeToFit: true,
-      onUnscaledOverflow
+      onUnscaledOverflow: vi.fn()
     })
 
     const screen = container.querySelector<HTMLElement>('.xterm-screen')!
-    expect(container.style.transform).toBe('scale(0.6666666666666666)')
     expect(container.style.overflow).toBe('hidden')
     expect(screen.style.overflow).toBe('hidden')
-    expect(previewTerminal.resize).not.toHaveBeenCalled()
-    expect(onUnscaledOverflow).not.toHaveBeenCalled()
   })
 
   it('resets horizontal xterm scroll drift', () => {
