@@ -232,6 +232,9 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           terminal,
           sendInput,
           requestInputRefresh,
+          shouldRequestInputRefresh: claimGrid
+            ? undefined
+            : (data) => data.includes('\r') || data.includes('\n'),
           scheduleHorizontalReset: horizontalReset.schedule,
           isReplaying: () => replayDepth > 0
         })
