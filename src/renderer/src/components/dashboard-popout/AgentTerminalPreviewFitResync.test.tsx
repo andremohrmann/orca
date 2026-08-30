@@ -107,6 +107,25 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(fit).not.toHaveBeenCalled()
   })
 
+  it('does not reset a passive live-view preview after ordinary typing', async () => {
+    vi.useFakeTimers()
+    render(
+      <AgentTerminalPreview ptyId="pty-1" claimGrid={false} scaleToFit={false} autoFocus={false} />
+    )
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+
+    act(() => {
+      terminalHarness.userInputListener?.()
+      terminal.onDataListener?.('k')
+    })
+    await vi.advanceTimersByTimeAsync(200)
+
+    expect(input).toHaveBeenCalledWith('pty-1', 'k')
+    expect(connect).toHaveBeenCalledTimes(1)
+    expect(terminal.reset).not.toHaveBeenCalled()
+  })
+
   it('delays repeated capture after an overflow and cancels the retry on unmount', async () => {
     vi.useFakeTimers()
     connect.mockResolvedValue({
