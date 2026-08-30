@@ -2,9 +2,9 @@
 import type { StateCreator } from 'zustand'
 import type { AppState } from '../types'
 import {
+  agentSubagentsEqual,
   AGENT_STATUS_STALE_AFTER_MS,
   AGENT_STATE_HISTORY_MAX,
-  agentSubagentsEqual,
   type AgentStateHistoryEntry,
   type AgentStatusEntry,
   type AgentStatusOrchestrationContext,
@@ -41,7 +41,8 @@ import {
   isOrcaDispatchPrompt,
   orchestrationLabelsMatchLiveDispatch
 } from '@/lib/agent-row-primary-text'
-import { isCompletedPiCompatibleAgentWithLiveRecoveryRecord } from '@/lib/pi-compatible-live-recovery-record'
+import { isCompletedPiCompatibleAgentWithLiveRecoveryRecord } from '@/lib/live-resume-anchor-record'
+import { recordHibernationBoundaryResolved } from '@/lib/agent-hibernation-pane-age'
 import {
   resolveAgentPaneAuthorityKey,
   retireAgentPaneAuthorityAliases,
@@ -132,6 +133,7 @@ export type AgentStatusMetadata = {
   providerSession?: AgentProviderSessionMetadata
   launchConfig?: SleepingAgentLaunchConfig
   launchToken?: string
+  terminalResumeEligible?: false
 }
 
 export type AgentStatusUpdate = {
@@ -598,7 +600,11 @@ function sleepingRecordFromEntry(args: {
   origin?: SleepingAgentSessionRecord['origin']
 }): SleepingAgentSessionRecord | null {
   const agent = args.entry.agentType
-  if (!isResumableTuiAgent(agent) || !args.entry.providerSession) {
+  if (
+    args.entry.terminalResumeEligible === false ||
+    !isResumableTuiAgent(agent) ||
+    !args.entry.providerSession
+  ) {
     return null
   }
   if (!getAgentResumeArgv(agent, args.entry.providerSession)) {
@@ -2358,6 +2364,9 @@ export const createAgentStatusSlice: StateCreator<AppState, [], [], AgentStatusS
             ? existing?.subagents
             : payload.subagents,
           ...(providerSession ? { providerSession } : {}),
+          ...(metadata?.terminalResumeEligible === false
+            ? { terminalResumeEligible: false as const }
+            : {}),
           ...(promptInteractionKey ? { promptInteractionKey } : {}),
           ...(payload.restoredUnconfirmed ? { restoredUnconfirmed: true } : {}),
           // Why: `updatedAt` cannot order two writes inside one millisecond — and the accept check
@@ -2387,6 +2396,17 @@ export const createAgentStatusSlice: StateCreator<AppState, [], [], AgentStatusS
             payload.prompt === existing.prompt
               ? existing.sessionBoundary
               : undefined)
+        }
+        // Why: a boundary `done` becoming a REAL completion does not advance
+        // `stateStartedAt`, so hibernation would still judge the row by its ancient
+        // anchor. Stamp it here, synchronously — sampling on the 60s coordinator tick
+        // misses a boundary written and cleared between two samples.
+        if (
+          entry.state === 'done' &&
+          entry.sessionBoundary !== true &&
+          existing?.sessionBoundary === true
+        ) {
+          recordHibernationBoundaryResolved(paneKey, updatedAt)
         }
         generatedTitleEntry.current = entry
         if (
