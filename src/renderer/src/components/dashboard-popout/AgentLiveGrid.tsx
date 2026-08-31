@@ -376,7 +376,8 @@ export function AgentLiveGrid({
                 ptyId={card.ptyId}
                 terminalInput={card.terminalInput ?? null}
                 terminalLinks={card.terminalLinks ?? null}
-                claimGrid={false}
+                claimGrid={true}
+                refreshAfterInput={false}
                 scaleToFit={false}
                 autoFocus={false}
                 onClosedActivate={() =>

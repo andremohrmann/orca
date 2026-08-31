@@ -107,10 +107,16 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(fit).not.toHaveBeenCalled()
   })
 
-  it('does not reconnect a passive live-view preview after typing or submitting', async () => {
+  it('does not reconnect a grid-fitted live-view preview after typing or submitting', async () => {
     vi.useFakeTimers()
     render(
-      <AgentTerminalPreview ptyId="pty-1" claimGrid={false} scaleToFit={false} autoFocus={false} />
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        claimGrid={true}
+        refreshAfterInput={false}
+        scaleToFit={false}
+        autoFocus={false}
+      />
     )
     await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
     const terminal = terminalHarness.instances[0]!

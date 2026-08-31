@@ -41,6 +41,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     terminalInput = null,
     terminalLinks = null,
     claimGrid = true,
+    refreshAfterInput = true,
     scaleToFit = true,
     autoFocus = true,
     onClosedActivate,
@@ -231,7 +232,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         userInputDisposable = installPreviewTerminalInputRouting({
           terminal,
           sendInput,
-          requestInputRefresh: claimGrid ? requestInputRefresh : () => undefined,
+          requestInputRefresh: refreshAfterInput ? requestInputRefresh : () => undefined,
           scheduleHorizontalReset: horizontalReset.schedule,
           isReplaying: () => replayDepth > 0
         })
@@ -365,6 +366,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     macOptionAsAltRef,
     pasteClipboardTextRef,
     ptyId,
+    refreshAfterInput,
     scaleToFit,
     settingsRef,
     terminalInputRef,
