@@ -5,7 +5,6 @@ export function installPreviewTerminalInputRouting(args: {
   terminal: Terminal
   sendInput: (data: string) => boolean | Promise<boolean>
   requestInputRefresh: () => void
-  shouldRequestInputRefresh?: (data: string) => boolean
   scheduleHorizontalReset: () => void
   isReplaying: () => boolean
 }): { dispose: () => void } | null {
@@ -22,9 +21,7 @@ export function installPreviewTerminalInputRouting(args: {
       return
     }
     void args.sendInput(data)
-    if (args.shouldRequestInputRefresh?.(data) ?? true) {
-      args.requestInputRefresh()
-    }
+    args.requestInputRefresh()
     if (data.includes('\r') || data.includes('\n')) {
       args.scheduleHorizontalReset()
     }
