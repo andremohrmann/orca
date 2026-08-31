@@ -107,7 +107,7 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(fit).not.toHaveBeenCalled()
   })
 
-  it('does not reset a passive live-view preview after ordinary typing', async () => {
+  it('does not reconnect a passive live-view preview after typing or submitting', async () => {
     vi.useFakeTimers()
     render(
       <AgentTerminalPreview ptyId="pty-1" claimGrid={false} scaleToFit={false} autoFocus={false} />
@@ -118,10 +118,12 @@ describe('AgentTerminalPreview fit resync', () => {
     act(() => {
       terminalHarness.userInputListener?.()
       terminal.onDataListener?.('k')
+      terminalHarness.userInputListener?.()
+      terminal.onDataListener?.('\r')
     })
     await vi.advanceTimersByTimeAsync(200)
 
-    expect(input).toHaveBeenCalledWith('pty-1', 'k')
+    expect(input.mock.calls.map(([, data]) => data)).toEqual(['k', '\r'])
     expect(connect).toHaveBeenCalledTimes(1)
     expect(terminal.reset).not.toHaveBeenCalled()
   })

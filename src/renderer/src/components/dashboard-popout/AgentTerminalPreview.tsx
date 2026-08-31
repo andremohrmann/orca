@@ -231,10 +231,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         userInputDisposable = installPreviewTerminalInputRouting({
           terminal,
           sendInput,
-          requestInputRefresh,
-          shouldRequestInputRefresh: claimGrid
-            ? undefined
-            : (data) => data.includes('\r') || data.includes('\n'),
+          requestInputRefresh: claimGrid ? requestInputRefresh : () => undefined,
           scheduleHorizontalReset: horizontalReset.schedule,
           isReplaying: () => replayDepth > 0
         })
