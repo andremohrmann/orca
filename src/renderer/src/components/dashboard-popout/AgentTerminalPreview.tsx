@@ -87,7 +87,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       container,
       getTerminal: () => terminal,
       scaleToFit,
-      localResizeToFit: !claimGrid,
+      localResizeToFit: !scaleToFit,
       onUnscaledOverflow: () => scheduleGridClaim()
     })
     const goneRetry = createPreviewGonePtyRetry({
