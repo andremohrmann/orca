@@ -54,6 +54,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
   const [ptyGone, setPtyGone] = useState(false),
     retryGonePtyRef = useRef<() => void>(() => undefined),
+    reclaimGridRef = useRef<() => void>(() => undefined),
     remoteLiveDataRef = useRef<(data: string) => void>(() => undefined),
     remoteSendInputRef = useRef<((data: string) => boolean) | null>(null)
   const { pasteClipboardTextRef, installContextMenu, contextMenu } =
@@ -102,8 +103,14 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           getTerminal: () => terminal,
           onFitApplied: () => undefined
         })
-      : { requestNow: () => undefined, schedule: () => undefined, dispose: () => undefined }
+      : {
+          requestNow: () => undefined,
+          reclaim: () => undefined,
+          schedule: () => undefined,
+          dispose: () => undefined
+        }
     scheduleGridClaim = gridClaim.schedule
+    reclaimGridRef.current = gridClaim.reclaim
     const boxResizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
@@ -343,6 +350,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       clearPreviewTerminalTimer(inputRefreshTimer)
       goneRetry.dispose()
       retryGonePtyRef.current = () => undefined
+      reclaimGridRef.current = () => undefined
       remoteLiveDataRef.current = () => undefined
       horizontalReset.dispose()
       pasteClipboardTextRef.current = null
@@ -386,6 +394,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       containerRef={containerRef}
       terminalRef={terminalRef}
       ptyGone={ptyGone}
+      onActivate={() => reclaimGridRef.current()}
       onClosedActivate={() => {
         onClosedActivate?.()
         retryGonePtyRef.current()

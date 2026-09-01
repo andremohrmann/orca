@@ -8,6 +8,7 @@ export function AgentTerminalPreviewFrame({
   containerRef,
   terminalRef,
   ptyGone,
+  onActivate,
   onClosedActivate,
   terminalTheme,
   contextMenu
@@ -16,6 +17,7 @@ export function AgentTerminalPreviewFrame({
   containerRef: React.RefObject<HTMLDivElement | null>
   terminalRef: React.MutableRefObject<Terminal | null>
   ptyGone: boolean
+  onActivate?: () => void
   onClosedActivate?: () => void
   terminalTheme: ITheme | null
   contextMenu?: ReactNode
@@ -32,6 +34,7 @@ export function AgentTerminalPreviewFrame({
         if (ptyGone) {
           return
         }
+        onActivate?.()
         terminalRef.current?.focus()
       }}
     >
