@@ -16,16 +16,20 @@ function clampGridAxis(value: number, min: number, max: number): number {
  * terminal's cell size, computes the grid the dialog box can hold, and asks
  * main to claim it (remote-desktop viewer machinery — the main-window pane
  * parks at the claimed grid and reclaims its own geometry once the claim is
- * released). Requests are keyed by target dims and never re-sent for an
- * unchanged target, so a host or phone taking the grid back doesn't start a
- * resize tug-of-war.
+ * released). Routine requests are keyed by target dims to avoid a resize
+ * tug-of-war; explicit activation can reclaim an unchanged grid.
  */
 export function createPreviewGridClaim(args: {
   ptyId: string
   container: HTMLElement
   getTerminal: () => Terminal | null
   onFitApplied?: () => void
-}): { requestNow: () => void; schedule: () => void; dispose: () => void } {
+}): {
+  requestNow: () => void
+  reclaim: () => void
+  schedule: () => void
+  dispose: () => void
+} {
   let lastRequestedFit: string | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
@@ -92,6 +96,10 @@ export function createPreviewGridClaim(args: {
 
   return {
     requestNow: request,
+    reclaim: (): void => {
+      lastRequestedFit = null
+      request()
+    },
     schedule,
     dispose: (): void => {
       disposed = true

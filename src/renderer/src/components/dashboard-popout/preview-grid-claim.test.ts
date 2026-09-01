@@ -82,4 +82,33 @@ describe('createPreviewGridClaim', () => {
     expect(fit).toHaveBeenCalledWith('pty-1', 100, 30)
     claim.dispose()
   })
+
+  it('reclaims an unchanged grid after another terminal surface takes ownership', async () => {
+    const fit = vi.fn(async (_ptyId: string, cols: number, rows: number) => ({ cols, rows }))
+    Object.assign(window, { api: { terminalPreview: { fit } } })
+    const box = document.createElement('div')
+    const container = document.createElement('div')
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    box.appendChild(container)
+    container.appendChild(screen)
+    dimension(box, 'clientWidth', 800)
+    dimension(box, 'clientHeight', 480)
+    dimension(screen, 'offsetWidth', 800)
+    dimension(screen, 'offsetHeight', 384)
+    const claim = createPreviewGridClaim({
+      ptyId: 'pty-1',
+      container,
+      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+    })
+
+    claim.requestNow()
+    claim.requestNow()
+    expect(fit).toHaveBeenCalledTimes(1)
+
+    claim.reclaim()
+    expect(fit).toHaveBeenCalledTimes(2)
+    expect(fit).toHaveBeenLastCalledWith('pty-1', 80, 30)
+    claim.dispose()
+  })
 })
