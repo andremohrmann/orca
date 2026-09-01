@@ -80,10 +80,16 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(fit).toHaveBeenCalledTimes(1)
   })
 
-  it('fits a passive live-view preview locally without claiming the PTY grid', async () => {
+  it('reflows a live-view preview locally while claiming the matching PTY grid', async () => {
     vi.useFakeTimers()
     const view = render(
-      <AgentTerminalPreview ptyId="pty-1" claimGrid={false} scaleToFit={false} autoFocus={false} />
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        claimGrid={true}
+        refreshAfterInput={false}
+        scaleToFit={false}
+        autoFocus={false}
+      />
     )
     await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
 
