@@ -10,7 +10,7 @@ import { installPreviewImeBridge, type PreviewImeBridge } from './preview-termin
 import { useAppStore } from '@/store'
 import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/runtime-terminal-stream'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
-import { createPreviewGridClaim } from './preview-grid-claim'
+import { createPreviewGridFocusHandoff } from './preview-grid-focus-handoff'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
 import {
@@ -41,6 +41,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     terminalInput = null,
     terminalLinks = null,
     claimGrid = true,
+    releaseGridOnWindowBlur = false,
     refreshAfterInput = true,
     scaleToFit = true,
     autoFocus = true,
@@ -96,19 +97,13 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       requestReconnect: () => void setup(true),
       isDisposed: () => disposed
     })
-    const gridClaim = claimGrid
-      ? createPreviewGridClaim({
-          ptyId,
-          container,
-          getTerminal: () => terminal,
-          onFitApplied: () => undefined
-        })
-      : {
-          requestNow: () => undefined,
-          reclaim: () => undefined,
-          schedule: () => undefined,
-          dispose: () => undefined
-        }
+    const gridClaim = createPreviewGridFocusHandoff({
+      claimGrid,
+      releaseOnWindowBlur: releaseGridOnWindowBlur,
+      ptyId,
+      container,
+      getTerminal: () => terminal
+    })
     scheduleGridClaim = gridClaim.schedule
     reclaimGridRef.current = gridClaim.reclaim
     const boxResizeObserver =
@@ -374,6 +369,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     macOptionAsAltRef,
     pasteClipboardTextRef,
     ptyId,
+    releaseGridOnWindowBlur,
     refreshAfterInput,
     scaleToFit,
     settingsRef,

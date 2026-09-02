@@ -23,20 +23,24 @@ export function createPreviewGridClaim(args: {
   ptyId: string
   container: HTMLElement
   getTerminal: () => Terminal | null
+  isActive?: () => boolean
   onFitApplied?: () => void
 }): {
   requestNow: () => void
   reclaim: () => void
+  release: () => void
   schedule: () => void
   dispose: () => void
 } {
   let lastRequestedFit: string | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
+  let generation = 0
+  let releaseInFlight: Promise<void> | null = null
 
   const request = (): void => {
     const terminal = args.getTerminal()
-    if (disposed || !terminal) {
+    if (disposed || args.isActive?.() === false || !terminal) {
       return
     }
     const screen = args.container.querySelector<HTMLElement>('.xterm-screen')
@@ -68,13 +72,14 @@ export function createPreviewGridClaim(args: {
       return
     }
     lastRequestedFit = fitKey
+    const requestGeneration = ++generation
     // The resize triggers a main-side resync push; the reconnect snapshot
     // carries the new grid. If the claim didn't land (a phone owns the size),
     // the dialog's scaled fallback rendering stays correct as-is.
     void window.api.terminalPreview
       .fit(args.ptyId, cols, rows)
       .then((applied) => {
-        if (applied && !disposed) {
+        if (applied && !disposed && generation === requestGeneration) {
           args.onFitApplied?.()
         }
       })
@@ -82,7 +87,7 @@ export function createPreviewGridClaim(args: {
   }
 
   const schedule = (): void => {
-    if (disposed) {
+    if (disposed || args.isActive?.() === false) {
       return
     }
     if (timer) {
@@ -98,7 +103,32 @@ export function createPreviewGridClaim(args: {
     requestNow: request,
     reclaim: (): void => {
       lastRequestedFit = null
-      request()
+      const pendingRelease = releaseInFlight
+      if (pendingRelease) {
+        void pendingRelease.then(request)
+      } else {
+        request()
+      }
+    },
+    release: (): void => {
+      if (disposed) {
+        return
+      }
+      generation++
+      lastRequestedFit = null
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+      const pendingRelease = window.api.terminalPreview
+        .releaseFit(args.ptyId)
+        .catch(() => undefined)
+      releaseInFlight = pendingRelease
+      void pendingRelease.then(() => {
+        if (releaseInFlight === pendingRelease) {
+          releaseInFlight = null
+        }
+      })
     },
     schedule,
     dispose: (): void => {
