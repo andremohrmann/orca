@@ -67,17 +67,19 @@ describe('fitPreviewTerminalToBox', () => {
     expect(onUnscaledOverflow).not.toHaveBeenCalled()
   })
 
-  it('clips the rendered screen to the preview box after fitting', () => {
+  it('scales source-grid previews without locally resizing their terminal', () => {
     const container = fixture({ boxWidth: 600, boxHeight: 300, screenWidth: 900 })
+    const previewTerminal = terminal()
 
     fitPreviewTerminalToBox({
       container,
-      terminal: terminal(),
+      terminal: previewTerminal,
       scaleToFit: true,
       onUnscaledOverflow: vi.fn()
     })
 
     const screen = container.querySelector<HTMLElement>('.xterm-screen')!
+    expect(previewTerminal.resize).not.toHaveBeenCalled()
     expect(container.style.overflow).toBe('hidden')
     expect(screen.style.overflow).toBe('hidden')
   })

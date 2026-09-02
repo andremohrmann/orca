@@ -20,6 +20,7 @@ import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridToolbar } from './AgentLiveGridToolbar'
 import { inactiveLivePaneKeys } from './agent-live-grid-auto-minimize'
 import type { RepoIcon } from '../../../../shared/repo-icon'
+import { liveTerminalUsesSourceGrid } from './agent-live-terminal-render-mode'
 
 type AgentLiveGridProps = {
   cards: DashboardCard[]
@@ -377,7 +378,7 @@ export function AgentLiveGrid({
                 terminalLinks={card.terminalLinks ?? null}
                 claimGrid={false}
                 refreshAfterInput={false}
-                scaleToFit={false}
+                scaleToFit={liveTerminalUsesSourceGrid(card.dotState)}
                 autoFocus={false}
                 onClosedActivate={() =>
                   onRevealAgent({

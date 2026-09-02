@@ -13,6 +13,6 @@ describe('AgentLiveGrid', () => {
 
     expect(source).toContain('claimGrid={false}')
     expect(source).toContain('refreshAfterInput={false}')
-    expect(source).toContain('scaleToFit={false}')
+    expect(source).toContain('scaleToFit={liveTerminalUsesSourceGrid(card.dotState)}')
   })
 })
