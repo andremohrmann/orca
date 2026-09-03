@@ -24,12 +24,12 @@ import type { AgentTerminalPreviewProps } from './agent-terminal-preview-props'
 import { createPreviewTerminalFitScheduler } from './preview-terminal-fit'
 import { createPreviewTerminalHorizontalScrollReset } from './preview-terminal-horizontal-scroll'
 import { installPreviewTerminalInputRouting } from './preview-terminal-input-routing'
-import { usePreviewTerminalContextMenu } from './usePreviewTerminalContextMenu'
 import { usePreviewTerminalAppearance } from './usePreviewTerminalAppearance'
 import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
 import { installPreviewTerminalInteractions } from './preview-terminal-interaction-installers'
 import { createPreviewGonePtyRetry } from './preview-terminal-gone-retry'
 import { usePreviewRemoteTerminalLiveTail } from './use-preview-remote-terminal-live-tail'
+import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
 const RESYNC_RETRY_DELAY_MS = 150
 type PendingLivePayload = {
   acknowledge: boolean
@@ -58,8 +58,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     reclaimGridRef = useRef<() => void>(() => undefined),
     remoteLiveDataRef = useRef<(data: string) => void>(() => undefined),
     remoteSendInputRef = useRef<((data: string) => boolean) | null>(null)
-  const { pasteClipboardTextRef, installContextMenu, contextMenu } =
-    usePreviewTerminalContextMenu(terminalRef)
+  const pasteClipboardTextRef = useRef<ReturnType<typeof createPreviewClipboardPaster> | null>(null)
   usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
   useEffect(() => {
     setPtyGone(false)
@@ -200,7 +199,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       getTerminal: () => terminal,
       sendInput,
       requestInputRefresh,
-      installContextMenu,
+      isRightClickToPasteEnabled: () =>
+        settingsRef.current?.terminalRightClickToPaste ?? isWindowsUserAgent(),
       pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
     })
 
@@ -365,7 +365,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
   }, [
     autoFocus,
     claimGrid,
-    installContextMenu,
     macOptionAsAltRef,
     pasteClipboardTextRef,
     ptyId,
@@ -396,7 +395,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         retryGonePtyRef.current()
       }}
       terminalTheme={terminalTheme}
-      contextMenu={contextMenu}
     />
   )
 }

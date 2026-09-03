@@ -11,6 +11,8 @@ import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START
 } from '@/components/terminal-pane/terminal-bracketed-paste'
+import { dispatchAppMenuPasteEvent } from '@/lib/app-menu-paste'
+import { dispatchAppMenuSelectionAction } from '@/lib/app-menu-selection-actions'
 import {
   imeHarness,
   platformState,
@@ -49,9 +51,11 @@ describe('AgentTerminalPreview', () => {
         _settings: unknown,
         _ptyId: string,
         _clientId: string,
-        watcher: (data: string) => void
+        watcher: (data: string) => void,
+        options?: { onInputReady?: (sendInput: (data: string) => boolean) => void }
       ) => {
         runtimeStreamHarness.watcher = watcher
+        options?.onInputReady?.(runtimeStreamHarness.sendInput)
         return runtimeStreamHarness.dispose
       }
     )
@@ -92,6 +96,14 @@ describe('AgentTerminalPreview', () => {
         }
       }
     })
+    emitAppMenuPaste = () => {
+      dispatchAppMenuPasteEvent()
+    }
+    emitAppMenuSelectionAction = (action) => {
+      if (!dispatchAppMenuSelectionAction(action)) {
+        window.api.ui.performNativeSelectionAction(action)
+      }
+    }
   })
 
   afterEach(() => {
@@ -360,7 +372,7 @@ describe('AgentTerminalPreview', () => {
     act(() => emitAppMenuPaste!())
 
     await waitFor(() =>
-      expect(input).toHaveBeenCalledWith('remote:windows-box@@pty-1', '\x1b\rsecond line')
+      expect(runtimeStreamHarness.sendInput).toHaveBeenCalledWith('\x1b\rsecond line')
     )
     expect(terminal.input).toHaveBeenCalledWith('\x1b\rsecond line')
     expect(terminal.paste).not.toHaveBeenCalled()
@@ -595,7 +607,7 @@ describe('AgentTerminalPreview', () => {
     expect(terminal.input).not.toHaveBeenCalled()
   })
 
-  it('leaves plain Ctrl+V to the Edit-menu accelerator but handles the shifted paste chord', async () => {
+  it('handles terminal paste chords without waiting for a hidden menu', async () => {
     const view = render(<AgentTerminalPreview ptyId="pty-1" />)
     await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
     const terminal = terminalHarness.instances[0]!
@@ -608,8 +620,7 @@ describe('AgentTerminalPreview', () => {
     const plain = terminal.customKeyHandler!(
       new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', ctrlKey: true })
     )
-    expect(plain).toBe(true)
-    expect(readClipboardText).not.toHaveBeenCalled()
+    expect(plain).toBe(false)
 
     const shiftedEvent = new KeyboardEvent('keydown', {
       key: 'V',

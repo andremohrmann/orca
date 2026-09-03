@@ -1,21 +1,23 @@
 import type { Terminal } from '@xterm/xterm'
 import { installPreviewTerminalDomPasteShortcut } from './preview-terminal-dom-paste-shortcut'
 import { installPreviewTerminalFocusReporting } from './preview-terminal-focus-reporting'
+import { installPreviewTerminalRightClickPaste } from './preview-terminal-right-click-paste'
+import type { PreviewTerminalPasteSource } from './preview-terminal-paste'
 
 export function installPreviewTerminalInteractions({
   container,
   getTerminal,
   sendInput,
   requestInputRefresh,
-  installContextMenu,
+  isRightClickToPasteEnabled,
   pasteClipboardText
 }: {
   container: HTMLElement
   getTerminal: () => Terminal | null
   sendInput: (data: string) => void
   requestInputRefresh: () => void
-  installContextMenu: (container: HTMLElement, getTerminal: () => Terminal | null) => () => void
-  pasteClipboardText: (activeElement: Element | null, source: 'keyboard') => void
+  isRightClickToPasteEnabled: () => boolean
+  pasteClipboardText: (activeElement: Element | null, source: PreviewTerminalPasteSource) => void
 }): () => void {
   const disposers = [
     installPreviewTerminalFocusReporting({
@@ -24,7 +26,12 @@ export function installPreviewTerminalInteractions({
       sendInput,
       requestInputRefresh
     }),
-    installContextMenu(container, getTerminal),
+    installPreviewTerminalRightClickPaste({
+      container,
+      getTerminal,
+      isRightClickToPasteEnabled,
+      pasteClipboardText
+    }),
     installPreviewTerminalDomPasteShortcut({ container, pasteClipboardText })
   ]
   return () => {

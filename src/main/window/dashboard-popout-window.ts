@@ -2,6 +2,7 @@ import { app, BrowserWindow, nativeTheme, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { is } from '@electron-toolkit/utils'
 import type { Store } from '../persistence'
+import { isBackgroundLaunch, showWindowWithoutStealingFocus } from './foreground-activation-policy'
 import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
 import { sendToTrustedUIRenderer } from '../ipc/ui'
 import { installPrivilegedWindowNavigationPolicy } from './privileged-window-navigation'
@@ -116,7 +117,11 @@ function showAndMaximizeDashboardPopout(window: BrowserWindow): void {
   if (window.isDestroyed()) {
     return
   }
-  window.show()
+  if (isBackgroundLaunch()) {
+    showWindowWithoutStealingFocus(window)
+  } else {
+    window.show()
+  }
   window.maximize()
   setTimeout(() => {
     if (!window.isDestroyed() && !window.isMaximized()) {
@@ -162,7 +167,9 @@ export function createOrFocusDashboardPopout(
       dashboardPopoutWindow.restore()
     }
     dashboardPopoutWindow.maximize()
-    dashboardPopoutWindow.focus()
+    if (!isBackgroundLaunch()) {
+      dashboardPopoutWindow.focus()
+    }
     if (view) {
       dashboardPopoutWindow.webContents.send('dashboard:viewRequested', view)
     }

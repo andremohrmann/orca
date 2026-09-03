@@ -35,21 +35,21 @@ type RuntimeStreamHarness = {
       settings: unknown,
       ptyId: string,
       clientId: string,
-      watcher: (data: string) => void
+      watcher: (data: string) => void,
+      options?: { onInputReady?: (sendInput: (data: string) => boolean) => void }
     ) => Promise<() => void>
   >
   watcher: ((data: string) => void) | null
   dispose: TerminalPreviewMock
+  sendInput: Mock<(data: string) => boolean>
 }
 
-const terminalHarness = vi.hoisted(
-  (): PreviewTerminalHarness => ({
-    instances: [],
-    linkProviderRegistrations: 0,
-    userInputListener: null,
-    userInputDispose: vi.fn()
-  })
-)
+const terminalHarness = vi.hoisted((): PreviewTerminalHarness => ({
+  instances: [],
+  linkProviderRegistrations: 0,
+  userInputListener: null,
+  userInputDispose: vi.fn()
+}))
 
 const platformState = vi.hoisted(() => ({ value: 'linux' }))
 const storeState = vi.hoisted(() => ({
@@ -68,13 +68,12 @@ const imeHarness = vi.hoisted(() => ({
   claimResult: false
 }))
 
-const runtimeStreamHarness = vi.hoisted(
-  (): RuntimeStreamHarness => ({
-    subscribeToRuntimeTerminalData: vi.fn(),
-    watcher: null as ((data: string) => void) | null,
-    dispose: vi.fn()
-  })
-)
+const runtimeStreamHarness = vi.hoisted((): RuntimeStreamHarness => ({
+  subscribeToRuntimeTerminalData: vi.fn(),
+  watcher: null as ((data: string) => void) | null,
+  dispose: vi.fn(),
+  sendInput: vi.fn(() => true)
+}))
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: class {

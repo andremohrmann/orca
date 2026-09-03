@@ -97,20 +97,30 @@ export {
   HEADLESS_RUNTIME_WINDOW_ID,
   UNPUBLISHED_WORKTREE_PUBLICATION_EPOCH
 } from './runtime-session-contracts'
+export {
+  TERMINAL_PTY_DEGRADATION_CAPABILITY,
+  TERMINAL_UNAVAILABLE_ERROR_CODE,
+  terminalUnavailableMessage
+} from './runtime-capability-degradation'
+export type {
+  RuntimeBrowserUnavailableReason,
+  RuntimeDegradation,
+  RuntimeTerminalUnavailableReason
+} from './runtime-capability-degradation'
 export type {
   CliRuntimeState,
   CliStatusResult,
   DeviceScope,
   RuntimeBrowserDriverState,
-  RuntimeBrowserUnavailableReason,
-  RuntimeDegradation,
   RuntimeDesktopWindowStatus,
   RuntimeGraphStatus,
+  RuntimeMobileSessionAgentTab,
   RuntimeMobileSessionBrowserTab,
   RuntimeMobileSessionClientTab,
   RuntimeMobileSessionCreateTerminalResult,
   RuntimeMobileSessionFileTab,
   RuntimeMobileSessionMarkdownTab,
+  RuntimeMobileSessionRetiredTerminalSurface,
   RuntimeMobileSessionSnapshotTab,
   RuntimeMobileSessionTabCloseResult,
   RuntimeMobileSessionTabGroup,
@@ -167,6 +177,7 @@ export type {
   RuntimeTerminalWait,
   RuntimeTerminalWaitBlockedReason,
   RuntimeTerminalWaitCondition,
+  RuntimeWorktreeTerminalCloseResult,
   RuntimeWorktreeTerminalSleepResult
 } from './runtime-terminal-contracts'
 export type {
