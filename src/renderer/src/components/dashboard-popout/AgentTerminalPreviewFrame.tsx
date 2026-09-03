@@ -1,12 +1,13 @@
 import type { Terminal, ITheme } from '@xterm/xterm'
 import type { ReactNode } from 'react'
-import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
+import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
 
 export function AgentTerminalPreviewFrame({
   className,
   containerRef,
   terminalRef,
+  ptyId,
   ptyGone,
   onActivate,
   onClosedActivate,
@@ -16,6 +17,7 @@ export function AgentTerminalPreviewFrame({
   className?: string
   containerRef: React.RefObject<HTMLDivElement | null>
   terminalRef: React.MutableRefObject<Terminal | null>
+  ptyId?: string
   ptyGone: boolean
   onActivate?: () => void
   onClosedActivate?: () => void
@@ -44,10 +46,7 @@ export function AgentTerminalPreviewFrame({
           className="absolute inset-0 flex items-center justify-center px-2.5 py-8 text-center text-[11px] text-muted-foreground transition-colors hover:bg-accent/35 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
           onClick={onClosedActivate}
         >
-          {translate(
-            'dashboardPopout.terminal.closed',
-            'No live terminal — click to restore this workspace.'
-          )}
+          {terminalPreviewUnavailableMessage({ ptyId })}
         </button>
       ) : null}
       <div

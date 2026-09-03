@@ -388,6 +388,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       className={className}
       containerRef={containerRef}
       terminalRef={terminalRef}
+      ptyId={ptyId}
       ptyGone={ptyGone}
       onActivate={() => reclaimGridRef.current()}
       onClosedActivate={() => {
