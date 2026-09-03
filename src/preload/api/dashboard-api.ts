@@ -45,6 +45,8 @@ export type TerminalPreviewApi = {
   input: (ptyId: string, data: string) => Promise<boolean>
   /** Claim the PTY grid for the preview dialog; resolves to the size actually in effect. */
   fit: (ptyId: string, cols: number, rows: number) => Promise<{ cols: number; rows: number } | null>
+  /** Release the preview dialog's PTY grid claim without disconnecting its output stream. */
+  releaseFit: (ptyId: string) => Promise<void>
   ack: (ptyId: string, bytes: number) => Promise<void>
   unsubscribe: (ptyId: string) => Promise<void>
   onData: (callback: (payload: TerminalPreviewDataPayload) => void) => () => void

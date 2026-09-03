@@ -206,8 +206,7 @@ export function AgentLiveGrid({
     const canceled = cancelRenameRef.current
     saveLayout((current) => ({
       ...current,
-      names:
-        canceled || !name ? current.names : { ...current.names, [editingPaneKey]: name }
+      names: canceled || !name ? current.names : { ...current.names, [editingPaneKey]: name }
     }))
     if (!canceled && name && card) {
       onRenameWorkspace(card.worktreeId, name)
@@ -376,7 +375,9 @@ export function AgentLiveGrid({
                 ptyId={card.ptyId}
                 terminalInput={card.terminalInput ?? null}
                 terminalLinks={card.terminalLinks ?? null}
-                claimGrid={false}
+                claimGrid={true}
+                releaseGridOnWindowBlur={true}
+                refreshAfterInput={false}
                 scaleToFit={false}
                 autoFocus={false}
                 onClosedActivate={() =>

@@ -9,6 +9,7 @@ import { AgentTerminalPreview } from './AgentTerminalPreview'
 describe('AgentTerminalPreview fit resync', () => {
   const input = vi.fn(async (_ptyId: string, _data: string) => true)
   const fit = vi.fn(async (_ptyId: string, cols: number, rows: number) => ({ cols, rows }))
+  const releaseFit = vi.fn(async () => {})
   const ack = vi.fn(async () => {})
   const unsubscribe = vi.fn(async () => {})
   const connect = vi.fn()
@@ -29,6 +30,7 @@ describe('AgentTerminalPreview fit resync', () => {
           connect,
           input,
           fit,
+          releaseFit,
           ack,
           unsubscribe,
           onData: (listener: (payload: unknown) => void) => {
@@ -78,6 +80,104 @@ describe('AgentTerminalPreview fit resync', () => {
     await vi.waitFor(() => expect(connect).toHaveBeenCalledTimes(2))
     await vi.advanceTimersByTimeAsync(400)
     expect(fit).toHaveBeenCalledTimes(1)
+  })
+
+  it('reflows a live-view preview locally while claiming the matching PTY grid', async () => {
+    vi.useFakeTimers()
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        claimGrid={true}
+        refreshAfterInput={false}
+        scaleToFit={false}
+        autoFocus={false}
+      />
+    )
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+
+    const host = view.container.querySelector<HTMLElement>('.origin-bottom-left')!
+    const box = host.parentElement!
+    Object.defineProperty(box, 'clientWidth', { configurable: true, value: 600 })
+    Object.defineProperty(box, 'clientHeight', { configurable: true, value: 320 })
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    Object.defineProperty(screen, 'offsetWidth', { configurable: true, value: 800 })
+    Object.defineProperty(screen, 'offsetHeight', { configurable: true, value: 384 })
+    host.appendChild(screen)
+
+    act(() => emitData?.({ type: 'data', ptyId: 'pty-1', data: 'output', bytes: 6 }))
+    act(() =>
+      terminalHarness.instances[0]!.writeCallbacks.splice(0).forEach((callback) => callback())
+    )
+    await vi.advanceTimersByTimeAsync(20)
+
+    expect(terminalHarness.instances[0]!.resize).toHaveBeenCalledWith(60, 20)
+    expect(fit).not.toHaveBeenCalled()
+  })
+
+  it('does not reconnect a grid-fitted live-view preview after typing or submitting', async () => {
+    vi.useFakeTimers()
+    render(
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        claimGrid={true}
+        refreshAfterInput={false}
+        scaleToFit={false}
+        autoFocus={false}
+      />
+    )
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+
+    act(() => {
+      terminalHarness.userInputListener?.()
+      terminal.onDataListener?.('k')
+      terminalHarness.userInputListener?.()
+      terminal.onDataListener?.('\r')
+    })
+    await vi.advanceTimersByTimeAsync(200)
+
+    expect(input.mock.calls.map(([, data]) => data)).toEqual(['k', '\r'])
+    expect(connect).toHaveBeenCalledTimes(1)
+    expect(terminal.reset).not.toHaveBeenCalled()
+  })
+
+  it('hands grid ownership back on blur without disconnecting the live stream', async () => {
+    vi.useFakeTimers()
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        claimGrid={true}
+        releaseGridOnWindowBlur={true}
+        refreshAfterInput={false}
+        scaleToFit={false}
+        autoFocus={false}
+      />
+    )
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+
+    const host = view.container.querySelector<HTMLElement>('.origin-bottom-left')!
+    const box = host.parentElement!
+    Object.defineProperty(box, 'clientWidth', { configurable: true, value: 800 })
+    Object.defineProperty(box, 'clientHeight', { configurable: true, value: 480 })
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    Object.defineProperty(screen, 'offsetWidth', { configurable: true, value: 800 })
+    Object.defineProperty(screen, 'offsetHeight', { configurable: true, value: 384 })
+    host.appendChild(screen)
+    await vi.advanceTimersByTimeAsync(200)
+    expect(fit).toHaveBeenCalledWith('pty-1', 80, 30)
+
+    hasFocus.mockReturnValue(false)
+    act(() => window.dispatchEvent(new Event('blur')))
+    expect(releaseFit).toHaveBeenCalledWith('pty-1')
+    expect(unsubscribe).not.toHaveBeenCalled()
+
+    hasFocus.mockReturnValue(true)
+    act(() => window.dispatchEvent(new Event('focus')))
+    await vi.waitFor(() => expect(fit).toHaveBeenCalledTimes(2))
+    expect(connect).toHaveBeenCalledTimes(1)
   })
 
   it('delays repeated capture after an overflow and cancels the retry on unmount', async () => {

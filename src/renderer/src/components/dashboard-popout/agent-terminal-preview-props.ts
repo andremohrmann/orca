@@ -8,6 +8,8 @@ export type AgentTerminalPreviewProps = {
   terminalInput?: DashboardCardTerminalInput | null
   terminalLinks?: DashboardCardTerminalLinks | null
   claimGrid?: boolean
+  releaseGridOnWindowBlur?: boolean
+  refreshAfterInput?: boolean
   scaleToFit?: boolean
   autoFocus?: boolean
   onClosedActivate?: () => void

@@ -82,4 +82,107 @@ describe('createPreviewGridClaim', () => {
     expect(fit).toHaveBeenCalledWith('pty-1', 100, 30)
     claim.dispose()
   })
+
+  it('reclaims an unchanged grid after another terminal surface takes ownership', async () => {
+    const fit = vi.fn(async (_ptyId: string, cols: number, rows: number) => ({ cols, rows }))
+    Object.assign(window, { api: { terminalPreview: { fit } } })
+    const box = document.createElement('div')
+    const container = document.createElement('div')
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    box.appendChild(container)
+    container.appendChild(screen)
+    dimension(box, 'clientWidth', 800)
+    dimension(box, 'clientHeight', 480)
+    dimension(screen, 'offsetWidth', 800)
+    dimension(screen, 'offsetHeight', 384)
+    const claim = createPreviewGridClaim({
+      ptyId: 'pty-1',
+      container,
+      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+    })
+
+    claim.requestNow()
+    claim.requestNow()
+    expect(fit).toHaveBeenCalledTimes(1)
+
+    claim.reclaim()
+    expect(fit).toHaveBeenCalledTimes(2)
+    expect(fit).toHaveBeenLastCalledWith('pty-1', 80, 30)
+    claim.dispose()
+  })
+
+  it('releases ownership without disconnecting and can reclaim the same grid', async () => {
+    const fit = vi.fn(async (_ptyId: string, cols: number, rows: number) => ({ cols, rows }))
+    let resolveRelease!: () => void
+    const releaseFit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRelease = resolve
+        })
+    )
+    Object.assign(window, { api: { terminalPreview: { fit, releaseFit } } })
+    const box = document.createElement('div')
+    const container = document.createElement('div')
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    box.appendChild(container)
+    container.appendChild(screen)
+    dimension(box, 'clientWidth', 800)
+    dimension(box, 'clientHeight', 480)
+    dimension(screen, 'offsetWidth', 800)
+    dimension(screen, 'offsetHeight', 384)
+    const claim = createPreviewGridClaim({
+      ptyId: 'pty-1',
+      container,
+      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+    })
+
+    claim.requestNow()
+    claim.release()
+    expect(releaseFit).toHaveBeenCalledWith('pty-1')
+
+    claim.reclaim()
+    expect(fit).toHaveBeenCalledTimes(1)
+    resolveRelease()
+    await vi.waitFor(() => expect(fit).toHaveBeenCalledTimes(2))
+    expect(fit).toHaveBeenCalledTimes(2)
+    expect(fit).toHaveBeenLastCalledWith('pty-1', 80, 30)
+    claim.dispose()
+  })
+
+  it('cancels pending claims and ignores resize signals while inactive', async () => {
+    vi.useFakeTimers()
+    const fit = vi.fn(async () => ({ cols: 80, rows: 30 }))
+    const releaseFit = vi.fn(async () => {})
+    Object.assign(window, { api: { terminalPreview: { fit, releaseFit } } })
+    const box = document.createElement('div')
+    const container = document.createElement('div')
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    box.appendChild(container)
+    container.appendChild(screen)
+    dimension(box, 'clientWidth', 800)
+    dimension(box, 'clientHeight', 480)
+    dimension(screen, 'offsetWidth', 800)
+    dimension(screen, 'offsetHeight', 384)
+    let active = true
+    const claim = createPreviewGridClaim({
+      ptyId: 'pty-1',
+      container,
+      getTerminal: () => ({ cols: 80, rows: 24 }) as never,
+      isActive: () => active
+    })
+
+    claim.schedule()
+    active = false
+    claim.release()
+    await vi.advanceTimersByTimeAsync(200)
+    claim.schedule()
+    claim.requestNow()
+    expect(fit).not.toHaveBeenCalled()
+    expect(releaseFit).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+    claim.dispose()
+  })
 })

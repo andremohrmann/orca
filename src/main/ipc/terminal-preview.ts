@@ -30,6 +30,7 @@ export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): vo
   ipcMain.removeHandler('terminalPreview:input')
   ipcMain.removeHandler('terminalPreview:ack')
   ipcMain.removeHandler('terminalPreview:fit')
+  ipcMain.removeHandler('terminalPreview:releaseFit')
 
   const subscriptionsByContents = new Map<number, Map<string, TerminalPreviewOutputStream>>()
   // Why: the preview dialog claims the PTY grid through the remote-desktop
@@ -40,7 +41,7 @@ export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): vo
 
   const previewViewerKey = (contentsId: number): string => `dashboard-popout:${contentsId}`
 
-  const releaseFitClaim = (contentsId: number, ptyId: string): void => {
+  const releaseFitClaim = async (contentsId: number, ptyId: string): Promise<void> => {
     const claimed = fitClaimsByContents.get(contentsId)
     if (!claimed?.delete(ptyId)) {
       return
@@ -48,7 +49,7 @@ export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): vo
     if (claimed.size === 0) {
       fitClaimsByContents.delete(contentsId)
     }
-    void runtime
+    await runtime
       .unregisterRemoteDesktopViewer(ptyId, previewViewerKey(contentsId))
       .catch(() => undefined)
   }
@@ -70,7 +71,7 @@ export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): vo
     }
     // Why: releasing one claim mutates this map while the remaining claims still need teardown.
     for (const ptyId of fitClaimsByContents.get(contentsId)?.keys() ?? []) {
-      releaseFitClaim(contentsId, ptyId)
+      void releaseFitClaim(contentsId, ptyId)
     }
   }
 
@@ -237,12 +238,12 @@ export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): vo
           return null
         }
         if (!applied) {
-          releaseFitClaim(event.sender.id, ptyId)
+          await releaseFitClaim(event.sender.id, ptyId)
           return null
         }
       } catch {
         if (fitClaimsByContents.get(event.sender.id)?.get(ptyId) === claimToken) {
-          releaseFitClaim(event.sender.id, ptyId)
+          await releaseFitClaim(event.sender.id, ptyId)
         }
         return null
       }
@@ -250,11 +251,18 @@ export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): vo
     }
   )
 
+  ipcMain.handle('terminalPreview:releaseFit', async (event, args: { ptyId?: unknown }) => {
+    if (!isTerminalPreviewRenderer(event.sender) || !isValidPtyId(args?.ptyId)) {
+      return
+    }
+    await releaseFitClaim(event.sender.id, args.ptyId)
+  })
+
   ipcMain.handle('terminalPreview:unsubscribe', (event, args: { ptyId?: unknown }): void => {
     if (!isTerminalPreviewRenderer(event.sender) || !isValidPtyId(args?.ptyId)) {
       return
     }
     subscriptionsByContents.get(event.sender.id)?.get(args.ptyId)?.dispose()
-    releaseFitClaim(event.sender.id, args.ptyId)
+    void releaseFitClaim(event.sender.id, args.ptyId)
   })
 }
