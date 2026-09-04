@@ -158,6 +158,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       container,
       getTerminal: () => terminal,
       getTerminalInput: () => terminalInputRef.current,
+      getTerminalLinks: () => terminalLinksRef.current,
       writePty: sendInput,
       isDisposed: () => disposed
     })

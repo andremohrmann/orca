@@ -2,12 +2,18 @@ import type { Terminal } from '@xterm/xterm'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import {
   executeTerminalPastePlan,
-  planTerminalPasteWithYield
+  planTerminalPasteWithYield,
+  type TerminalPasteTextOptions
 } from '@/components/terminal-pane/terminal-paste-coordinator'
 import { resolveTerminalPasteRuntime } from '@/components/terminal-pane/terminal-paste-runtime'
-import { TERMINAL_PASTE_MAX_BYTES } from '@/components/terminal-pane/terminal-paste-limits'
 import { pasteTerminalText } from '@/components/terminal-pane/terminal-bracketed-paste'
-import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
+import { pasteTerminalClipboard } from '@/components/terminal-pane/terminal-clipboard-paste'
+import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/runtime-terminal-stream'
+import { parseAppSshPtyId } from '../../../../shared/ssh-pty-id'
+import type {
+  DashboardCardTerminalInput,
+  DashboardCardTerminalLinks
+} from '../../../../shared/dashboard-snapshot'
 
 export type PreviewTerminalPasteSource = 'keyboard' | 'app-menu' | 'right-click'
 
@@ -21,18 +27,13 @@ export function createPreviewClipboardPaster(deps: {
   container: HTMLElement
   getTerminal: () => Terminal | null
   getTerminalInput: () => DashboardCardTerminalInput | null
+  getTerminalLinks: () => DashboardCardTerminalLinks | null
   writePty: (data: string) => boolean | Promise<boolean>
   isDisposed: () => boolean
 }): (activeElementAtDispatch: Element | null, source: PreviewTerminalPasteSource) => Promise<void> {
   return async (activeElementAtDispatch, source) => {
-    let text: string
-    try {
-      text = await window.api.ui.readClipboardText({ maxBytes: TERMINAL_PASTE_MAX_BYTES })
-    } catch {
-      return
-    }
     const pasteTerminal = deps.getTerminal()
-    if (!pasteTerminal || !text) {
+    if (!pasteTerminal) {
       return
     }
     const targetIsCurrent = (): boolean =>
@@ -44,29 +45,52 @@ export function createPreviewClipboardPaster(deps: {
     if (!targetIsCurrent()) {
       return
     }
-    const terminalInput = deps.getTerminalInput()
-    const platform = terminalInput?.hostPlatform ?? getShortcutPlatform()
-    const plan = await planTerminalPasteWithYield({
-      text,
-      source,
-      target: {
-        kind: 'terminal',
-        paneId: 0,
-        leafId: deps.ptyId,
-        ptyId: deps.ptyId,
-        runtime: resolveTerminalPasteRuntime({ platform, ptyId: deps.ptyId })
-      },
-      forceBracketedPasteForMultiline: terminalInput?.forceBracketedMultilineTextPaste,
-      windowsInputRecordNewline: terminalInput?.windowsInputRecordPasteNewline,
-      terminalBracketedPasteMode: pasteTerminal.modes.bracketedPasteMode
-    })
-    await executeTerminalPastePlan(plan, {
-      // Why: stream large pastes so neither terminal transport receives one huge payload.
-      pasteText: (text, options) => pasteTerminalText(pasteTerminal, text, options),
-      writePty: deps.writePty,
-      isTargetCurrent: targetIsCurrent,
-      // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
-      canContinue: () => true
+    const pasteText = async (
+      text: string,
+      options?: TerminalPasteTextOptions
+    ): Promise<boolean> => {
+      const terminalInput = deps.getTerminalInput()
+      const platform = terminalInput?.hostPlatform ?? getShortcutPlatform()
+      const plan = await planTerminalPasteWithYield({
+        text,
+        source,
+        target: {
+          kind: 'terminal',
+          paneId: 0,
+          leafId: deps.ptyId,
+          ptyId: deps.ptyId,
+          runtime: resolveTerminalPasteRuntime({
+            platform,
+            ptyId: deps.ptyId,
+            connectionId: parseAppSshPtyId(deps.ptyId)?.connectionId ?? null
+          })
+        },
+        forceBracketedPaste: options?.forceBracketedPaste,
+        forceBracketedPasteForMultiline:
+          options?.forceBracketedPasteForMultiline ??
+          terminalInput?.forceBracketedMultilineTextPaste,
+        windowsInputRecordNewline:
+          options?.windowsInputRecordNewline ?? terminalInput?.windowsInputRecordPasteNewline,
+        terminalBracketedPasteMode: pasteTerminal.modes.bracketedPasteMode
+      })
+      const execution = await executeTerminalPastePlan(plan, {
+        // Why: stream large pastes so neither terminal transport receives one huge payload.
+        pasteText: (value, pasteOptions) => pasteTerminalText(pasteTerminal, value, pasteOptions),
+        writePty: deps.writePty,
+        isTargetCurrent: targetIsCurrent,
+        // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
+        canContinue: () => true
+      })
+      return execution.status === 'pasted'
+    }
+    const links = deps.getTerminalLinks()
+    await pasteTerminalClipboard({
+      readClipboardText: window.api.ui.readClipboardText,
+      saveClipboardImageAsTempFile: window.api.ui.saveClipboardImageAsTempFile,
+      pasteText,
+      connectionId: parseAppSshPtyId(deps.ptyId)?.connectionId ?? null,
+      runtimeEnvironmentId:
+        links?.runtimeEnvironmentId ?? getRemoteRuntimePtyEnvironmentId(deps.ptyId)
     })
   }
 }
