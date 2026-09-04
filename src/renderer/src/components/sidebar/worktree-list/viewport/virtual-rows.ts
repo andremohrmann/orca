@@ -175,6 +175,20 @@ function getHostStickyIndexes(rows: readonly RenderRow[], sticky: readonly numbe
   return sticky.filter((index) => rows[index]?.type === 'host-header')
 }
 
+function getCurrentVirtualItem(
+  rows: readonly RenderRow[],
+  virtualItems: readonly VirtualItem[],
+  index: number
+): VirtualItem | null {
+  const item = virtualItems.find((candidate) => candidate.index === index)
+  const row = rows[index]
+  if (!item || !row) {
+    return null
+  }
+  // Why: TanStack can retain the previous row's item for one render after rows re-key at the same index.
+  return item.key === undefined || String(item.key) === getRenderRowKey(row) ? item : null
+}
+
 /** Two-tier sticky resolution: the host card is the outer hierarchy level so
  *  it stays pinned for the whole section while group headers hand off beneath
  *  it. Without host sections this degrades to the original single-tier rules. */
@@ -196,7 +210,8 @@ export function getActiveStickyIndexesForScroll(args: {
     if (candidateIndex === null) {
       return null
     }
-    const candidate = args.virtualItems.find((item) => item.index === candidateIndex)
+    const candidateAtIndex = args.virtualItems.find((item) => item.index === candidateIndex)
+    const candidate = getCurrentVirtualItem(args.rows, args.virtualItems, candidateIndex)
     if (!candidate) {
       // Why: scrollToIndex/reveal can advance rangeStartIndex before TanStack
       // mounts the candidate row. Pinning without geometry lets a Project
@@ -204,10 +219,15 @@ export function getActiveStickyIndexesForScroll(args: {
       // sticky; group tier waits for geometry, host tier may keep the id.
       const previous = getPreviousStickyHeaderIndex(candidates, candidateIndex)
       if (previous !== null) {
-        const previousItem = args.virtualItems.find((item) => item.index === previous)
+        const previousItem = getCurrentVirtualItem(args.rows, args.virtualItems, previous)
         if (previousItem) {
           return previous
         }
+      }
+      // A mounted item with a different key is positive evidence that this index
+      // still carries the previous row model. Never pin the replacement early.
+      if (candidateAtIndex) {
+        return null
       }
       return fallbackToCandidate ? candidateIndex : null
     }

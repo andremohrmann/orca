@@ -41,8 +41,8 @@ function itemStub(id: string): RenderRow {
   return { type: 'item', key: id } as unknown as RenderRow
 }
 
-function virtualItem(index: number, start: number): VirtualItem {
-  return { index, start } as VirtualItem
+function virtualItem(index: number, start: number, key?: string): VirtualItem {
+  return { index, start, ...(key ? { key } : {}) } as VirtualItem
 }
 
 // rows: [host-a, group-a1, item, item, host-b, group-b1, item]
@@ -192,6 +192,31 @@ describe('getActiveStickyIndexesForScroll', () => {
     })
     expect(result.hostIndex).toBe(0)
     expect(result.groupIndex).toBe(1)
+  })
+
+  it('does not pin a replacement Project header from a stale same-index virtual item', () => {
+    const currentRows: RenderRow[] = [
+      groupRow('2d-3d'),
+      { type: 'folder-workspace' } as RenderRow,
+      groupRow('USA_2018'),
+      itemStub('usa-workspace')
+    ]
+    const currentSticky = getStickyHeaderIndexes(currentRows)
+    const staleItems = [
+      virtualItem(0, 0, getRenderRowKey(currentRows[0]!)),
+      virtualItem(1, 34, 'wt:old-row'),
+      virtualItem(2, 104, 'hdr:previous-project-at-index-2')
+    ]
+
+    expect(
+      getActiveStickyIndexesForScroll({
+        rows: currentRows,
+        rangeStartIndex: 2,
+        scrollOffset: 4,
+        stickyHeaderIndexes: currentSticky,
+        virtualItems: staleItems
+      })
+    ).toEqual({ hostIndex: null, groupIndex: 0 })
   })
 })
 
