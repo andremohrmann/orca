@@ -5,14 +5,17 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('AgentLiveGrid', () => {
-  it('claims live pane grids only while the dashboard window is focused', () => {
+  it('keeps live pane grid claims while the dashboard window is unfocused', () => {
     const source = readFileSync(
-      resolve(process.cwd(), 'src/renderer/src/components/dashboard-popout/AgentLiveGrid.tsx'),
+      resolve(
+        process.cwd(),
+        'src/renderer/src/components/dashboard-popout/AgentLiveGridTerminal.tsx'
+      ),
       'utf8'
     )
 
     expect(source).toContain('claimGrid={true}')
-    expect(source).toContain('releaseGridOnWindowBlur={true}')
+    expect(source).toContain('releaseGridOnWindowBlur={false}')
     expect(source).toContain('refreshAfterInput={false}')
     expect(source).toContain('scaleToFit={false}')
   })

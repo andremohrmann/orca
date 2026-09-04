@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent }
 import { formatAgentTypeLabel } from '@/lib/agent-status'
 import type { DashboardCard, DashboardFilterOption } from '../../../../shared/dashboard-snapshot'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
-import { AgentTerminalPreview } from './AgentTerminalPreview'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import { getAgentLiveGridColumns } from './agent-live-grid-layout'
@@ -20,6 +19,7 @@ import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridToolbar } from './AgentLiveGridToolbar'
 import { inactiveLivePaneKeys } from './agent-live-grid-auto-minimize'
 import type { RepoIcon } from '../../../../shared/repo-icon'
+import { AgentLiveGridTerminal } from './AgentLiveGridTerminal'
 
 type AgentLiveGridProps = {
   cards: DashboardCard[]
@@ -40,6 +40,10 @@ function getInitialContainerSize(): { width: number; height: number } {
     return { width: 0, height: 0 }
   }
   return { width: window.innerWidth, height: window.innerHeight }
+}
+
+function rememberRestoredPane(map: Map<string, number>, paneKey: string): void {
+  map.set(paneKey, Date.now())
 }
 
 export function AgentLiveGrid({
@@ -216,7 +220,7 @@ export function AgentLiveGrid({
   }
   const toggleSetValue = (key: 'minimized' | 'hidden', paneKey: string, present: boolean): void => {
     if (key === 'minimized' && !present) {
-      restoredAtByPaneKeyRef.current.set(paneKey, Date.now())
+      rememberRestoredPane(restoredAtByPaneKeyRef.current, paneKey)
     }
     saveLayout((current) => {
       const next = new Set(current[key] ?? [])
@@ -371,26 +375,7 @@ export function AgentLiveGrid({
                 onMinimize={() => toggleSetValue('minimized', card.paneKey, true)}
                 onClose={() => toggleSetValue('hidden', card.paneKey, true)}
               />
-              <AgentTerminalPreview
-                ptyId={card.ptyId}
-                terminalInput={card.terminalInput ?? null}
-                terminalLinks={card.terminalLinks ?? null}
-                claimGrid={true}
-                releaseGridOnWindowBlur={true}
-                refreshAfterInput={false}
-                scaleToFit={false}
-                autoFocus={false}
-                onClosedActivate={() =>
-                  onRevealAgent({
-                    repoId: card.repoId,
-                    worktreeId: card.worktreeId,
-                    executionHostId: card.executionHostId,
-                    tabId: card.tabId,
-                    leafId: card.leafId
-                  })
-                }
-                className="h-full min-h-0 min-w-0 max-w-full flex-1 overflow-hidden [contain:paint]"
-              />
+              <AgentLiveGridTerminal card={card} onRevealAgent={onRevealAgent} />
             </section>
           ))}
         </div>

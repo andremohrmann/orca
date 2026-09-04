@@ -180,6 +180,43 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(connect).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps grid ownership on blur when focus handoff is disabled', async () => {
+    vi.useFakeTimers()
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        claimGrid={true}
+        releaseGridOnWindowBlur={false}
+        refreshAfterInput={false}
+        scaleToFit={false}
+        autoFocus={false}
+      />
+    )
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+
+    const host = view.container.querySelector<HTMLElement>('.origin-bottom-left')!
+    const box = host.parentElement!
+    Object.defineProperty(box, 'clientWidth', { configurable: true, value: 800 })
+    Object.defineProperty(box, 'clientHeight', { configurable: true, value: 480 })
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    Object.defineProperty(screen, 'offsetWidth', { configurable: true, value: 800 })
+    Object.defineProperty(screen, 'offsetHeight', { configurable: true, value: 384 })
+    host.appendChild(screen)
+    await vi.advanceTimersByTimeAsync(200)
+    expect(fit).toHaveBeenCalledWith('pty-1', 80, 30)
+
+    hasFocus.mockReturnValue(false)
+    act(() => window.dispatchEvent(new Event('blur')))
+    expect(releaseFit).not.toHaveBeenCalled()
+
+    hasFocus.mockReturnValue(true)
+    act(() => window.dispatchEvent(new Event('focus')))
+    expect(fit).toHaveBeenCalledTimes(1)
+    expect(connect).toHaveBeenCalledTimes(1)
+  })
+
   it('delays repeated capture after an overflow and cancels the retry on unmount', async () => {
     vi.useFakeTimers()
     connect.mockResolvedValue({
