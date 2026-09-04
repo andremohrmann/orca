@@ -1,7 +1,6 @@
 // @ts-nocheck -- mechanically split from OrcaRuntimeService; behavior is covered by AST equivalence and characterization tests.
 import { OrcaRuntimeWithPickMostRecentActor } from './orca-runtime-pick-most-recent-actor'
 import type { ApplyLayoutResult, PtyLayoutState, PtyLayoutTarget } from './orca-runtime-core'
-import { DESKTOP_FIT_RENDERER_RESIZE_SUPPRESSION_MS } from '../../shared/terminal-desktop-fit-timing'
 
 export class OrcaRuntimeWithApplyLayout extends OrcaRuntimeWithPickMostRecentActor {
   protected async applyLayout(ptyId: string, target: PtyLayoutTarget): Promise<ApplyLayoutResult> {
@@ -90,7 +89,7 @@ export class OrcaRuntimeWithApplyLayout extends OrcaRuntimeWithPickMostRecentAct
       // suppression".
       if (target.kind === 'desktop') {
         this.lastRendererSizes.delete(ptyId)
-        this.suppressResizesForMs(DESKTOP_FIT_RENDERER_RESIZE_SUPPRESSION_MS)
+        this.suppressResizesForMs(500)
       }
       this.notifier?.terminalFitOverrideChanged(
         ptyId,

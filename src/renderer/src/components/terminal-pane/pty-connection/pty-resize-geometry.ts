@@ -71,17 +71,16 @@ export function installPtyResizeGeometry(session: ConnectPanePtySession): void {
     const priorProposed = session.lastObservedDesktopGrid
     session.lastObservedDesktopGrid = proposed
     if (fitOverride.mode === 'remote-desktop-fit') {
-      if (
-        shouldClaimRemoteDesktopViewport({
-          holdMode: fitOverride.mode,
-          prior: priorProposed,
-          current: proposed,
-          paneGeometryChanged,
-          paneVisible: session.deps.isVisibleRef.current,
-          documentVisible: document.visibilityState !== 'hidden',
-          documentFocused: document.hasFocus()
-        })
-      ) {
+      const shouldClaim = shouldClaimRemoteDesktopViewport({
+        holdMode: fitOverride.mode,
+        prior: priorProposed,
+        current: proposed,
+        paneGeometryChanged,
+        paneVisible: session.deps.isVisibleRef.current,
+        documentVisible: document.visibilityState !== 'hidden',
+        documentFocused: document.hasFocus()
+      })
+      if (shouldClaim) {
         // Why: a focused, visible layout change is genuine activity; release
         // the park and update xterm before claiming so the owner does not keep
         // rendering the prior owner's stale grid.
@@ -92,6 +91,9 @@ export function installPtyResizeGeometry(session: ConnectPanePtySession): void {
           session.suppressViewportClaimTerminalResize = false
         }
         session.transport.resize(proposed.cols, proposed.rows, { claim: true })
+      } else if (!isRemoteRuntimePtyId(currentPtyId)) {
+        // Why: an unfocused host must not steal the grid, but its latest DOM measurement is still the authoritative target when Live View releases it.
+        window.api.pty.reportGeometry(currentPtyId, proposed.cols, proposed.rows)
       }
       return
     }

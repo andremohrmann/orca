@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { onDriverChange } from '@/lib/pane-manager/mobile-driver-state'
-import { getFitOverrideForPty, onOverrideChange } from '@/lib/pane-manager/mobile-fit-overrides'
+import { onOverrideChange } from '@/lib/pane-manager/mobile-fit-overrides'
 import type { ManagedPane, PaneManager } from '@/lib/pane-manager/pane-manager'
 import { safeFit } from '@/lib/pane-manager/pane-tree-ops'
-import type { IDisposable } from '@xterm/xterm'
-import { DESKTOP_FIT_RENDERER_REASSERT_DELAY_MS } from '../../../../shared/terminal-desktop-fit-timing'
 import { applyDesktopFitFallbackAfterReplay } from './desktop-fit-fallback'
 import { getOverrideAffectedPanes, getPanesNeedingOverrideFit } from './override-affected-panes'
 import type { PtyTransport } from './pty-transport'
@@ -14,12 +12,6 @@ export type MobileOverlayTickDeps = {
   // Why: the overlay render resolves each pane's pty through this map, so the
   // tick gate must read the same binding to stay behavior-preserving.
   paneTransportsRef: { current: ReadonlyMap<number, Pick<PtyTransport, 'getPtyId'>> }
-  panePtyBindingsRef?: { current: ReadonlyMap<number, IDisposable> }
-  isVisibleRef?: { current: boolean }
-}
-
-type DesktopFitPtyBinding = IDisposable & {
-  reassertPtySizeAfterWindowWake?: () => void
 }
 
 function isPtyMountedInTab(
@@ -43,12 +35,7 @@ function isPtyMountedInTab(
  * rAF work — a remote reconnect replays two handle-rotation events per pane, so
  * an ungated tick costs (events x mounted panes) re-renders per network blip.
  */
-export function useMobileOverlayTicks({
-  managerRef,
-  paneTransportsRef,
-  panePtyBindingsRef,
-  isVisibleRef
-}: MobileOverlayTickDeps): {
+export function useMobileOverlayTicks({ managerRef, paneTransportsRef }: MobileOverlayTickDeps): {
   refreshMobileOverlays: () => void
 } {
   // Why: override state lives in a Map for perf; this counter forces a re-render on override change so the mobile-fit banner toggles.
@@ -65,11 +52,11 @@ export function useMobileOverlayTicks({
       pendingFitFrames.add(frameId)
     }
 
-    const scheduleFallbackTimer = (callback: () => void, delayMs = 100): void => {
+    const scheduleFallbackTimer = (callback: () => void): void => {
       const timerId = window.setTimeout(() => {
         pendingFallbackTimers.delete(timerId)
         callback()
-      }, delayMs)
+      }, 100)
       pendingFallbackTimers.add(timerId)
     }
 
@@ -134,18 +121,6 @@ export function useMobileOverlayTicks({
             })
           }
         })
-        // Why: main rejects renderer resizes briefly after releasing a remote desktop grid; reassert once that guard expires so a stale Live View row count cannot strand the prompt near the top.
-        scheduleFallbackTimer(() => {
-          if (isVisibleRef?.current === false || getFitOverrideForPty(event.ptyId)) {
-            return
-          }
-          for (const pane of getAffectedPanes()) {
-            const binding = panePtyBindingsRef?.current.get(pane.id) as
-              | DesktopFitPtyBinding
-              | undefined
-            binding?.reassertPtySizeAfterWindowWake?.()
-          }
-        }, DESKTOP_FIT_RENDERER_REASSERT_DELAY_MS)
       }
     })
 
@@ -160,7 +135,7 @@ export function useMobileOverlayTicks({
       }
       pendingFallbackTimers.clear()
     }
-  }, [isVisibleRef, managerRef, panePtyBindingsRef, paneTransportsRef])
+  }, [managerRef, paneTransportsRef])
 
   // Why: driver state lives in a Map for perf; this counter re-renders on driver flips so the lock banner toggles. See docs/mobile-presence-lock.md.
   const [, setDriverTick] = useState(0)
