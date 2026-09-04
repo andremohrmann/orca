@@ -145,7 +145,9 @@ export function useTerminalPaneFoundation(
   const daemonActions = useDaemonActions()
   const { refreshMobileOverlays } = useMobileOverlayTicks({
     managerRef,
-    paneTransportsRef
+    paneTransportsRef,
+    panePtyBindingsRef,
+    isVisibleRef
   })
 
   return {
