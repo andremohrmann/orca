@@ -14,4 +14,10 @@ describe('custom Windows updater merge safety', () => {
     expect(resolver).toContain('& git rm -- $workflowConflicts | Out-Host')
     expect(resolver).toContain('& git -c core.editor=true commit --no-edit | Out-Host')
   })
+
+  it('blocks publishing when the packaged renderer cannot start', () => {
+    expect(SCRIPT).toContain("'src/renderer/src/renderer-node-builtin-boundary.test.ts'")
+    expect(SCRIPT).toContain("'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'")
+    expect(SCRIPT).toContain("Invoke-Native 'Smoke test packaged renderer startup' node")
+  })
 })

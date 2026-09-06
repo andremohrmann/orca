@@ -183,6 +183,14 @@ function Build-Installer {
     $verifyArgs += @('-UpdateOwner', $env:ORCA_UPDATE_OWNER, '-UpdateRepo', $env:ORCA_UPDATE_REPO)
   }
   Invoke-Native 'Verify custom installer update metadata' powershell $verifyArgs
+  $unpackedExecutable = Join-Path $TargetDir 'win-unpacked\Orca.exe'
+  if (!(Test-Path -LiteralPath $unpackedExecutable)) {
+    throw "Packaged Orca executable was not created at $unpackedExecutable."
+  }
+  Invoke-Native 'Smoke test packaged renderer startup' node @(
+    'tests/tools/win-update-e2e/packaged-startup-smoke.mjs',
+    $unpackedExecutable
+  )
 }
 
 $repoRoot = Invoke-NativeOutput git @('rev-parse', '--show-toplevel')
@@ -214,6 +222,9 @@ if (!$SkipValidation) {
     'run',
     '--config',
     'config/vitest.config.ts',
+    '--testTimeout',
+    '120000',
+    'src/renderer/src/renderer-node-builtin-boundary.test.ts',
     'src/main/ipc/dashboard-popout.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
