@@ -90,7 +90,7 @@ function Merge-CustomBranch {
   if ($LASTEXITCODE -eq 0) {
     Write-Host "`n==> Custom branch already contains $UpstreamRef"
     Remove-InheritedWorkflows
-    if ((git diff --cached --name-only).Count -gt 0) {
+    if (@(git diff --cached --name-only).Count -gt 0) {
       Invoke-Native 'Commit inherited workflow cleanup' git @(
         '-c',
         'core.editor=true',
