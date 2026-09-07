@@ -7,6 +7,10 @@ const WORKFLOW = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/custom-windows-update.yml'),
   'utf8'
 )
+const PACKAGED_STARTUP_SMOKE = readFileSync(
+  resolve(import.meta.dirname, '../../tests/tools/win-update-e2e/packaged-startup-smoke.mjs'),
+  'utf8'
+)
 
 describe('custom Windows updater merge safety', () => {
   it('does not mix native command output into the conflict-resolution result', () => {
@@ -32,6 +36,14 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain("'src/renderer/src/renderer-node-builtin-boundary.test.ts'")
     expect(SCRIPT).toContain("'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'")
     expect(SCRIPT).toContain("Invoke-Native 'Smoke test packaged renderer startup' node")
+  })
+
+  it('does not fail a successful startup proof on transient Windows profile locks', () => {
+    expect(PACKAGED_STARTUP_SMOKE).toContain('maxRetries: 20')
+    expect(PACKAGED_STARTUP_SMOKE).toContain('retryDelay: 250')
+    expect(PACKAGED_STARTUP_SMOKE).toContain(
+      '[packaged-startup-smoke] could not remove temporary profile'
+    )
   })
 
   it('requires the built commit to reach the custom branch before release publication', () => {

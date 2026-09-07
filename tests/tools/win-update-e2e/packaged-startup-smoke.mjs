@@ -59,5 +59,12 @@ try {
   } catch {
     // Cleanup must not hide the renderer startup failure.
   }
-  rmSync(userDataDir, { recursive: true, force: true })
+  try {
+    rmSync(userDataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
+  } catch (error) {
+    // A just-closed Windows process can briefly retain Chromium profile handles.
+    console.warn(
+      `[packaged-startup-smoke] could not remove temporary profile ${userDataDir}: ${error.code ?? error.message}`
+    )
+  }
 }
