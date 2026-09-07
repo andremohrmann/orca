@@ -129,7 +129,7 @@ function Remove-InheritedWorkflows {
     return
   }
   Write-Host "`n==> Remove inherited upstream workflows"
-  & git rm -- $inheritedWorkflows | Out-Host
+  & git rm -f -- $inheritedWorkflows | Out-Host
   if ($LASTEXITCODE -ne 0) {
     throw 'Could not remove inherited upstream workflows.'
   }
