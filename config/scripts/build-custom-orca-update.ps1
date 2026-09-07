@@ -11,6 +11,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$customWorkflowAllowlist = @(
+  '.github/workflows/custom-windows-update.yml',
+  '.github/workflows/pr-test-loc.yml'
+)
 
 function Invoke-Native {
   param(
@@ -85,17 +89,49 @@ function Merge-CustomBranch {
   & git merge-base --is-ancestor $UpstreamRef HEAD
   if ($LASTEXITCODE -eq 0) {
     Write-Host "`n==> Custom branch already contains $UpstreamRef"
+    Remove-InheritedWorkflows
+    if (@(git diff --cached --name-only).Count -gt 0) {
+      Invoke-Native 'Commit inherited workflow cleanup' git @(
+        '-c',
+        'core.editor=true',
+        'commit',
+        '-m',
+        'chore(ci): remove inherited workflows'
+      )
+    }
     return
   }
   if ($LASTEXITCODE -ne 1) {
     throw "Could not compare $BranchName with $UpstreamRef."
   }
   Write-Host "`n==> Merge $UpstreamRef into $BranchName"
-  & git merge --no-edit $UpstreamRef
+  & git merge --no-ff --no-commit $UpstreamRef
   if ($LASTEXITCODE -ne 0) {
     if (!(Resolve-DeletedWorkflowMergeConflicts)) {
       throw 'Merge stopped. Resolve the reported conflicts, commit the merge, then rerun this script.'
     }
+  }
+  Remove-InheritedWorkflows
+  Invoke-Native 'Commit upstream merge' git @('-c', 'core.editor=true', 'commit', '--no-edit')
+}
+
+function Remove-InheritedWorkflows {
+  $workflowPaths = @(git ls-files -- '.github/workflows/*.yml' '.github/workflows/*.yaml')
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Could not list GitHub workflow files.'
+  }
+  $inheritedWorkflows = @(
+    $workflowPaths | Where-Object {
+      $_.StartsWith('.github/workflows/') -and $customWorkflowAllowlist -notcontains $_
+    }
+  )
+  if ($inheritedWorkflows.Count -eq 0) {
+    return
+  }
+  Write-Host "`n==> Remove inherited upstream workflows"
+  & git rm -f -- $inheritedWorkflows | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Could not remove inherited upstream workflows.'
   }
 }
 
@@ -123,8 +159,7 @@ function Resolve-DeletedWorkflowMergeConflicts {
     Write-Warning "Unresolved upstream conflicts:`n$($remainingConflicts -join "`n")"
     return $false
   }
-  & git -c core.editor=true commit --no-edit | Out-Host
-  return $LASTEXITCODE -eq 0
+  return $true
 }
 
 function Set-CustomBuildVersion {
@@ -183,6 +218,14 @@ function Build-Installer {
     $verifyArgs += @('-UpdateOwner', $env:ORCA_UPDATE_OWNER, '-UpdateRepo', $env:ORCA_UPDATE_REPO)
   }
   Invoke-Native 'Verify custom installer update metadata' powershell $verifyArgs
+  $unpackedExecutable = Join-Path $TargetDir 'win-unpacked\Orca.exe'
+  if (!(Test-Path -LiteralPath $unpackedExecutable)) {
+    throw "Packaged Orca executable was not created at $unpackedExecutable."
+  }
+  Invoke-Native 'Smoke test packaged renderer startup' node @(
+    'tests/tools/win-update-e2e/packaged-startup-smoke.mjs',
+    $unpackedExecutable
+  )
 }
 
 $repoRoot = Invoke-NativeOutput git @('rev-parse', '--show-toplevel')
@@ -214,6 +257,9 @@ if (!$SkipValidation) {
     'run',
     '--config',
     'config/vitest.config.ts',
+    '--testTimeout',
+    '120000',
+    'src/renderer/src/renderer-node-builtin-boundary.test.ts',
     'src/main/ipc/dashboard-popout.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
