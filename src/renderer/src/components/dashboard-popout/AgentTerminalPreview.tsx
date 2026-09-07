@@ -8,7 +8,6 @@ import { installPreviewTerminalCompatibility } from './preview-terminal-compatib
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import { installPreviewImeBridge, type PreviewImeBridge } from './preview-terminal-ime-bridge'
 import { useAppStore } from '@/store'
-import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/runtime-terminal-stream'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { createPreviewGridFocusHandoff } from './preview-grid-focus-handoff'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
@@ -28,7 +27,7 @@ import { usePreviewTerminalAppearance } from './usePreviewTerminalAppearance'
 import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
 import { installPreviewTerminalInteractions } from './preview-terminal-interaction-installers'
 import { createPreviewGonePtyRetry } from './preview-terminal-gone-retry'
-import { usePreviewRemoteTerminalLiveTail } from './use-preview-remote-terminal-live-tail'
+import { createPreviewRemoteTerminalSession } from './preview-remote-terminal-session'
 import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
 const RESYNC_RETRY_DELAY_MS = 150
 type PendingLivePayload = {
@@ -55,9 +54,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
   const [ptyGone, setPtyGone] = useState(false),
     retryGonePtyRef = useRef<() => void>(() => undefined),
-    reclaimGridRef = useRef<() => void>(() => undefined),
-    remoteLiveDataRef = useRef<(data: string) => void>(() => undefined),
-    remoteSendInputRef = useRef<((data: string) => boolean) | null>(null)
+    reclaimGridRef = useRef<() => void>(() => undefined)
   const pasteClipboardTextRef = useRef<ReturnType<typeof createPreviewClipboardPaster> | null>(null)
   usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
   useEffect(() => {
@@ -68,7 +65,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     }
     let disposed = false
     let terminal: Terminal | null = null
-    let offData: (() => void) | null = null
     let userInputDisposable: { dispose: () => void } | null = null
     let imeBridge: PreviewImeBridge | null = null
     let disposeKeyHandler: (() => void) | null = null
@@ -96,12 +92,23 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       requestReconnect: () => void setup(true),
       isDisposed: () => disposed
     })
+    const remoteSession = createPreviewRemoteTerminalSession({
+      ptyId,
+      onSnapshot: (snapshot) => {
+        setPtyGone(false)
+        replayConnection({ snapshot, replay: [] }, terminal !== null, () => undefined)
+      },
+      onData: (data) => writeLive({ type: 'data', ptyId, data, bytes: 0 }, false),
+      onResize: ({ cols, rows }) => terminal?.resize(cols, rows),
+      onUnavailable: () => setPtyGone(true)
+    })
     const gridClaim = createPreviewGridFocusHandoff({
       claimGrid,
       releaseOnWindowBlur: releaseGridOnWindowBlur,
       ptyId,
       container,
-      getTerminal: () => terminal
+      getTerminal: () => terminal,
+      transport: remoteSession ?? undefined
     })
     scheduleGridClaim = gridClaim.schedule
     reclaimGridRef.current = gridClaim.reclaim
@@ -146,12 +153,10 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         true
       )
     }
-    remoteLiveDataRef.current = (data) => writeLive({ type: 'data', ptyId, data, bytes: 0 }, false)
     const sendInput = (data: string): boolean | Promise<boolean> => {
-      if (getRemoteRuntimePtyEnvironmentId(ptyId)) {
-        return remoteSendInputRef.current?.(data) ?? false
-      }
-      return window.api.terminalPreview.input(ptyId, data)
+      return remoteSession
+        ? remoteSession.input(data)
+        : window.api.terminalPreview.input(ptyId, data)
     }
     const pasteClipboardText = createPreviewClipboardPaster({
       ptyId,
@@ -235,7 +240,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         userInputDisposable = installPreviewTerminalInputRouting({
           terminal,
           sendInput,
-          requestInputRefresh: refreshAfterInput ? requestInputRefresh : () => undefined,
+          requestInputRefresh:
+            refreshAfterInput && !remoteSession ? requestInputRefresh : () => undefined,
           scheduleHorizontalReset: horizontalReset.schedule,
           isReplaying: () => replayDepth > 0
         })
@@ -286,8 +292,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       if (disposed) {
         return
       }
-      const snap = connection.snapshot
-      if (!snap) {
+      if (!connection.snapshot) {
         refreshInFlight = false
         setPtyGone(true)
         userInputDisposable?.dispose()
@@ -321,25 +326,27 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         void setup(true)
       }, 180)
     }
-    retryGonePtyRef.current = goneRetry.retryNow
+    retryGonePtyRef.current = remoteSession ? () => void remoteSession.start() : goneRetry.retryNow
     const disposeAppMenuClipboard = installPreviewTerminalAppMenuClipboard({
       container,
       getTerminal: () => terminal,
       pasteClipboardText
     })
 
-    offData = window.api.terminalPreview.onData((payload) => {
-      if (payload.ptyId !== ptyId) {
-        return
-      }
-      if (payload.type === 'resync') {
-        void setup(true)
-        return
-      }
-      writeLive(payload)
-    })
+    const offData = remoteSession
+      ? null
+      : window.api.terminalPreview.onData((payload) => {
+          if (payload.ptyId !== ptyId) {
+            return
+          }
+          if (payload.type === 'resync') {
+            void setup(true)
+            return
+          }
+          writeLive(payload)
+        })
 
-    void setup()
+    void (remoteSession ? remoteSession.start() : setup())
     return () => {
       disposed = true
       clearPreviewTerminalTimer(retryTimer)
@@ -347,7 +354,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       goneRetry.dispose()
       retryGonePtyRef.current = () => undefined
       reclaimGridRef.current = () => undefined
-      remoteLiveDataRef.current = () => undefined
       horizontalReset.dispose()
       pasteClipboardTextRef.current = null
       gridClaim.dispose()
@@ -359,7 +365,11 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       disposeTerminalCompatibility?.()
       disposeKeyHandler?.()
       disposeInteractions?.()
-      void window.api.terminalPreview.unsubscribe(ptyId)
+      if (remoteSession) {
+        remoteSession.dispose()
+      } else {
+        void window.api.terminalPreview.unsubscribe(ptyId)
+      }
       terminal?.dispose()
       terminalRef.current = null
     }
@@ -378,11 +388,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     terminalTheme,
     terminalMode
   ])
-  usePreviewRemoteTerminalLiveTail({
-    ptyId,
-    onDataRef: remoteLiveDataRef,
-    sendInputRef: remoteSendInputRef
-  })
 
   return (
     <AgentTerminalPreviewFrame

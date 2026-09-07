@@ -1,4 +1,5 @@
 import { vi, type Mock } from 'vitest'
+import type { RemoteRuntimeMultiplexedTerminalCallbacks } from '@/runtime/remote-runtime-terminal-multiplexer-types'
 
 type TerminalPreviewMock = Mock<(...args: unknown[]) => unknown>
 
@@ -30,15 +31,9 @@ type PreviewTerminalHarness = {
 }
 
 type RuntimeStreamHarness = {
-  subscribeToRuntimeTerminalData: Mock<
-    (
-      settings: unknown,
-      ptyId: string,
-      clientId: string,
-      watcher: (data: string) => void,
-      options?: { onInputReady?: (sendInput: (data: string) => boolean) => void }
-    ) => Promise<() => void>
-  >
+  subscribeTerminal: Mock
+  callbacks: RemoteRuntimeMultiplexedTerminalCallbacks | null
+  claimViewport: Mock
   watcher: ((data: string) => void) | null
   dispose: TerminalPreviewMock
   sendInput: Mock<(data: string) => boolean>
@@ -69,7 +64,9 @@ const imeHarness = vi.hoisted(() => ({
 }))
 
 const runtimeStreamHarness = vi.hoisted((): RuntimeStreamHarness => ({
-  subscribeToRuntimeTerminalData: vi.fn(),
+  subscribeTerminal: vi.fn(),
+  callbacks: null,
+  claimViewport: vi.fn(() => true),
   watcher: null as ((data: string) => void) | null,
   dispose: vi.fn(),
   sendInput: vi.fn(() => true)
@@ -173,12 +170,10 @@ vi.mock('@/store', () => {
   useAppStore.getState = (): typeof storeState => storeState
   return { useAppStore }
 })
-vi.mock('@/runtime/runtime-terminal-stream', () => ({
-  getRemoteRuntimePtyEnvironmentId: (ptyId: string) => {
-    const match = /^remote:([^@]+)@@/.exec(ptyId)
-    return match?.[1] ?? null
-  },
-  subscribeToRuntimeTerminalData: runtimeStreamHarness.subscribeToRuntimeTerminalData
+vi.mock('@/runtime/remote-runtime-terminal-multiplexer', () => ({
+  getRemoteRuntimeTerminalMultiplexer: () => ({
+    subscribeTerminal: runtimeStreamHarness.subscribeTerminal
+  })
 }))
 
 export { imeHarness, platformState, runtimeStreamHarness, storeState, terminalHarness }

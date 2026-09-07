@@ -16,6 +16,7 @@ export function createPreviewGridFocusHandoff(args: {
   ptyId: string
   container: HTMLElement
   getTerminal: () => Terminal | null
+  transport?: Parameters<typeof createPreviewGridClaim>[0]['transport']
 }): typeof noGridClaim {
   if (!args.claimGrid) {
     return noGridClaim
@@ -24,6 +25,7 @@ export function createPreviewGridFocusHandoff(args: {
     ptyId: args.ptyId,
     container: args.container,
     getTerminal: args.getTerminal,
+    transport: args.transport,
     isActive: () => !args.releaseOnWindowBlur || document.hasFocus()
   })
   const disposeOwnership = installPreviewGridFocusOwnership({

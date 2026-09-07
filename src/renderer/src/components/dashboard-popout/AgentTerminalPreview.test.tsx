@@ -46,19 +46,17 @@ describe('AgentTerminalPreview', () => {
     imeHarness.trackers.length = 0
     imeHarness.claimResult = false
     runtimeStreamHarness.watcher = null
-    runtimeStreamHarness.subscribeToRuntimeTerminalData.mockImplementation(
-      async (
-        _settings: unknown,
-        _ptyId: string,
-        _clientId: string,
-        watcher: (data: string) => void,
-        options?: { onInputReady?: (sendInput: (data: string) => boolean) => void }
-      ) => {
-        runtimeStreamHarness.watcher = watcher
-        options?.onInputReady?.(runtimeStreamHarness.sendInput)
-        return runtimeStreamHarness.dispose
+    runtimeStreamHarness.subscribeTerminal.mockImplementation(async ({ callbacks }) => {
+      runtimeStreamHarness.callbacks = callbacks
+      runtimeStreamHarness.watcher = callbacks.onData
+      callbacks.onSnapshot('remote snapshot', { cols: 80, rows: 24, seq: 1 })
+      callbacks.onSubscribed?.()
+      return {
+        sendInput: runtimeStreamHarness.sendInput,
+        claimViewport: runtimeStreamHarness.claimViewport,
+        close: runtimeStreamHarness.dispose
       }
-    )
+    })
     emitData = null
     emitAppMenuPaste = null
     emitAppMenuSelectionAction = null
@@ -378,13 +376,13 @@ describe('AgentTerminalPreview', () => {
     expect(terminal.paste).not.toHaveBeenCalled()
   })
 
-  it('subscribes remote previews to live-tail output without preview IPC ACKs', async () => {
+  it('uses the remote snapshot and live stream without local preview IPC', async () => {
     render(<AgentTerminalPreview ptyId="remote:windows-box@@pty-1" />)
     await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
-    await waitFor(() =>
-      expect(runtimeStreamHarness.subscribeToRuntimeTerminalData).toHaveBeenCalled()
-    )
+    await waitFor(() => expect(runtimeStreamHarness.subscribeTerminal).toHaveBeenCalled())
     const terminal = terminalHarness.instances[0]!
+    expect(connect).not.toHaveBeenCalled()
+    expect(terminal.write).toHaveBeenCalledWith('remote snapshot', expect.any(Function))
 
     act(() => runtimeStreamHarness.watcher?.('remote live'))
 

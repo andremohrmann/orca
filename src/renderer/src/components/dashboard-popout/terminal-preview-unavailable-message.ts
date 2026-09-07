@@ -1,6 +1,7 @@
 import { translate } from '@/i18n/i18n'
 import type { DashboardCardHostKind } from '../../../../shared/dashboard-snapshot'
 import { parseAppSshPtyId } from '../../../../shared/ssh-pty-id'
+import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime-pty-id'
 
 /**
  * A missing buffer snapshot only proves the pane exited when the client could have
@@ -14,7 +15,8 @@ export function terminalPreviewUnavailableMessage(source: {
 }): string {
   const isRemote =
     source.hostKind === 'ssh' ||
-    (typeof source.ptyId === 'string' && parseAppSshPtyId(source.ptyId) !== null)
+    (typeof source.ptyId === 'string' &&
+      (parseAppSshPtyId(source.ptyId) !== null || parseRemoteRuntimePtyId(source.ptyId) !== null))
   return isRemote
     ? translate(
         'dashboardPopout.terminal.remotePreviewUnavailable',

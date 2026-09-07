@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import type { TerminalPreviewApi } from '../../../../preload/api/dashboard-api'
 
 const FIT_REQUEST_DEBOUNCE_MS = 200
 // Mirror the runtime's clampTerminalViewport so a request always matches what lands.
@@ -25,6 +26,7 @@ export function createPreviewGridClaim(args: {
   getTerminal: () => Terminal | null
   isActive?: () => boolean
   onFitApplied?: () => void
+  transport?: Pick<TerminalPreviewApi, 'fit' | 'releaseFit'>
 }): {
   requestNow: () => void
   reclaim: () => void
@@ -37,6 +39,7 @@ export function createPreviewGridClaim(args: {
   let disposed = false
   let generation = 0
   let releaseInFlight: Promise<void> | null = null
+  const transport = args.transport ?? window.api.terminalPreview
 
   const request = (): void => {
     const terminal = args.getTerminal()
@@ -76,9 +79,12 @@ export function createPreviewGridClaim(args: {
     // The resize triggers a main-side resync push; the reconnect snapshot
     // carries the new grid. If the claim didn't land (a phone owns the size),
     // the dialog's scaled fallback rendering stays correct as-is.
-    void window.api.terminalPreview
+    void transport
       .fit(args.ptyId, cols, rows)
       .then((applied) => {
+        if (!applied && generation === requestGeneration) {
+          lastRequestedFit = null
+        }
         if (applied && !disposed && generation === requestGeneration) {
           args.onFitApplied?.()
         }
@@ -120,9 +126,7 @@ export function createPreviewGridClaim(args: {
         clearTimeout(timer)
         timer = null
       }
-      const pendingRelease = window.api.terminalPreview
-        .releaseFit(args.ptyId)
-        .catch(() => undefined)
+      const pendingRelease = transport.releaseFit(args.ptyId).catch(() => undefined)
       releaseInFlight = pendingRelease
       void pendingRelease.then(() => {
         if (releaseInFlight === pendingRelease) {

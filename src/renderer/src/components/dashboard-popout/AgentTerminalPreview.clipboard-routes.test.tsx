@@ -152,18 +152,18 @@ vi.mock('@/store', () => {
   useAppStore.getState = (): typeof storeState => storeState
   return { useAppStore }
 })
-vi.mock('@/runtime/runtime-terminal-stream', () => ({
-  getRemoteRuntimePtyEnvironmentId: (ptyId: string) => /^remote:([^@]+)@@/.exec(ptyId)?.[1] ?? null,
-  subscribeToRuntimeTerminalData: async (
-    _settings: unknown,
-    _ptyId: string,
-    _clientId: string,
-    _watcher: (data: string) => void,
-    options?: { onInputReady?: (sendInput: (data: string) => boolean) => void }
-  ) => {
-    options?.onInputReady?.(runtimeStreamHarness.sendInput)
-    return vi.fn()
-  }
+vi.mock('@/runtime/remote-runtime-terminal-multiplexer', () => ({
+  getRemoteRuntimeTerminalMultiplexer: () => ({
+    subscribeTerminal: async ({ callbacks }) => {
+      callbacks.onSnapshot('', { cols: 80, rows: 24, seq: 1 })
+      callbacks.onSubscribed?.()
+      return {
+        sendInput: runtimeStreamHarness.sendInput,
+        claimViewport: () => true,
+        close: vi.fn()
+      }
+    }
+  })
 }))
 
 import { AgentTerminalPreview } from './AgentTerminalPreview'

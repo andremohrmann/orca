@@ -233,7 +233,11 @@ export function installPtyInputRecovery(session: ConnectPanePtySession): void {
   }
   session.armVisibleRemoteViewportClaim = (): void => {
     const ptyId = session.transport.getPtyId()
-    if (!ptyId || !isRemoteRuntimePtyId(ptyId)) {
+    // Live View also holds local and SSH terminals; window focus must reclaim those grids before input.
+    if (
+      !ptyId ||
+      (!isRemoteRuntimePtyId(ptyId) && getFitOverrideForPty(ptyId)?.mode !== 'remote-desktop-fit')
+    ) {
       session.visibleRemoteViewportClaimPtyId = null
       session.pendingVisibleRemoteViewportClaim = false
       return
