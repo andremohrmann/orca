@@ -69,9 +69,14 @@ jobs:
             -StampCustomVersion
 
       - name: Push updated custom branch
-        continue-on-error: true
         shell: pwsh
-        run: git push origin HEAD:$env:CUSTOM_BRANCH
+        run: |
+          git push origin HEAD:$env:CUSTOM_BRANCH
+          $localHead = git rev-parse HEAD
+          $remoteHead = (git ls-remote origin "refs/heads/$env:CUSTOM_BRANCH").Split("`t")[0]
+          if ($remoteHead -ne $localHead) {
+            throw "Published branch head $remoteHead does not match built commit $localHead."
+          }
 
       - name: Compute release metadata
         id: release
