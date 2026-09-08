@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { launchWarpTab } from '@/lib/launch-warp-tab'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { translate } from '@/i18n/i18n'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
@@ -188,6 +189,8 @@ export function useTabBarCreateMenuController({
   )
   const handleSelectCreateMenuOption = (option: TabCreateMenuOption): void => {
     switch (option.kind) {
+      case 'new-warp':
+        return launchWarpTab(worktreeId, resolvedGroupId, queueTerminalTabFocusAfterNewTabMenuClose)
       case 'new-terminal':
         queueNewActiveTerminalFocusAfterNewTabMenuClose()
         onNewTerminalTab()

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { launchWarpTab } from './launch-warp-tab'
 import { runQuickCommandInNewTab } from './run-quick-command-in-new-tab'
 
 type MockStoreState = {
@@ -56,6 +57,20 @@ describe('runQuickCommandInNewTab', () => {
   beforeEach(() => {
     mockState = createStoreState()
     mocks.launchAgentInNewTab.mockReset()
+  })
+
+  it('launches Warp in the requested workspace pane without replacing quick-command recency', () => {
+    const onCreated = vi.fn()
+    launchWarpTab('wt-1', 'group-1', onCreated)
+    expect(onCreated).toHaveBeenCalledWith('tab-new')
+    expect(mockState.createTab).toHaveBeenCalledWith('wt-1', 'group-1', undefined, {
+      quickCommandLabel: 'Warp'
+    })
+    expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', { command: 'warp' })
+    expect(mockState.setActiveTabType).toHaveBeenCalledWith('terminal')
+    expect(mockState.setTabBarOrder).toHaveBeenCalledWith('wt-1', ['tab-existing', 'tab-new'])
+    expect(mockState.setRecentQuickCommandForGroup).not.toHaveBeenCalled()
+    expect(mocks.launchAgentInNewTab).not.toHaveBeenCalled()
   })
 
   it('flattens multiline quick commands before queuing', () => {

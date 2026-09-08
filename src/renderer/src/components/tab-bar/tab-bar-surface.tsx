@@ -1,3 +1,4 @@
+import { WARP_TAB_CREATE_OPTION } from './tab-create-menu-options'
 import React from 'react'
 import { SortableContext } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
@@ -115,6 +116,7 @@ export function renderTabBarSurface({
     newSimulatorShortcut,
     newFileShortcut,
     openMarkdownShortcut,
+    onNewWarpTab: () => handleSelectCreateMenuOption(WARP_TAB_CREATE_OPTION),
     queueNewActiveTerminalFocusAfterNewTabMenuClose
   })
 

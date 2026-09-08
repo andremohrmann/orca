@@ -1,3 +1,4 @@
+import { WarpIcon } from '../icons/WarpIcon'
 import React from 'react'
 import {
   FilePlus,
@@ -164,7 +165,9 @@ function getActionPresentation(
 } {
   if (option.kind === 'menu') {
     const icon =
-      option.option.kind === 'new-browser' ? (
+      option.option.kind === 'new-warp' ? (
+        <WarpIcon className="size-3.5 shrink-0" />
+      ) : option.option.kind === 'new-browser' ? (
         <Globe className="size-3.5 shrink-0" aria-hidden="true" />
       ) : option.option.kind === 'new-markdown' ? (
         <FilePlus className="size-3.5 shrink-0" aria-hidden="true" />

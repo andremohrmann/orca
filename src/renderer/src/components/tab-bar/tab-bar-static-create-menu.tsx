@@ -1,4 +1,5 @@
 import React from 'react'
+import { WarpIcon } from '../icons/WarpIcon'
 import { FilePlus, FileText, Globe, Smartphone, TerminalSquare } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import { DropdownMenuItem, DropdownMenuShortcut } from '@/components/ui/dropdown-menu'
@@ -29,6 +30,7 @@ export function renderTabBarStaticCreateMenu({
   newSimulatorShortcut,
   newFileShortcut,
   openMarkdownShortcut,
+  onNewWarpTab,
   queueNewActiveTerminalFocusAfterNewTabMenuClose
 }: {
   props: TabBarProps
@@ -48,6 +50,7 @@ export function renderTabBarStaticCreateMenu({
   newSimulatorShortcut: string
   newFileShortcut: string
   openMarkdownShortcut: string | null
+  onNewWarpTab: () => void
   queueNewActiveTerminalFocusAfterNewTabMenuClose: () => void
 }): React.ReactNode {
   const {
@@ -101,6 +104,15 @@ export function renderTabBarStaticCreateMenu({
         <DropdownMenuShortcut>{newTerminalShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
     )
+  const newWarpMenuItem = !terminalOnly ? (
+    <DropdownMenuItem
+      onSelect={onNewWarpTab}
+      className="gap-2 rounded-[7px] px-2 py-1.5 text-[12px] leading-5 font-medium"
+    >
+      <WarpIcon className="size-4 text-muted-foreground" />
+      Warp
+    </DropdownMenuItem>
+  ) : null
   const newBrowserMenuItem =
     !terminalOnly && managedBrowserCreationEnabled ? (
       <DropdownMenuItem
@@ -183,6 +195,7 @@ export function renderTabBarStaticCreateMenu({
       {newMarkdownMenuItem}
       {openMarkdownMenuItem}
       {defaultTerminalMenuItems}
+      {newWarpMenuItem}
       {newBrowserMenuItem}
       {newSimulatorMenuItem}
       {mobileEmulatorIntroMenuBlock}
@@ -190,6 +203,7 @@ export function renderTabBarStaticCreateMenu({
   ) : (
     <>
       {defaultTerminalMenuItems}
+      {newWarpMenuItem}
       {newBrowserMenuItem}
       {newMarkdownMenuItem}
       {openMarkdownMenuItem}
