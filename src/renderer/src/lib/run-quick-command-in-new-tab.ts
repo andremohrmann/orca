@@ -11,7 +11,8 @@ import type { TerminalQuickCommand } from '../../../shared/terminal-quick-comman
 export type RunQuickCommandInNewTabArgs = {
   command: TerminalQuickCommand
   worktreeId: string
-  historyId?: string
+  /** Null skips recency for built-in launchers that are not saved quick commands. */
+  historyId?: string | null
   /** Tab group the user clicked from. Keeps the spawned terminal in the
    *  pane the user initiated from when available. */
   groupId?: string | null
@@ -73,7 +74,7 @@ export function runQuickCommandInNewTab({
     })
     if (result?.tabId) {
       const launchedGroupId = resolveQuickCommandGroupId(worktreeId, result.tabId, groupId)
-      if (launchedGroupId) {
+      if (launchedGroupId && historyId !== null) {
         useAppStore.getState().setRecentQuickCommandForGroup(launchedGroupId, historyId)
       }
       return { tabId: result.tabId }
@@ -83,7 +84,7 @@ export function runQuickCommandInNewTab({
     // the caller's group (or its active group fallback).
     if (result?.focusAfterMenuClose === 'structured-session') {
       const launchedGroupId = resolveQuickCommandLaunchGroupId(worktreeId, groupId)
-      if (launchedGroupId) {
+      if (launchedGroupId && historyId !== null) {
         useAppStore.getState().setRecentQuickCommandForGroup(launchedGroupId, historyId)
       }
     }
@@ -130,7 +131,7 @@ export function runQuickCommandInNewTab({
   fresh.setTabBarOrder(worktreeId, order)
 
   const launchedGroupId = resolveQuickCommandGroupId(worktreeId, tab.id, groupId)
-  if (launchedGroupId) {
+  if (launchedGroupId && historyId !== null) {
     fresh.setRecentQuickCommandForGroup(launchedGroupId, historyId)
   }
 
