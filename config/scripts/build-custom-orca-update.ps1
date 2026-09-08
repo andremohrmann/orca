@@ -11,6 +11,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$env:ORCA_BACKGROUND_LAUNCH = '1'
 $customWorkflowAllowlist = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml'
@@ -263,6 +264,15 @@ if (!$SkipValidation) {
     'src/main/ipc/dashboard-popout.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
+    'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
+    'src/renderer/src/components/dashboard-popout/AgentTerminalPreviewRemote.test.tsx',
+    'src/renderer/src/components/dashboard-popout/AgentTerminalPreviewFitResync.test.tsx',
+    'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.clipboard-routes.test.tsx',
+    'src/renderer/src/components/dashboard-popout/preview-remote-terminal-session.test.ts',
+    'src/renderer/src/components/dashboard-popout/preview-grid-claim.test.ts',
+    'src/renderer/src/components/terminal-pane/pty-connection-visibility-resume-size.test.ts',
+    'src/renderer/src/components/terminal-pane/use-terminal-window-wake-recovery.test.ts',
+    'src/renderer/src/components/terminal-pane/use-terminal-pane-global-effects-window-focus-recovery.test.ts',
     'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
     'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
     'config/scripts/build-custom-orca-update.test.mjs',
