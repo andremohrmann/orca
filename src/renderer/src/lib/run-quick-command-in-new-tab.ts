@@ -16,6 +16,7 @@ export type RunQuickCommandInNewTabArgs = {
   /** Tab group the user clicked from. Keeps the spawned terminal in the
    *  pane the user initiated from when available. */
   groupId?: string | null
+  shellOverride?: string
 }
 
 function resolveQuickCommandGroupId(
@@ -57,6 +58,7 @@ export function runQuickCommandInNewTab({
   command,
   worktreeId,
   groupId,
+  shellOverride,
   historyId = command.id
 }: RunQuickCommandInNewTabArgs): { tabId: string } | null {
   const targetGroupId = groupId ?? undefined
@@ -100,7 +102,7 @@ export function runQuickCommandInNewTab({
     return null
   }
   const store = useAppStore.getState()
-  const tab = store.createTab(worktreeId, targetGroupId, undefined, {
+  const tab = store.createTab(worktreeId, targetGroupId, shellOverride, {
     quickCommandLabel: command.label
   })
 

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { launchWarpTab } from './launch-warp-tab'
 import { runQuickCommandInNewTab } from './run-quick-command-in-new-tab'
 
 type MockStoreState = {
@@ -59,14 +58,26 @@ describe('runQuickCommandInNewTab', () => {
     mocks.launchAgentInNewTab.mockReset()
   })
 
-  it('launches Warp in the requested workspace pane without replacing quick-command recency', () => {
-    const onCreated = vi.fn()
-    launchWarpTab('wt-1', 'group-1', onCreated)
-    expect(onCreated).toHaveBeenCalledWith('tab-new')
-    expect(mockState.createTab).toHaveBeenCalledWith('wt-1', 'group-1', undefined, {
+  it('preserves a built-in launcher shell and skips quick-command recency', () => {
+    runQuickCommandInNewTab({
+      worktreeId: 'wt-1',
+      groupId: 'group-1',
+      historyId: null,
+      shellOverride: 'powershell.exe',
+      command: {
+        id: 'warp',
+        label: 'Warp',
+        action: 'terminal-command',
+        command: '& $orcaWarpCli',
+        appendEnter: true
+      }
+    })
+    expect(mockState.createTab).toHaveBeenCalledWith('wt-1', 'group-1', 'powershell.exe', {
       quickCommandLabel: 'Warp'
     })
-    expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', { command: 'warp' })
+    expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', {
+      command: '& $orcaWarpCli'
+    })
     expect(mockState.setActiveTabType).toHaveBeenCalledWith('terminal')
     expect(mockState.setTabBarOrder).toHaveBeenCalledWith('wt-1', ['tab-existing', 'tab-new'])
     expect(mockState.setRecentQuickCommandForGroup).not.toHaveBeenCalled()

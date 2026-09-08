@@ -277,6 +277,7 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
     'src/renderer/src/components/tab-bar/tab-create-menu-options.test.ts',
     'src/renderer/src/lib/run-quick-command-in-new-tab.test.ts',
+    'src/renderer/src/lib/launch-warp-tab.test.ts',
     'config/scripts/build-custom-orca-update.test.mjs',
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
