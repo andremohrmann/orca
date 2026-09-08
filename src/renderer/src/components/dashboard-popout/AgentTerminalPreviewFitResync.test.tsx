@@ -16,6 +16,7 @@ describe('AgentTerminalPreview fit resync', () => {
   let emitData: ((payload: unknown) => void) | null
 
   beforeEach(() => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     terminalHarness.instances.length = 0
     terminalHarness.linkProviderRegistrations = 0
     terminalHarness.userInputListener = null
@@ -53,6 +54,7 @@ describe('AgentTerminalPreview fit resync', () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+    vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
@@ -180,7 +182,7 @@ describe('AgentTerminalPreview fit resync', () => {
     expect(connect).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps grid ownership on blur when focus handoff is disabled', async () => {
+  it('keeps the grid on blur and reclaims it when Live View regains focus', async () => {
     vi.useFakeTimers()
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const view = render(
@@ -213,7 +215,7 @@ describe('AgentTerminalPreview fit resync', () => {
 
     hasFocus.mockReturnValue(true)
     act(() => window.dispatchEvent(new Event('focus')))
-    expect(fit).toHaveBeenCalledTimes(1)
+    expect(fit).toHaveBeenCalledTimes(2)
     expect(connect).toHaveBeenCalledTimes(1)
   })
 

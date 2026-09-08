@@ -270,6 +270,8 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.clipboard-routes.test.tsx',
     'src/renderer/src/components/dashboard-popout/preview-remote-terminal-session.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-claim.test.ts',
+    'src/renderer/src/components/dashboard-popout/preview-grid-focus-handoff.test.ts',
+    'src/renderer/src/components/dashboard-popout/preview-grid-focus-ownership.test.ts',
     'src/renderer/src/components/terminal-pane/pty-connection-visibility-resume-size.test.ts',
     'src/renderer/src/components/terminal-pane/use-terminal-window-wake-recovery.test.ts',
     'src/renderer/src/components/terminal-pane/use-terminal-pane-global-effects-window-focus-recovery.test.ts',

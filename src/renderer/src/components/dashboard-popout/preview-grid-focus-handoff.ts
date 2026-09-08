@@ -26,12 +26,13 @@ export function createPreviewGridFocusHandoff(args: {
     container: args.container,
     getTerminal: args.getTerminal,
     transport: args.transport,
-    isActive: () => !args.releaseOnWindowBlur || document.hasFocus()
+    // Keeping an existing hold on blur must not let background previews resize new sessions.
+    isActive: () => document.hasFocus()
   })
   const disposeOwnership = installPreviewGridFocusOwnership({
-    enabled: args.releaseOnWindowBlur,
+    enabled: true,
     reclaim: claim.reclaim,
-    release: claim.release
+    release: args.releaseOnWindowBlur ? claim.release : noGridClaim.release
   })
   return {
     ...claim,
