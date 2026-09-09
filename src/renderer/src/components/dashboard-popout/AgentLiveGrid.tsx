@@ -326,9 +326,7 @@ export function AgentLiveGrid({
                 'relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-card outline-none',
                 focusedPaneKey === card.paneKey
                   ? 'border-ring ring-[2px] ring-ring/35'
-                  : card.bucket === 'attention'
-                    ? 'border-amber-500/60'
-                    : 'border-border'
+                  : 'border-border'
               )}
               onPointerDown={() => setFocusedPaneKey(card.paneKey)}
               onFocus={() => setFocusedPaneKey(card.paneKey)}
@@ -347,7 +345,10 @@ export function AgentLiveGrid({
               }}
             >
               {card.bucket === 'attention' ? (
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-amber-500/70" />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 z-10 rounded-[inherit] border-2 border-agent-question/70"
+                />
               ) : null}
               <AgentLiveGridHeader
                 card={card}
