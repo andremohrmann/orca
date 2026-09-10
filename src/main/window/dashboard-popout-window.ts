@@ -18,6 +18,10 @@ import {
   normalizeAgentDashboardView,
   type AgentDashboardView
 } from '../../shared/agent-dashboard-view'
+import {
+  normalizeDashboardPopoutOpacity,
+  type DashboardPopoutOpacityState
+} from '../../shared/dashboard-popout-opacity'
 
 const MIN_WIDTH = 480
 const MIN_HEIGHT = 360
@@ -41,6 +45,35 @@ export function getDashboardPopoutWindow(): BrowserWindow | null {
 
 export function isDashboardPopoutRenderer(sender: WebContents): boolean {
   return getDashboardPopoutWindow()?.webContents === sender
+}
+
+function dashboardPopoutOpacitySupported(): boolean {
+  return process.platform === 'win32' || process.platform === 'darwin'
+}
+
+export function getDashboardPopoutOpacityState(store: Store): DashboardPopoutOpacityState {
+  const supported = dashboardPopoutOpacitySupported()
+  return {
+    opacity: supported ? normalizeDashboardPopoutOpacity(store.getUI().dashboardPopoutOpacity) : 1,
+    supported
+  }
+}
+
+export function setDashboardPopoutOpacity(
+  store: Store,
+  requestedOpacity: number
+): DashboardPopoutOpacityState {
+  const supported = dashboardPopoutOpacitySupported()
+  const state = {
+    opacity: supported ? normalizeDashboardPopoutOpacity(requestedOpacity) : 1,
+    supported
+  }
+  if (!state.supported) {
+    return state
+  }
+  getDashboardPopoutWindow()?.setOpacity(state.opacity)
+  store.updateUI({ dashboardPopoutOpacity: state.opacity })
+  return state
 }
 
 function zoomDashboardPopout(window: BrowserWindow, direction: UIZoomDirection): void {
@@ -208,6 +241,9 @@ export function createOrFocusDashboardPopout(
       webviewTag: false
     }
   })
+  if (dashboardPopoutOpacitySupported()) {
+    window.setOpacity(normalizeDashboardPopoutOpacity(store?.getUI().dashboardPopoutOpacity))
+  }
   installPrivilegedWindowNavigationPolicy(window.webContents)
   // Why: isolated sessions do not inherit the main session's deny-by-default permission policy.
   window.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) =>

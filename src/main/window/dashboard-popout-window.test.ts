@@ -25,6 +25,7 @@ const {
     fullscreen = false
     focused = false
     zoomLevel = 0
+    opacity = 1
     private webContentsHandlers: Record<string, ((...args: unknown[]) => void)[]> = {}
     webContents = {
       id: created.length + 1,
@@ -55,6 +56,9 @@ const {
     })
     maximize = vi.fn(() => {
       this.maximized = true
+    })
+    setOpacity = vi.fn((opacity: number) => {
+      this.opacity = opacity
     })
     loadURL = vi.fn()
     loadFile = vi.fn()
@@ -144,7 +148,9 @@ vi.mock('./privileged-window-navigation', () => ({
 import {
   createOrFocusDashboardPopout,
   closeDashboardPopout,
+  getDashboardPopoutOpacityState,
   isDashboardPopoutRenderer,
+  setDashboardPopoutOpacity,
   zoomDashboardPopoutIfFocused
 } from './dashboard-popout-window'
 import { readBrowserClientHostIdArgument } from '../../shared/browser-client-host-id-argument'
@@ -237,6 +243,26 @@ describe('createOrFocusDashboardPopout', () => {
     expect(permissionCallback).toHaveBeenCalledWith(false)
     expect(session.setPermissionCheckHandler.mock.calls[0][0]()).toBe(false)
     expect(sendToTrustedUIRendererMock).toHaveBeenCalledWith('dashboard:popoutOpenChanged', true)
+  })
+
+  it('restores and persists a bounded native opacity on supported platforms', () => {
+    const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    const store = makeStore({ dashboardPopoutOpacity: 0.65 })
+
+    const win = createOrFocusDashboardPopout(store as never) as unknown as FakeWindow
+    expect(win.setOpacity).toHaveBeenCalledWith(0.65)
+    expect(getDashboardPopoutOpacityState(store as never)).toEqual({
+      opacity: 0.65,
+      supported: true
+    })
+
+    expect(setDashboardPopoutOpacity(store as never, 0.05)).toEqual({
+      opacity: 0.2,
+      supported: true
+    })
+    expect(win.setOpacity).toHaveBeenLastCalledWith(0.2)
+    expect(store.updateUI).toHaveBeenCalledWith({ dashboardPopoutOpacity: 0.2 })
+    platform.mockRestore()
   })
 
   it('shows the window on ready-to-show', () => {

@@ -3,6 +3,7 @@ import { useAppMenuPaste } from '@/hooks/useAppMenuPaste'
 import { useAppMenuSelectionActions } from '@/hooks/useAppMenuSelectionActions'
 import { AgentKanbanBoard } from './AgentKanbanBoard'
 import { useDashboardSnapshot } from './useDashboardSnapshot'
+import { DashboardPopoutOpacityControl } from './DashboardPopoutOpacityControl'
 import {
   normalizeAgentDashboardView,
   type AgentDashboardView
@@ -27,5 +28,12 @@ export function DashboardPopoutRoot(_props: DashboardPopoutRootProps): React.JSX
     _props.view === 'rings' ? 'map' : normalizeAgentDashboardView(_props.view)
   )
   useEffect(() => window.api.dashboard?.onViewRequested?.(setView), [])
-  return <AgentKanbanBoard key={view} snapshot={snapshot} initialView={view} />
+  return (
+    <AgentKanbanBoard
+      key={view}
+      snapshot={snapshot}
+      initialView={view}
+      headerActions={<DashboardPopoutOpacityControl />}
+    />
+  )
 }

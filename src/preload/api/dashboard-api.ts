@@ -7,6 +7,7 @@ import type {
   DashboardSpawnAgentArgs
 } from '../../shared/dashboard-snapshot'
 import type { AgentDashboardView } from '../../shared/agent-dashboard-view'
+import type { DashboardPopoutOpacityState } from '../../shared/dashboard-popout-opacity'
 import type {
   TerminalPreviewConnectResult,
   TerminalPreviewDataPayload
@@ -29,6 +30,8 @@ export type DashboardApi = {
   requestSnapshot: () => Promise<void>
   onSnapshot: (callback: (snapshot: DashboardSnapshot) => void) => () => void
   onViewRequested: (callback: (view: AgentDashboardView) => void) => () => void
+  getPopoutOpacity: () => Promise<DashboardPopoutOpacityState | null>
+  setPopoutOpacity: (opacity: number) => Promise<DashboardPopoutOpacityState | null>
   revealAgent: (args: DashboardRevealAgentArgs) => Promise<void>
   ackAgent: (paneKey: string) => Promise<void>
   spawnAgent: (args: DashboardSpawnAgentArgs) => Promise<void>

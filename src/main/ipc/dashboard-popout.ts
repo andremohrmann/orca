@@ -6,9 +6,11 @@ import { isAgentDashboardView } from '../../shared/agent-dashboard-view'
 import {
   createOrFocusDashboardPopout,
   closeDashboardPopout,
+  getDashboardPopoutOpacityState,
   getDashboardPopoutWindow,
   isDashboardPopoutRenderer,
-  onDashboardPopoutOpenChanged
+  onDashboardPopoutOpenChanged,
+  setDashboardPopoutOpacity
 } from '../window/dashboard-popout-window'
 import { safelyRevealWindow } from '../window/focus-existing-window'
 import { isBackgroundLaunch } from '../window/foreground-activation-policy'
@@ -48,6 +50,8 @@ export function registerDashboardPopoutHandlers(
   ipcMain.removeHandler('dashboardPopout:sleepWorkspace')
   ipcMain.removeHandler('dashboardPopout:assignWorkspaceStatus')
   ipcMain.removeHandler('dashboardPopout:renameWorkspace')
+  ipcMain.removeHandler('dashboardPopout:getOpacity')
+  ipcMain.removeHandler('dashboardPopout:setOpacity')
 
   onDashboardPopoutOpenChanged((open) => {
     if (!open) {
@@ -119,6 +123,25 @@ export function registerDashboardPopoutHandlers(
       ? getDashboardPopoutWindow() !== null
       : false
   )
+
+  ipcMain.handle('dashboardPopout:getOpacity', (event) => {
+    if (!isDashboardPopoutRenderer(event.sender) || !isDashboardEnabled(store)) {
+      return null
+    }
+    return getDashboardPopoutOpacityState(store)
+  })
+
+  ipcMain.handle('dashboardPopout:setOpacity', (event, opacity: unknown) => {
+    if (
+      !isDashboardPopoutRenderer(event.sender) ||
+      !isDashboardEnabled(store) ||
+      typeof opacity !== 'number' ||
+      !Number.isFinite(opacity)
+    ) {
+      return null
+    }
+    return setDashboardPopoutOpacity(store, opacity)
+  })
 
   // Seen-sync: opening a card's terminal dialog acknowledges the agent in the
   // main renderer's store — the same ack that mutes its sidebar row.

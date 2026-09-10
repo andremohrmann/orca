@@ -85,6 +85,8 @@ export const dashboardApi = {
     ipcRenderer.on('dashboard:viewRequested', listener)
     return () => ipcRenderer.removeListener('dashboard:viewRequested', listener)
   },
+  getPopoutOpacity: () => ipcRenderer.invoke('dashboardPopout:getOpacity'),
+  setPopoutOpacity: (opacity: number) => ipcRenderer.invoke('dashboardPopout:setOpacity', opacity),
   revealAgent: (args: DashboardRevealAgentArgs): Promise<void> =>
     ipcRenderer.invoke('dashboardPopout:revealAgent', args),
   ackAgent: (paneKey: string): Promise<void> =>
