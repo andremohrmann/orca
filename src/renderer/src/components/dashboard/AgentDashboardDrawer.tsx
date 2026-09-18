@@ -67,11 +67,6 @@ function AgentDashboardDrawerBody({
     void window.api.dashboard.openPopout?.()
   }, [onClose])
 
-  const handleOpenMap = useCallback(() => {
-    onClose()
-    void window.api.dashboard.openPopout?.('map')
-  }, [onClose])
-
   const handleAssignWorkspaceStatus = useCallback(
     ({ worktreeId, status }: { worktreeId: string; status: string }) => {
       void useAppStore.getState().updateWorktreeMeta(worktreeId, { workspaceStatus: status })
@@ -98,7 +93,6 @@ function AgentDashboardDrawerBody({
       onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
       onRenameWorkspace={handleRenameWorkspace}
       onClose={onClose}
-      onOpenMap={handleOpenMap}
       headerActions={
         <AgentDashboardSettingsMenu
           onSwitchToPopout={handleSwitchToPopout}

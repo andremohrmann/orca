@@ -147,10 +147,6 @@ export function AgentDashboardExperimentalSetting({
                   {
                     value: 'live',
                     label: translate('dashboardPopout.view.live', 'Live view')
-                  },
-                  {
-                    value: 'map',
-                    label: translate('dashboardPopout.view.map', 'Agent Map')
                   }
                 ]}
               />

@@ -93,13 +93,12 @@ describe('AgentDashboardDrawer', () => {
     expect(useAppStore.getState().agentDashboardDrawerOpen).toBe(false)
   })
 
-  it('hands the map view to the popout', () => {
+  it('opens the drawer with the default board view', () => {
     render(<AgentDashboardDrawer statusBarVisible />)
     expect(mocks.boardProps).toBeNull()
 
     act(() => useAppStore.setState({ agentDashboardDrawerOpen: true }))
     expect(mocks.boardProps).not.toBeNull()
-    expect(mocks.boardProps?.onOpenMap).toBeTypeOf('function')
     expect(mocks.boardProps?.initialView).toBe('board')
   })
 

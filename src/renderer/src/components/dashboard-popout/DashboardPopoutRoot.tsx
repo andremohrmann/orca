@@ -25,7 +25,7 @@ export function DashboardPopoutRoot(_props: DashboardPopoutRootProps): React.JSX
   useAppMenuSelectionActions()
   const snapshot = useDashboardSnapshot()
   const [view, setView] = useState<AgentDashboardView>(() =>
-    _props.view === 'rings' ? 'map' : normalizeAgentDashboardView(_props.view)
+    normalizeAgentDashboardView(_props.view)
   )
   useEffect(() => window.api.dashboard?.onViewRequested?.(setView), [])
   return (

@@ -23,7 +23,7 @@ import type { TabBarCreateMenuController } from './use-tab-bar-create-menu-contr
 import type { TabBarItemProjection } from './use-tab-bar-item-projection'
 import type { TabBarItem } from './tab-bar-item-model'
 import { renderTabBarItems } from './tab-bar-item-surface'
-import { renderTabBarStaticCreateMenu } from './tab-bar-static-create-menu'
+import { TabBarStaticCreateMenu } from './tab-bar-static-create-menu'
 import ClientHostedBrowserTabRows from './ClientHostedBrowserTabRows'
 import type { ClientHostedBrowserRow } from '../../../../shared/client-hosted-browser-rows'
 
@@ -99,25 +99,6 @@ export function renderTabBarSurface({
     includeTopTabBorder,
     activeClientHostedBrowserRowId,
     togglePinned
-  })
-  const standardCreateMenuItems = renderTabBarStaticCreateMenu({
-    props,
-    terminalOnly,
-    mobileEmulatorEnabled,
-    managedBrowserCreationEnabled,
-    mobileEmulatorCreationEnabled,
-    workspaceHasSimulatorTab,
-    showMobileEmulatorIntroCallout,
-    windowsShellEntries,
-    defaultWindowsPowerShellImplementation,
-    pwshAvailable: windowsTerminalCapabilities.pwshAvailable,
-    newTerminalShortcut,
-    newBrowserShortcut,
-    newSimulatorShortcut,
-    newFileShortcut,
-    openMarkdownShortcut,
-    onNewWarpTab: () => handleSelectCreateMenuOption(WARP_TAB_CREATE_OPTION),
-    queueNewActiveTerminalFocusAfterNewTabMenuClose
   })
 
   return (
@@ -265,7 +246,29 @@ export function renderTabBarSurface({
               {showStaticCreateMenuItems ? <DropdownMenuSeparator /> : null}
             </>
           ) : null}
-          {showStaticCreateMenuItems ? standardCreateMenuItems : null}
+          {showStaticCreateMenuItems ? (
+            <TabBarStaticCreateMenu
+              props={props}
+              terminalOnly={terminalOnly}
+              mobileEmulatorEnabled={mobileEmulatorEnabled}
+              managedBrowserCreationEnabled={managedBrowserCreationEnabled}
+              mobileEmulatorCreationEnabled={mobileEmulatorCreationEnabled}
+              workspaceHasSimulatorTab={workspaceHasSimulatorTab}
+              showMobileEmulatorIntroCallout={showMobileEmulatorIntroCallout}
+              windowsShellEntries={windowsShellEntries}
+              defaultWindowsPowerShellImplementation={defaultWindowsPowerShellImplementation}
+              pwshAvailable={windowsTerminalCapabilities.pwshAvailable}
+              newTerminalShortcut={newTerminalShortcut}
+              newBrowserShortcut={newBrowserShortcut}
+              newSimulatorShortcut={newSimulatorShortcut}
+              newFileShortcut={newFileShortcut}
+              openMarkdownShortcut={openMarkdownShortcut}
+              onNewWarpTab={() => handleSelectCreateMenuOption(WARP_TAB_CREATE_OPTION)}
+              queueNewActiveTerminalFocusAfterNewTabMenuClose={
+                queueNewActiveTerminalFocusAfterNewTabMenuClose
+              }
+            />
+          ) : null}
           {showStaticCreateMenuItems && showAgentLaunchItems ? (
             <>
               <DropdownMenuSeparator />

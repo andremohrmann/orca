@@ -11,6 +11,7 @@ import { useAppStore } from '@/store'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { createPreviewGridFocusHandoff } from './preview-grid-focus-handoff'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
+import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/terminal-native-copy-gutter'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
 import {
   PREVIEW_SCROLLBACK_ROWS,
@@ -68,6 +69,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     let userInputDisposable: { dispose: () => void } | null = null
     let imeBridge: PreviewImeBridge | null = null
     let disposeKeyHandler: (() => void) | null = null
+    let disposeNativeCopyGutterTrim: (() => void) | null = null
     let disposeTerminalCompatibility: (() => void) | null = null
     let disposeInteractions: (() => void) | null = null
     const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker()
@@ -210,6 +212,13 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
     })
 
+    const installNativeCopyGutterTrim = (): void => {
+      if (!terminal) {
+        return
+      }
+      disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
+    }
+
     const replayConnection = (
       connection: Awaited<ReturnType<typeof window.api.terminalPreview.connect>>,
       replaceExisting: boolean,
@@ -237,6 +246,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           getSettings: () => settingsRef.current,
           getTerminalLinks: () => terminalLinksRef.current
         })
+        installNativeCopyGutterTrim()
         userInputDisposable = installPreviewTerminalInputRouting({
           terminal,
           sendInput,
@@ -302,6 +312,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         disposeTerminalCompatibility = null
         disposeKeyHandler?.()
         disposeKeyHandler = null
+        disposeNativeCopyGutterTrim?.()
+        disposeNativeCopyGutterTrim = null
         terminal?.dispose()
         terminal = null
         terminalRef.current = null
@@ -365,6 +377,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       disposeTerminalCompatibility?.()
       disposeKeyHandler?.()
       disposeInteractions?.()
+      disposeNativeCopyGutterTrim?.()
       if (remoteSession) {
         remoteSession.dispose()
       } else {

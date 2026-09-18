@@ -1,5 +1,5 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Columns3, Grid2X2, Orbit, XIcon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Columns3, Grid2X2, XIcon } from 'lucide-react'
 import {
   DASHBOARD_BUCKET_ORDER,
   type DashboardCard,
@@ -24,16 +24,9 @@ import {
 import './agent-board-transitions.css'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
-import { lazyWithRetry } from '@/lib/lazy-with-retry'
 import { AgentLiveGrid } from './AgentLiveGrid'
 import { DashboardUsageBar } from './DashboardUsageBar'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
-
-const AgentDashboardMapView = lazyWithRetry(
-  () =>
-    import('./AgentDashboardMapView').then((module) => ({ default: module.AgentDashboardMapView })),
-  { reloadKey: 'agent-dashboard-map-view' }
-)
 
 /** Ack an agent in the pop-out window: relayed over IPC to the main renderer.
  *  ?. shields dialog-opening from dev-HMR preload skew (renderer updates hot,
@@ -95,9 +88,6 @@ type AgentKanbanBoardProps = {
   /** Header controls rendered before the close button. The in-window host
    *  passes its settings menu; the pop-out renderer has no store to drive it. */
   headerActions?: React.ReactNode
-  /** Opens the map outside this renderer. The in-window drawer uses this to
-   *  hand map work to the dedicated pop-out window. */
-  onOpenMap?: () => void
   /** The shared sidebar workspace menu is available only in the main renderer. */
   workspaceContextMenusEnabled?: boolean
   onWorkspaceContextMenuOpenChange?: (open: boolean) => void
@@ -116,7 +106,6 @@ export function AgentKanbanBoard({
   onSleepWorkspace = sleepWorkspaceViaPopoutRelay,
   onClose,
   headerActions,
-  onOpenMap,
   workspaceContextMenusEnabled = false,
   onWorkspaceContextMenuOpenChange,
   onAssignWorkspaceStatus = assignWorkspaceStatusViaPopoutRelay,
@@ -132,7 +121,7 @@ export function AgentKanbanBoard({
     () => snapshot.cards.filter((card) => visibleBuckets.includes(card.bucket)),
     [snapshot.cards, visibleBuckets]
   )
-  const availableCards = view === 'map' || view === 'live' ? snapshot.cards : visibleCards
+  const availableCards = view === 'live' ? snapshot.cards : visibleCards
   const [query, setQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [filters, setFilters] = useState<DashboardFilters>(EMPTY_DASHBOARD_FILTERS)
@@ -202,17 +191,13 @@ export function AgentKanbanBoard({
   }, [])
   const handleViewChange = useCallback(
     (nextView: AgentDashboardView) => {
-      if (nextView === 'map' && onOpenMap) {
-        onOpenMap()
-        return
-      }
       if (nextView === view) {
         return
       }
       setOpenedCard(null)
       setView(nextView)
     },
-    [onOpenMap, view]
+    [view]
   )
 
   // Seen-state is the app-wide ack map (same signal as the sidebar's bold/mute
@@ -289,17 +274,6 @@ export function AgentKanbanBoard({
               <Grid2X2 className="size-3" />
               {translate('dashboardPopout.view.live', 'Live view')}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              aria-pressed={view === 'map'}
-              className={cn('h-6 gap-1 px-2', view === 'map' && 'bg-accent')}
-              onClick={() => handleViewChange('map')}
-            >
-              <Orbit className="size-3" />
-              {translate('dashboardPopout.view.map', 'Agent Map')}
-            </Button>
           </div>
           {headerActions || onClose ? (
             <div className="ml-auto flex items-center gap-1">
@@ -317,28 +291,7 @@ export function AgentKanbanBoard({
             </div>
           ) : null}
         </div>
-        {view === 'map' ? (
-          <Suspense fallback={null}>
-            <AgentDashboardMapView
-              snapshot={snapshot}
-              cards={filteredCards}
-              query={query}
-              onQueryChange={setQuery}
-              filters={filters}
-              onFiltersChange={setFilters}
-              searchInputRef={searchInputRef}
-              now={now}
-              dialogCard={dialogCard}
-              onDialogOpenChange={handleDialogOpenChange}
-              onRevealAgent={onRevealAgent}
-              onOpenTerminal={handleOpenTerminal}
-              onSpawnAgent={onSpawnAgent}
-              onSleepWorkspace={onSleepWorkspace}
-              workspaceContextMenusEnabled={workspaceContextMenusEnabled}
-              onWorkspaceContextMenuOpenChange={onWorkspaceContextMenuOpenChange}
-            />
-          </Suspense>
-        ) : view === 'board' ? (
+        {view === 'board' ? (
           <>
             <AgentDashboardToolbar
               cards={visibleCards}
@@ -391,13 +344,11 @@ export function AgentKanbanBoard({
             />
           </>
         )}
-        {view !== 'map' ? (
-          <AgentTerminalDialog
-            card={dialogCard}
-            onOpenChange={handleDialogOpenChange}
-            onReveal={onRevealAgent}
-          />
-        ) : null}
+        <AgentTerminalDialog
+          card={dialogCard}
+          onOpenChange={handleDialogOpenChange}
+          onReveal={onRevealAgent}
+        />
         <DashboardUsageBar usage={snapshot.usage} />
       </div>
     </TooltipProvider>

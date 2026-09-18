@@ -1,9 +1,9 @@
-export type AgentDashboardView = 'board' | 'live' | 'map'
+export type AgentDashboardView = 'board' | 'live'
 
 export const DEFAULT_AGENT_DASHBOARD_VIEW: AgentDashboardView = 'board'
 
 export function isAgentDashboardView(value: unknown): value is AgentDashboardView {
-  return value === 'board' || value === 'live' || value === 'map'
+  return value === 'board' || value === 'live'
 }
 
 export function normalizeAgentDashboardView(value: unknown): AgentDashboardView {

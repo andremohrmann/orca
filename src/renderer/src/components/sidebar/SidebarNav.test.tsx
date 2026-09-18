@@ -272,22 +272,6 @@ describe('SidebarNav', () => {
     expect(idle?.querySelector('svg')).toBeNull()
   })
 
-  it('opens the popout when the default Agent Dashboard view is the map', async () => {
-    setSidebarState({
-      settings: {
-        ...getDefaultSettings('/tmp'),
-        experimentalAgentDashboardPopout: true,
-        experimentalAgentDashboardDefaultView: 'map'
-      }
-    })
-    const container = await renderSidebarNav()
-
-    queryButtonByText(container, 'Agent Dashboard')?.click()
-
-    expect(mocks.openDashboardPopout).toHaveBeenCalledWith('map')
-    expect(mocks.setAgentDashboardDrawerOpen).not.toHaveBeenCalled()
-  })
-
   it('shows the Mobile entry by default for older settings', () => {
     expect(shouldShowMobileButton(null)).toBe(true)
     expect(shouldShowMobileButton({})).toBe(true)

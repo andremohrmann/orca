@@ -336,9 +336,9 @@ describe('createOrFocusDashboardPopout', () => {
     createOrFocusDashboardPopout(store as never)
     const win = instances[0]
 
-    createOrFocusDashboardPopout(store as never, 'map')
+    createOrFocusDashboardPopout(store as never, 'live')
 
-    expect(win.webContents.send).toHaveBeenCalledWith('dashboard:viewRequested', 'map')
+    expect(win.webContents.send).toHaveBeenCalledWith('dashboard:viewRequested', 'live')
   })
 
   it('trusts only the live popout webContents', () => {
