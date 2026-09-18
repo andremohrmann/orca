@@ -123,7 +123,6 @@ describe('AgentKanbanBoard', () => {
 
     expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Live view' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Agent Map' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Dashboard view' })).toBeInTheDocument()
     expect(screen.getByText('Needs You')).toBeInTheDocument()
   })

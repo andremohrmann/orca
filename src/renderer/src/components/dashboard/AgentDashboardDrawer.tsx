@@ -13,7 +13,6 @@ import {
   WORKSPACE_TOP_CHROME_HEIGHT
 } from '../sidebar/workspace-chrome-metrics'
 import { AgentDashboardSettingsMenu } from './AgentDashboardSettingsMenu'
-import { launchDashboardAgent } from './launch-dashboard-agent'
 import { useLiveDashboardSnapshot } from './useLiveDashboardSnapshot'
 import { translate } from '@/i18n/i18n'
 import { normalizeAgentDashboardView } from '../../../../shared/agent-dashboard-view'
@@ -89,7 +88,6 @@ function AgentDashboardDrawerBody({
       containerClassName="h-full w-full bg-transparent"
       onAckAgent={handleAckAgent}
       onRevealAgent={handleRevealAgent}
-      onSpawnAgent={launchDashboardAgent}
       onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
       onRenameWorkspace={handleRenameWorkspace}
       onClose={onClose}

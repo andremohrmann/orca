@@ -492,7 +492,8 @@ describe('TabBar context menu wiring', () => {
     expect(menuLabels[0]).toContain('New Markdown')
     expect(menuLabels[1]).toContain('Open Markdown...')
     expect(menuLabels[2]).toContain('New Terminal')
-    expect(menuLabels[3]).toContain('New Browser Tab')
+    expect(menuLabels[3]).toContain('Warp')
+    expect(menuLabels[4]).toContain('New Browser Tab')
   })
 
   it('omits impossible paired-web actions while keeping terminal and markdown', async () => {
