@@ -23,10 +23,15 @@
 # runs `git apply` on one must force `-c core.autocrlf=input` rather than trust
 # the host's setting. See config/scripts/windows-process-tree-gyp-rebuild.mjs.
 /config/patches/*.patch -text
+# Same reason, and pnpm parses these too: a CRLF checkout makes the mobile
+# patches unparseable, so Windows packaging dies on ERR_PNPM_INVALID_PATCH.
+/mobile/patches/*.patch -text
 # The xterm bundle hunks also make a diff nobody can read; review the hand-written
 # source patch under xterm-src/ instead. The sibling patches stay diffable.
 /config/patches/@xterm__xterm@*.patch -diff
 /config/patches/xterm-src/*.patch text eol=lf
+# pnpm parses these unified diffs during Windows installs; keep checkout bytes stable.
+/mobile/patches/*.patch -text
 # Generated wrapper fixtures: collapse them in the PR diff so they stop drowning
 # the reviewable change, and pin LF because they are compared byte-for-byte.
 # Not -diff: the shell diff is the review surface when a wrapper does change.
@@ -59,6 +64,8 @@
 /mobile/src/**/*.png -text
 /mobile/src/**/*.jpg -text
 /mobile/src/**/*.jpeg -text
+/mobile/src/**/*.gif -text
+/mobile/src/**/*.ico -text
 /mobile/src/**/*.webp -text
 /mobile/src/**/*.ttf -text
 /mobile/src/**/*.otf -text
@@ -67,6 +74,8 @@
 /mobile/app/**/*.png -text
 /mobile/app/**/*.jpg -text
 /mobile/app/**/*.jpeg -text
+/mobile/app/**/*.gif -text
+/mobile/app/**/*.ico -text
 /mobile/app/**/*.webp -text
 /mobile/app/**/*.ttf -text
 /mobile/app/**/*.otf -text
@@ -75,6 +84,8 @@
 /mobile/web-entry/**/*.png -text
 /mobile/web-entry/**/*.jpg -text
 /mobile/web-entry/**/*.jpeg -text
+/mobile/web-entry/**/*.gif -text
+/mobile/web-entry/**/*.ico -text
 /mobile/web-entry/**/*.webp -text
 /mobile/web-entry/**/*.ttf -text
 /mobile/web-entry/**/*.otf -text

@@ -26,10 +26,8 @@ import type { CtrlTabOrderMode } from './tab-types'
 import type { TerminalColorOverrides } from './terminal-color-overrides'
 import type { TerminalQuickCommand } from './terminal-quick-command-types'
 import type { TuiAgent } from './tui-agent'
-import type { AgentDashboardLiveLayout } from './agent-dashboard-live-layout'
-import type { AgentDashboardView } from './agent-dashboard-view'
+import type { AgentDashboardSettings } from './agent-dashboard-settings-types'
 import type {
-  AgentDashboardMode,
   BranchPrefixStrategy,
   FloatingTerminalTriggerLocation,
   LeftSidebarAppearanceMode,
@@ -57,7 +55,7 @@ export type WorktreeVisibilityDefaults = {
   sourcePreferences?: WorktreeVisibilitySourcePreferences
 }
 
-export type GlobalSettings = {
+export type GlobalSettings = AgentDashboardSettings & {
   workspaceDir: string
   /** Host-owned defaults used when a repository has no explicit visibility override. */
   worktreeVisibilityDefaults?: WorktreeVisibilityDefaults
@@ -132,6 +130,11 @@ export type GlobalSettings = {
    *  - `'on'` / `'off'`: explicit override. Never changes when the user
    *    switches fonts, so "off" always stays off. */
   terminalLigatures: 'auto' | 'on' | 'off'
+  /** Whether inline terminal images are rendered via `@xterm/addon-image`
+   *  (SIXEL, iTerm2 IIP, and Kitty graphics). The addon is lazy-loaded and its
+   *  canvas layers are only created once a pane actually receives an image, so
+   *  idle panes retain parser/decoder setup but no decoded image storage. */
+  terminalInlineImages: boolean
   terminalCursorStyle: 'bar' | 'block' | 'underline'
   /** One-shot migration guard for moving inherited cursor defaults to block. */
   terminalCursorStyleDefaultedToBlock?: boolean
@@ -171,6 +174,8 @@ export type GlobalSettings = {
   terminalWindowsShell: string
   /** Optional shell executable for new terminals on macOS and Linux. */
   terminalDefaultShell?: string
+  /** Optional argv passed to the configured Unix shell for ordinary interactive panes. */
+  terminalDefaultShellArgs?: string[]
   /** Pins the WSL distro for terminals/agent scans instead of WSL's current global default. */
   terminalWindowsWslDistro?: string | null
   /** Account/auth location; auto follows the global Windows runtime while host/wsl pin it. */
@@ -215,6 +220,10 @@ export type GlobalSettings = {
   openLinksInAppModifierInverts?: boolean
   /** Show link actions on plain click in the terminal and chat; off restores modifier-click-only terminal links. */
   terminalLinkActionPopoverEnabled?: boolean
+  /** Plain-click behavior for terminal links; optional for profiles saved before this setting existed. */
+  terminalLinkClickBehavior?: 'actions' | 'open' | 'none'
+  /** Middle mouse URL behavior; defaults to opening the primary routed destination. */
+  terminalUrlMiddleClickBehavior?: 'open' | 'actions' | 'none'
   /** Opt-in: open new coding-agent tabs in native chat instead of the raw terminal; optional for legacy settings. */
   openAgentTabsInChatByDefault?: boolean
   /** Experimental native chat surface for Claude/Codex sessions; off by default. */
@@ -290,6 +299,8 @@ export type GlobalSettings = {
   diffDefaultView: 'inline' | 'side-by-side'
   diffWordWrap: boolean
   diffShowWhitespace: boolean
+  /** Opt-in: single-file diffs collapse unchanged regions, as the combined diff view already does; optional for legacy settings. */
+  diffCollapseUnchangedRegions?: boolean
   combinedDiffFileTreeVisibleByDefault: boolean
   /** Bot-marked comment-author logins (stored lowercased); escape hatch for review bots on regular accounts that defeat provider metadata/heuristics. */
   prBotAuthorOverrides: string[]
@@ -444,22 +455,10 @@ export type GlobalSettings = {
   experimentalSidekick?: boolean
   /** Experimental: left-sidebar Agents view — threaded feed of agent completions, blocking/unread state, worktree creation. */
   experimentalActivity: boolean
-  /** Experimental: pop-out Kanban dashboard for monitoring and opening agent terminals across worktrees. */
-  experimentalAgentDashboardPopout?: boolean
   /** Set after the one-time legacy Agents tab introduction has been acknowledged. */
   agentsSidebarIntroShown?: boolean
   /** True when the profile previously opted into the legacy Agents view. */
   agentsSidebarMigratedFromExperimental?: boolean
-  /** How the Agent Dashboard opens: an in-window companion board or a separate pop-out window. Defaults to in-window. */
-  experimentalAgentDashboardMode?: AgentDashboardMode
-  /** Default dashboard surface when opening from the sidebar. */
-  experimentalAgentDashboardDefaultView?: AgentDashboardView
-  /** Opens the dashboard directly to Live view after startup when enabled. */
-  experimentalAgentDashboardOpenLiveOnStartup?: boolean
-  /** Live view ordering, density, names, and auto-minimize preferences. */
-  experimentalAgentDashboardLiveLayout?: AgentDashboardLiveLayout
-  /** Includes stale quiet agents as a fourth Agent Dashboard column. */
-  experimentalAgentDashboardShowIdle?: boolean
   /** One-shot migration guard for defaulting the Agents view off; later explicit opt-ins persist normally. */
   experimentalActivityDefaultedOffForAllUsers?: boolean
   /** Experimental: persistent terminal-pane attention ring for bell + agent-completion events. Opt-in while tuning signal/noise. */
