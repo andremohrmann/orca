@@ -179,6 +179,12 @@ function Set-CustomBuildVersion {
 function Build-Installer {
   param([string]$TargetDir)
   New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null
+  Invoke-Native 'Install mobile web bundle dependencies' pnpm @(
+    '--dir',
+    'mobile',
+    'install',
+    '--frozen-lockfile'
+  )
   Invoke-Native 'Build release artifacts' pnpm @('run', 'build:release')
   Invoke-Native 'Package Windows installer' pnpm @(
     'exec',

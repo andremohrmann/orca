@@ -38,6 +38,12 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain("Invoke-Native 'Smoke test packaged renderer startup' node")
   })
 
+  it('installs the separate mobile project before building release artifacts', () => {
+    expect(SCRIPT).toMatch(
+      /Invoke-Native 'Install mobile web bundle dependencies' pnpm @[\s\S]+?'--dir',[\s\S]+?'mobile',[\s\S]+?'install',[\s\S]+?'--frozen-lockfile'[\s\S]+?Invoke-Native 'Build release artifacts'/
+    )
+  })
+
   it('does not fail a successful startup proof on transient Windows profile locks', () => {
     expect(PACKAGED_STARTUP_SMOKE).toContain('maxRetries: 20')
     expect(PACKAGED_STARTUP_SMOKE).toContain('retryDelay: 250')
