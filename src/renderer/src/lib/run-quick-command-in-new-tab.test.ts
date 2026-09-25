@@ -78,7 +78,7 @@ describe('runQuickCommandInNewTab', () => {
     expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', {
       command: '& $orcaWarpCli'
     })
-    expect(mockState.setActiveTabType).toHaveBeenCalledWith('terminal')
+    expect(mockState.setActiveTabType).toHaveBeenCalledWith('terminal', 'wt-1')
     expect(mockState.setTabBarOrder).toHaveBeenCalledWith('wt-1', ['tab-existing', 'tab-new'])
     expect(mockState.setRecentQuickCommandForGroup).not.toHaveBeenCalled()
     expect(mocks.launchAgentInNewTab).not.toHaveBeenCalled()
