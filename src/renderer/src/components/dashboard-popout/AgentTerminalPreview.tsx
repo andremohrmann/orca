@@ -56,7 +56,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
   const [ptyGone, setPtyGone] = useState(false),
     retryGonePtyRef = useRef<() => void>(() => undefined),
     reclaimGridRef = useRef<() => void>(() => undefined)
-  const pasteClipboardTextRef = useRef<ReturnType<typeof createPreviewClipboardPaster> | null>(null)
   usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
   useEffect(() => {
     setPtyGone(false)
@@ -169,38 +168,10 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       writePty: sendInput,
       isDisposed: () => disposed
     })
-    pasteClipboardTextRef.current = pasteClipboardText
 
     const disposeImeNativeTextBridge = (): void => {
       imeBridge?.dispose()
       imeBridge = null
-    }
-    const installImeNativeTextBridge = (): void => {
-      if (terminal) {
-        imeBridge = installPreviewImeBridge(terminal, {
-          getKittyKeyboardFlags: () => kittyKeyboardModes.flags
-        })
-      }
-    }
-    const installKeyHandler = (): void => {
-      if (!terminal) {
-        return
-      }
-      disposeKeyHandler = installPreviewTerminalKeyHandler({
-        terminal,
-        claimImeKeyEvent: (event) => imeBridge?.claimKeyEvent(event) ?? false,
-        pasteClipboardText: (activeElement, source) =>
-          void pasteClipboardText(activeElement, source),
-        sendInput: (data) => terminal?.input(data),
-        getShortcutContext: () => ({
-          clientPlatform: getShortcutPlatform(),
-          macOptionAsAlt: macOptionAsAltRef.current,
-          keybindings: useAppStore.getState().keybindings,
-          terminalInput: terminalInputRef.current,
-          getKittyKeyboardFlags: () => kittyKeyboardModes.flags,
-          terminalShortcutPolicy: settingsRef.current?.terminalShortcutPolicy
-        })
-      })
     }
     disposeInteractions = installPreviewTerminalInteractions({
       container,
@@ -211,13 +182,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         settingsRef.current?.terminalRightClickToPaste ?? isWindowsUserAgent(),
       pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
     })
-
-    const installNativeCopyGutterTrim = (): void => {
-      if (!terminal) {
-        return
-      }
-      disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
-    }
 
     const replayConnection = (
       connection: Awaited<ReturnType<typeof window.api.terminalPreview.connect>>,
@@ -246,7 +210,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           getSettings: () => settingsRef.current,
           getTerminalLinks: () => terminalLinksRef.current
         })
-        installNativeCopyGutterTrim()
+        disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
         userInputDisposable = installPreviewTerminalInputRouting({
           terminal,
           sendInput,
@@ -255,8 +219,24 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           scheduleHorizontalReset: horizontalReset.schedule,
           isReplaying: () => replayDepth > 0
         })
-        installImeNativeTextBridge()
-        installKeyHandler()
+        imeBridge = installPreviewImeBridge(terminal, {
+          getKittyKeyboardFlags: () => kittyKeyboardModes.flags
+        })
+        disposeKeyHandler = installPreviewTerminalKeyHandler({
+          terminal,
+          claimImeKeyEvent: (event) => imeBridge?.claimKeyEvent(event) ?? false,
+          pasteClipboardText: (activeElement, source) =>
+            void pasteClipboardText(activeElement, source),
+          sendInput: (data) => terminal?.input(data),
+          getShortcutContext: () => ({
+            clientPlatform: getShortcutPlatform(),
+            macOptionAsAlt: macOptionAsAltRef.current,
+            keybindings: useAppStore.getState().keybindings,
+            terminalInput: terminalInputRef.current,
+            getKittyKeyboardFlags: () => kittyKeyboardModes.flags,
+            terminalShortcutPolicy: settingsRef.current?.terminalShortcutPolicy
+          })
+        })
       }
       replayPreviewConnectionSnapshot({
         snapshot: snap,
@@ -367,7 +347,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       retryGonePtyRef.current = () => undefined
       reclaimGridRef.current = () => undefined
       horizontalReset.dispose()
-      pasteClipboardTextRef.current = null
       gridClaim.dispose()
       boxResizeObserver?.disconnect()
       disposeAppMenuClipboard()
@@ -390,7 +369,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     autoFocus,
     claimGrid,
     macOptionAsAltRef,
-    pasteClipboardTextRef,
     ptyId,
     releaseGridOnWindowBlur,
     refreshAfterInput,
@@ -399,7 +377,14 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     terminalInputRef,
     terminalLinksRef,
     terminalTheme,
-    terminalMode
+    terminalMode,
+    settings?.terminalMinimumContrastRatio,
+    settings?.terminalFontSize,
+    settings?.terminalFontFamily,
+    settings?.terminalFontWeight,
+    settings?.terminalFontWeightBold,
+    settings?.terminalLineHeight,
+    settings?.terminalLigatures
   ])
 
   return (

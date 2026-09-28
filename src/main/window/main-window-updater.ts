@@ -17,6 +17,7 @@ import {
   quitAndInstall,
   setupAutoUpdater,
   showLinuxPackage,
+  type PreQuitCleanupFailureMode,
   type UpdateInstallMode
 } from '../updater'
 
@@ -34,6 +35,7 @@ export function scheduleMainWindowAutoUpdaterSetup(
   store: Store,
   options?: {
     onBeforeUpdateQuit?: () => void | Promise<void>
+    onBeforeUpdateQuitFailure?: PreQuitCleanupFailureMode
     updateInstallMode?: UpdateInstallMode
   }
 ): void {
@@ -70,6 +72,7 @@ export function scheduleMainWindowAutoUpdaterSetup(
         store.updateUI({ dismissedUpdateNudgeId: id })
       },
       getReleaseChannelOverride: () => store.getUI().releaseChannelOverride ?? null,
+      onBeforeQuitFailure: options?.onBeforeUpdateQuitFailure,
       installMode: options?.updateInstallMode
     })
     logStartupMilestone('updater-setup-done')

@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import type { ITheme } from '@xterm/xterm'
+import { useShallow } from 'zustand/react/shallow'
 import { composeActiveTerminalTheme } from '@/components/terminal-pane/terminal-appearance'
 import { useSystemPrefersDark } from '@/components/terminal-pane/use-system-prefers-dark'
 import { useEffectiveMacOptionAsAlt } from '@/lib/keyboard-layout/use-effective-mac-option-as-alt'
@@ -14,7 +16,7 @@ export function usePreviewTerminalTheme(): {
   const settings = useAppStore((state) => state.settings)
   const systemPrefersDark = useSystemPrefersDark()
   const macOptionAsAlt = useEffectiveMacOptionAsAlt(settings?.terminalMacOptionAsAlt)
-  const { terminalTheme, terminalMode } = useMemo(() => {
+  const { terminalTheme: composedTheme, terminalMode } = useMemo(() => {
     if (!settings) {
       return { terminalTheme: null, terminalMode: 'dark' as const }
     }
@@ -25,5 +27,8 @@ export function usePreviewTerminalTheme(): {
     )
     return { terminalTheme: theme, terminalMode: appearance.mode }
   }, [settings, systemPrefersDark])
+  // Settings arrive as cloned snapshots; compare theme values before reconnecting.
+  const retainTheme = useShallow((theme: ITheme | null) => theme)
+  const terminalTheme = retainTheme(composedTheme)
   return { settings, macOptionAsAlt, terminalTheme, terminalMode }
 }
