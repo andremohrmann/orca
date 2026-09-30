@@ -8,13 +8,13 @@ import {
   hasUnansweredStructuredAgentSessionDispatch,
   projectStructuredItemToNativeChat,
   projectStructuredItemsToNativeChat,
-  latestStructuredAgentSessionAssistantMessage,
   projectStructuredAgentSessionStatus,
   projectStructuredAgentSessionStatusState,
   projectStructuredAgentSessionStatusSummary,
   structuredAgentSessionPaneKey
 } from './structured-agent-session-projection'
 import { statusStructuredAgentSessionToolCall } from './structured-agent-session-live-turn'
+import { latestStructuredAgentSessionAssistantMessage } from './structured-agent-session-latest-request'
 
 function item(
   itemId: string,
@@ -122,6 +122,23 @@ describe('structured agent session status projection', () => {
       type: 'text',
       text: 'Stopped.'
     })
+  })
+
+  it('names the call a tool row output answers, so a run pairs it by id', () => {
+    const projected = projectStructuredItemToNativeChat(
+      item('wait', 1, {
+        kind: 'tool-call',
+        name: 'wait_agent',
+        callId: 'call-wait',
+        input: null,
+        state: 'completed',
+        output: { head: 'CHILD_REPLY', digest: 'd', byteLength: 11, truncated: false }
+      })
+    )
+    expect(projected?.blocks).toEqual([
+      expect.objectContaining({ type: 'tool-call', callId: 'call-wait' }),
+      { type: 'tool-result', output: 'CHILD_REPLY', isError: false, callId: 'call-wait' }
+    ])
   })
 
   it('projects running, attention, and completed lifecycle states', () => {
@@ -663,6 +680,18 @@ describe("producer linkage — a subagent's output never speaks for the parent",
     )
     expect(prose).toContain('looking')
     expect(prose).toContain('delegating')
+  })
+
+  it("keeps the child's output as the child's: the transcript message names its producer", () => {
+    // Rendering the child's rows is not enough; unless the message still says who
+    // wrote it, the transcript can only present it as the parent speaking.
+    const messages = projectStructuredItemsToNativeChat(items)
+    const byId = new Map(messages.map((message) => [message.id, message]))
+    expect(byId.get('child-prose')).toMatchObject({ agentId: 'task-1', producerKind: 'agent' })
+    expect(byId.get('child-grep')).toMatchObject({ agentId: 'task-1' })
+    // The session's own rows name no producer: absence is the claim that they are its own.
+    expect(byId.get('root-prose')).not.toHaveProperty('agentId')
+    expect(byId.get('root-task')).not.toHaveProperty('agentId')
   })
 
   it("falls back to nothing rather than a child's line when the parent said nothing", () => {

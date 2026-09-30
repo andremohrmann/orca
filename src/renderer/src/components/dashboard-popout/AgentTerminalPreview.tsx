@@ -4,6 +4,7 @@ import '@xterm/xterm/css/xterm.css'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
 import { replayPreviewConnectionSnapshot } from './preview-terminal-snapshot-replay'
+import { previewAdvertisesKittyKeyboard } from './preview-terminal-options'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import { installPreviewImeBridge, type PreviewImeBridge } from './preview-terminal-ime-bridge'
@@ -70,8 +71,10 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     let disposeKeyHandler: (() => void) | null = null
     let disposeNativeCopyGutterTrim: (() => void) | null = null
     let disposeTerminalCompatibility: (() => void) | null = null
-    let disposeInteractions: (() => void) | null = null
-    const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker()
+    const mountTerminalInput = terminalInputRef.current
+    const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker({
+      kittyKeyboard: previewAdvertisesKittyKeyboard(mountTerminalInput)
+    })
     let replayDepth = 0,
       refreshInFlight = false
     let refreshAgain = false
@@ -154,11 +157,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         true
       )
     }
-    const sendInput = (data: string): boolean | Promise<boolean> => {
-      return remoteSession
-        ? remoteSession.input(data)
-        : window.api.terminalPreview.input(ptyId, data)
-    }
+    const sendInput = (data: string): boolean | Promise<boolean> =>
+      remoteSession ? remoteSession.input(data) : window.api.terminalPreview.input(ptyId, data)
     const pasteClipboardText = createPreviewClipboardPaster({
       ptyId,
       container,
@@ -173,7 +173,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       imeBridge?.dispose()
       imeBridge = null
     }
-    disposeInteractions = installPreviewTerminalInteractions({
+    const disposeInteractions = installPreviewTerminalInteractions({
       container,
       getTerminal: () => terminal,
       sendInput,
@@ -195,7 +195,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         snap,
         replaceExisting,
         settings: settingsRef.current,
-        terminalInput: terminalInputRef.current,
+        terminalInput: mountTerminalInput,
         macOptionIsMeta: macOptionAsAltRef.current === 'true',
         theme: terminalTheme,
         themeMode: terminalMode
@@ -355,7 +355,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       disposeImeNativeTextBridge()
       disposeTerminalCompatibility?.()
       disposeKeyHandler?.()
-      disposeInteractions?.()
+      disposeInteractions()
       disposeNativeCopyGutterTrim?.()
       if (remoteSession) {
         remoteSession.dispose()

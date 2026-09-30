@@ -113,6 +113,7 @@ vi.mock('@xterm/xterm', () => ({
       return { dispose: vi.fn() }
     })
     getSelection = vi.fn(() => this.selectionText)
+    hasSelection = vi.fn(() => this.selectionText !== '')
     attachCustomKeyEventHandler = vi.fn((handler: (event: KeyboardEvent) => boolean) => {
       this.customKeyHandler = handler
     })
