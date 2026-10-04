@@ -102,8 +102,12 @@ export function AgentLiveGrid({
   const density = layout.density ?? 'auto'
   const orderedCards = useMemo(() => mergeLiveOrder(cards, layout), [cards, layout])
   const visibleOrderedCards = useMemo(
-    () => orderedCards.filter((card) => !hiddenPaneKeys.has(card.paneKey)),
-    [hiddenPaneKeys, orderedCards]
+    () =>
+      orderedCards.filter(
+        (card) =>
+          !hiddenPaneKeys.has(card.paneKey) && (!layout.hideChildAgents || !card.parentPaneKey)
+      ),
+    [hiddenPaneKeys, layout.hideChildAgents, orderedCards]
   )
   const visibleCards = useMemo(
     () =>
@@ -301,6 +305,9 @@ export function AgentLiveGrid({
         }
         onToggleClosed={() =>
           saveLayout((current) => ({ ...current, hideClosed: !current.hideClosed }))
+        }
+        onToggleChildAgents={() =>
+          saveLayout((current) => ({ ...current, hideChildAgents: !current.hideChildAgents }))
         }
       />
       {liveCards.length > 0 ? (

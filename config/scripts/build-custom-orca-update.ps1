@@ -271,6 +271,7 @@ if (!$SkipValidation) {
     'src/main/window/dashboard-popout-window.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
+    'src/renderer/src/components/dashboard-popout/AgentLiveGrid.child-agents.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.settings-lifetime.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.settings-geometry.test.tsx',
@@ -288,6 +289,7 @@ if (!$SkipValidation) {
     'src/renderer/src/components/terminal-pane/use-terminal-pane-global-effects-window-focus-recovery.test.ts',
     'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
     'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
+    'src/renderer/src/components/settings/AgentDashboardExperimentalSetting.test.tsx',
     'src/renderer/src/components/tab-bar/tab-create-menu-options.test.ts',
     'src/renderer/src/lib/run-quick-command-in-new-tab.test.ts',
     'src/renderer/src/lib/launch-warp-tab.test.ts',
@@ -295,6 +297,7 @@ if (!$SkipValidation) {
     'config/scripts/project-renderer-web-client.test.mjs',
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
+    'src/shared/agent-dashboard-live-layout.test.ts',
     'src/shared/release-channel.test.ts'
   )
 }

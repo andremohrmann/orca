@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { normalizeAgentDashboardLiveLayout } from './agent-dashboard-live-layout'
 
 describe('normalizeAgentDashboardLiveLayout', () => {
+  it('only hides child agents when explicitly enabled, including saved layouts', () => {
+    for (const layout of [null, {}, { hideChildAgents: 'true' }, { hideChildAgents: false }]) {
+      expect(normalizeAgentDashboardLiveLayout(layout).hideChildAgents).toBe(false)
+    }
+    expect(normalizeAgentDashboardLiveLayout({ hideChildAgents: true }).hideChildAgents).toBe(true)
+  })
+
   it('defaults Live auto-minimize off', () => {
     expect(normalizeAgentDashboardLiveLayout(null).autoMinimizeAfterMinutes).toBe(0)
   })

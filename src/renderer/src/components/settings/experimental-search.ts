@@ -86,6 +86,10 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
           'live view'
         ),
         ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.hideChildAgents',
+          'hide child agents spawned terminals'
+        ),
+        ...translateSearchKeyword(
           'auto.components.settings.experimental.search.agentDashboard.autoMinimize',
           'auto minimize'
         ),

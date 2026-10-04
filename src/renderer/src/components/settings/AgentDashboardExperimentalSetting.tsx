@@ -172,6 +172,19 @@ export function AgentDashboardExperimentalSetting({
               'Open Live view on startup'
             )}
           />
+          <SettingsSwitchRow
+            label={translate('dashboardPopout.live.hideChildAgents', 'Hide child-agent terminals')}
+            description={translate(
+              'dashboardPopout.live.hideChildAgentsDescription',
+              'Hide terminals of agents spawned by another agent from Live view. The agents keep running.'
+            )}
+            checked={liveLayout.hideChildAgents === true}
+            onChange={() => updateLiveLayout({ hideChildAgents: !liveLayout.hideChildAgents })}
+            ariaLabel={translate(
+              'dashboardPopout.live.hideChildAgents',
+              'Hide child-agent terminals'
+            )}
+          />
           <NumberField
             label={translate(
               'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterLabel',

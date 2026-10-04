@@ -28,6 +28,7 @@ type AgentLiveGridToolbarProps = {
   onApplySort: (sort: AgentDashboardLiveSort) => void
   onSetDensity: (density: AgentDashboardLiveDensity) => void
   onToggleClosed: () => void
+  onToggleChildAgents: () => void
 }
 
 function labelForDensity(density: AgentDashboardLiveDensity): string {
@@ -64,7 +65,8 @@ export function AgentLiveGridToolbar({
   onShowHidden,
   onApplySort,
   onSetDensity,
-  onToggleClosed
+  onToggleClosed,
+  onToggleChildAgents
 }: AgentLiveGridToolbarProps): React.JSX.Element {
   return (
     <div className="flex h-7 shrink-0 items-center gap-1">
@@ -112,6 +114,12 @@ export function AgentLiveGridToolbar({
             </DropdownMenuCheckboxItem>
           ))}
           <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            checked={layout.hideChildAgents === true}
+            onCheckedChange={onToggleChildAgents}
+          >
+            {translate('dashboardPopout.live.hideChildAgents', 'Hide child-agent terminals')}
+          </DropdownMenuCheckboxItem>
           <DropdownMenuItem onClick={onToggleClosed}>
             {layout.hideClosed
               ? translate('dashboardPopout.live.showClosed', 'Show closed panes')

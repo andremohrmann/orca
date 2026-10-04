@@ -9,6 +9,7 @@ export type AgentDashboardLiveLayout = {
   density?: AgentDashboardLiveDensity
   sort?: AgentDashboardLiveSort
   hideClosed?: boolean
+  hideChildAgents?: boolean
   /** Minutes before inactive Live view windows auto-minimize. 0 disables it. */
   autoMinimizeAfterMinutes?: number
 }
@@ -17,6 +18,7 @@ export const DEFAULT_AGENT_DASHBOARD_LIVE_LAYOUT: AgentDashboardLiveLayout = {
   density: 'auto',
   sort: 'manual',
   hideClosed: false,
+  hideChildAgents: false,
   autoMinimizeAfterMinutes: 0
 }
 
@@ -66,6 +68,7 @@ export function normalizeAgentDashboardLiveLayout(value: unknown): AgentDashboar
     density: isAgentDashboardLiveDensity(layout.density) ? layout.density : 'auto',
     sort: isAgentDashboardLiveSort(layout.sort) ? layout.sort : 'manual',
     hideClosed: layout.hideClosed === true,
+    hideChildAgents: layout.hideChildAgents === true,
     autoMinimizeAfterMinutes: autoMinimizeAfterMinutes(layout.autoMinimizeAfterMinutes)
   }
 }
