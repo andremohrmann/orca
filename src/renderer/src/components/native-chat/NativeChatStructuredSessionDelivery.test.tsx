@@ -79,8 +79,8 @@ vi.mock('./use-structured-agent-session', async () => {
         loadOlder: vi.fn(),
         prompts: mocks.promptItems,
         outbox: outbox.outbox,
+        failedHere: outbox.failedHere,
         submissions: mocks.submissions,
-        blockedClientMessageId: outbox.blockedClientMessageId,
         send: outbox.send,
         retry: outbox.retry,
         isWorking: false,
@@ -183,10 +183,22 @@ vi.mock('./NativeChatQuestionCard', () => ({
 }))
 
 import { NativeChatStructuredSession } from './NativeChatStructuredSession'
+import { appendStructuredAgentSessionOutboxMessage } from './structured-agent-session-outbox-storage'
+
+function useProbeClock(): void {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+}
+
+async function advanceProbeClock(milliseconds: number): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(milliseconds)
+  })
+}
 
 describe('NativeChatStructuredSession delivery', () => {
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
     mocks.call.mockReset()
     mocks.mode = 'static'
     mocks.messageListProps = null
@@ -460,6 +472,7 @@ describe('NativeChatStructuredSession delivery', () => {
   })
 
   it('resends a transport-unconfirmed head so later messages are not wedged', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.submissions = []
     mocks.call.mockRejectedValueOnce(new Error('socket closed')).mockResolvedValue({
@@ -481,17 +494,25 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledOnce())
-    await waitFor(() => expect(screen.getByText('Message delivery is unconfirmed.')).toBeTruthy())
+    await act(async () => {
+      expect(send?.('first', [])).toBe(true)
+    })
+    expect(mocks.call).toHaveBeenCalledOnce()
+    expect(screen.getByText('Message delivery is unconfirmed.')).toBeTruthy()
 
-    expect(send?.('second', [])).toBe(true)
+    await act(async () => {
+      expect(send?.('second', [])).toBe(true)
+    })
+    await advanceProbeClock(999)
+    expect(mocks.call).toHaveBeenCalledOnce()
+    await advanceProbeClock(1)
     // The head is probed automatically, clears, and the queue drains.
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(3), { timeout: 10000 })
-    await waitFor(() => expect(screen.queryByText('Message delivery is unconfirmed.')).toBeNull())
+    expect(mocks.call).toHaveBeenCalledTimes(3)
+    expect(screen.queryByText('Message delivery is unconfirmed.')).toBeNull()
   }, 20000)
 
   it('probes the same operation without marking an explicit user retry', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.submissions = []
     mocks.call.mockRejectedValueOnce(new Error('socket closed')).mockResolvedValue({
@@ -513,8 +534,13 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(2), { timeout: 10000 })
+    await act(async () => {
+      expect(send?.('first', [])).toBe(true)
+    })
+    await advanceProbeClock(999)
+    expect(mocks.call).toHaveBeenCalledOnce()
+    await advanceProbeClock(1)
+    expect(mocks.call).toHaveBeenCalledTimes(2)
 
     const first = mocks.call.mock.calls[0]?.[2] as Record<string, unknown>
     const probe = mocks.call.mock.calls[1]?.[2] as Record<string, unknown>
@@ -526,6 +552,7 @@ describe('NativeChatStructuredSession delivery', () => {
   }, 20000)
 
   it('parks a host-confirmed unknown instead of probing it', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.call.mockRejectedValueOnce(new Error('socket closed')).mockResolvedValue({
       ok: true,
@@ -546,8 +573,10 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledOnce())
+    await act(async () => {
+      expect(send?.('first', [])).toBe(true)
+    })
+    expect(mocks.call).toHaveBeenCalledOnce()
 
     const sent = mocks.call.mock.calls[0]?.[2] as { envelope: { clientOperationId: string } }
     // The host now reports an unresolved unknown: another replay is the user's call.
@@ -568,13 +597,12 @@ describe('NativeChatStructuredSession delivery', () => {
     await act(async () => {
       send?.('second', [])
     })
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-    })
+    await advanceProbeClock(3000)
     expect(mocks.call).toHaveBeenCalledOnce()
   }, 20000)
 
   it('still probes while streaming batches rebuild the submissions array', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.submissions = []
     mocks.call.mockRejectedValueOnce(new Error('socket closed')).mockResolvedValue({
@@ -597,8 +625,10 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledOnce())
+    await act(async () => {
+      expect(send?.('first', [])).toBe(true)
+    })
+    expect(mocks.call).toHaveBeenCalledOnce()
 
     // Each batch mints a fresh submissions array for an unrelated message. An
     // array-identity dependency restarts the backoff on every one of these, so a
@@ -618,7 +648,7 @@ describe('NativeChatStructuredSession delivery', () => {
       ]
       await act(async () => {
         rerender(makeView())
-        await new Promise((resolve) => setTimeout(resolve, 250))
+        await vi.advanceTimersByTimeAsync(250)
       })
     }
 
@@ -628,6 +658,7 @@ describe('NativeChatStructuredSession delivery', () => {
   }, 20000)
 
   it('restarts probe delay when the runtime target changes', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.call.mockRejectedValueOnce(new Error('socket closed')).mockResolvedValue({
       ok: true,
@@ -650,22 +681,24 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledOnce())
-    await waitFor(() => expect(screen.getByText('Message delivery is unconfirmed.')).toBeTruthy())
-
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300))
-    })
-    rerender(makeView({ kind: 'environment', environmentId: 'env-1' }))
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600))
+      expect(send?.('first', [])).toBe(true)
     })
     expect(mocks.call).toHaveBeenCalledOnce()
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(2), { timeout: 1500 })
+    expect(screen.getByText('Message delivery is unconfirmed.')).toBeTruthy()
+
+    await advanceProbeClock(300)
+    rerender(makeView({ kind: 'environment', environmentId: 'env-1' }))
+    await advanceProbeClock(600)
+    expect(mocks.call).toHaveBeenCalledOnce()
+    await advanceProbeClock(399)
+    expect(mocks.call).toHaveBeenCalledOnce()
+    await advanceProbeClock(1)
+    expect(mocks.call).toHaveBeenCalledTimes(2)
   }, 10000)
 
   it('never auto-probes an entry the user already force-retried', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.submissions = []
     // Both the original send and the user's explicit Retry fail at the transport.
@@ -685,25 +718,28 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledOnce())
-    await waitFor(() => expect(screen.getByText('Message delivery is unconfirmed.')).toBeTruthy())
+    await act(async () => {
+      expect(send?.('first', [])).toBe(true)
+    })
+    expect(mocks.call).toHaveBeenCalledOnce()
+    expect(screen.getByText('Message delivery is unconfirmed.')).toBeTruthy()
 
     // User retries with the same envelope and no legacy redelivery signal.
-    fireEvent.click(screen.getByRole('button', { name: /Retry/ }))
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(2))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Retry/ }))
+    })
+    expect(mocks.call).toHaveBeenCalledTimes(2)
     const forcedRequest = mocks.call.mock.calls[1]?.[2] as Record<string, unknown> | undefined
     expect(forcedRequest?.retryUnknown).toBeUndefined()
 
     // That retry also failed at the transport. The probe must not repeat an
     // explicit retry automatically.
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-    })
+    await advanceProbeClock(3000)
     expect(mocks.call).toHaveBeenCalledTimes(2)
   }, 20000)
 
   it('does not hot-loop when the host answers pending', async () => {
+    useProbeClock()
     mocks.mode = 'outbox'
     mocks.call.mockResolvedValue({
       ok: true,
@@ -724,15 +760,18 @@ describe('NativeChatStructuredSession delivery', () => {
     const send = mocks.composerProps?.structuredTransport?.send as
       | ((text: string, attachments: readonly { id: string; path: string }[]) => boolean)
       | undefined
-    expect(send?.('first', [])).toBe(true)
-    await waitFor(() => expect(mocks.call).toHaveBeenCalledOnce())
-
-    // A pending row parks the entry under the backoff instead of re-dispatching
-    // immediately. Without that, this window is an unbounded back-to-back RPC flood.
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2500))
+      expect(send?.('first', [])).toBe(true)
     })
-    expect(mocks.call.mock.calls.length).toBeLessThanOrEqual(3)
+    expect(mocks.call).toHaveBeenCalledOnce()
+
+    // A host-pending entry stays parked until the journal answers it.
+    await advanceProbeClock(999)
+    expect(mocks.call).toHaveBeenCalledOnce()
+    await advanceProbeClock(1)
+    expect(mocks.call).toHaveBeenCalledOnce()
+    await advanceProbeClock(1500)
+    expect(mocks.call).toHaveBeenCalledOnce()
   }, 20000)
 
   it('keeps probing past the old five-attempt budget', async () => {
@@ -768,4 +807,44 @@ describe('NativeChatStructuredSession delivery', () => {
       vi.useRealTimers()
     }
   }, 30000)
+
+  // A cause seen while the chat was open is worded in full; one read back after the chat is
+  // reopened may have cleared, until a Retry it still stops brings it back.
+  it('words a refusal seen here in full, and after a reopen only once its Retry is refused', async () => {
+    const newerOrca =
+      'Chats were saved by a newer Orca. Your message was not sent. Update Orca to keep using them.'
+    mocks.mode = 'outbox'
+    mocks.call.mockResolvedValue({
+      ok: false,
+      refusal: {
+        code: 'agent_session_journal_unreadable',
+        message: 'newer',
+        details: { reason: 'journalWrittenByNewerOrca' }
+      }
+    })
+    const view = (): React.JSX.Element => (
+      <NativeChatStructuredSession
+        isVisible
+        isFocusedGroup
+        tabId="tab-held"
+        sessionId="session-held"
+        target={{ kind: 'local' }}
+        agent="codex"
+      />
+    )
+    const first = render(view())
+    // The composer's own enqueue.
+    act(() => {
+      expect(appendStructuredAgentSessionOutboxMessage('session-held', 'hello')).not.toBeNull()
+    })
+    await waitFor(() => expect(screen.getByText(newerOrca)).toBeTruthy())
+    first.unmount()
+
+    render(view())
+    await waitFor(() => expect(screen.getByText('Your message was not sent.')).toBeTruthy())
+    expect(mocks.call).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: /Retry/ }))
+    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByText(newerOrca)).toBeTruthy())
+  })
 })

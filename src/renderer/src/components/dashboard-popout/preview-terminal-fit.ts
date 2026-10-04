@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import { PaneReparentFrameTracker } from '@/lib/pane-manager/pane-reparent-frame-tracker'
 
 const LOCAL_FIT_MIN_COLS = 20
 const LOCAL_FIT_MAX_COLS = 240
@@ -88,14 +89,16 @@ export function createPreviewTerminalFitScheduler(args: {
   scaleToFit: boolean
   localResizeToFit: boolean
   onUnscaledOverflow: () => void
-}): () => void {
+}): { schedule: () => void; dispose: () => void } {
+  let disposed = false
+  const frames = new PaneReparentFrameTracker(() => disposed)
   let fitScheduled = false
-  return () => {
-    if (fitScheduled) {
+  const schedule = (): void => {
+    if (disposed || fitScheduled) {
       return
     }
     fitScheduled = true
-    requestAnimationFrame(() => {
+    frames.request(() => {
       fitScheduled = false
       fitPreviewTerminalToBox({
         container: args.container,
@@ -105,5 +108,12 @@ export function createPreviewTerminalFitScheduler(args: {
         onUnscaledOverflow: args.onUnscaledOverflow
       })
     })
+  }
+  return {
+    schedule,
+    dispose: (): void => {
+      disposed = true
+      frames.cancelPending()
+    }
   }
 }

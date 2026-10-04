@@ -84,7 +84,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       scheduleGridClaim = (): void => undefined
     const pendingLivePayloads: PendingLivePayload[] = []
     const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
-    const scheduleFit = createPreviewTerminalFitScheduler({
+    const boxFit = createPreviewTerminalFitScheduler({
       container,
       getTerminal: () => terminal,
       scaleToFit,
@@ -120,7 +120,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       typeof ResizeObserver === 'undefined'
         ? null
         : new ResizeObserver(() => {
-            scheduleFit()
+            boxFit.schedule()
             gridClaim.schedule()
           })
     if (container.parentElement) {
@@ -136,7 +136,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       replayDepth++
       terminal?.write(chunk, () => {
         replayDepth--
-        scheduleFit()
+        boxFit.schedule()
         onDone?.()
       })
     }
@@ -262,7 +262,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         refreshAgain = false
         writeReplayed('', requestRefresh)
       }
-      scheduleFit()
+      boxFit.schedule()
       gridClaim.requestNow()
       gridClaim.schedule()
       if (autoFocus) {
@@ -341,6 +341,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     void (remoteSession ? remoteSession.start() : setup())
     return () => {
       disposed = true
+      boxFit.dispose()
       clearPreviewTerminalTimer(retryTimer)
       clearPreviewTerminalTimer(inputRefreshTimer)
       goneRetry.dispose()

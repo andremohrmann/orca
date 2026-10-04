@@ -1,11 +1,14 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
 import {
+  createPreviewTerminalFitScheduler,
   fitPreviewTerminalToBox,
   resetPreviewTerminalHorizontalScroll
 } from './preview-terminal-fit'
+
+afterEach(() => vi.unstubAllGlobals())
 
 function terminal(rows = 24, cols = 80): Terminal {
   const term = {
@@ -35,6 +38,32 @@ function fixture(args: { boxWidth: number; boxHeight: number; screenWidth: numbe
 }
 
 describe('fitPreviewTerminalToBox', () => {
+  it('cancels a queued fit and ignores late callbacks after disposal', () => {
+    const callbacks: FrameRequestCallback[] = []
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => callbacks.push(callback))
+    const cancelFrame = vi.fn()
+    vi.stubGlobal('requestAnimationFrame', requestFrame)
+    vi.stubGlobal('cancelAnimationFrame', cancelFrame)
+    const getTerminal = vi.fn(() => terminal())
+    const scheduler = createPreviewTerminalFitScheduler({
+      container: fixture({ boxWidth: 600, boxHeight: 300, screenWidth: 900 }),
+      getTerminal,
+      scaleToFit: true,
+      localResizeToFit: false,
+      onUnscaledOverflow: vi.fn()
+    })
+
+    scheduler.schedule()
+    scheduler.schedule()
+    expect(requestFrame).toHaveBeenCalledOnce()
+    scheduler.dispose()
+    expect(cancelFrame).toHaveBeenCalledWith(1)
+    callbacks[0]?.(0)
+    scheduler.schedule()
+    expect(getTerminal).not.toHaveBeenCalled()
+    expect(requestFrame).toHaveBeenCalledOnce()
+  })
+
   it('requests a grid claim when an unscaled live-view terminal overflows horizontally', () => {
     const container = fixture({ boxWidth: 600, boxHeight: 300, screenWidth: 900 })
     const onUnscaledOverflow = vi.fn()

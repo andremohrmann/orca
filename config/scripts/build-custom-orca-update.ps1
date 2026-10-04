@@ -268,6 +268,7 @@ if (!$SkipValidation) {
     '120000',
     'src/renderer/src/renderer-node-builtin-boundary.test.ts',
     'src/main/ipc/dashboard-popout.test.ts',
+    'src/main/window/dashboard-popout-window.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
@@ -278,6 +279,7 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.clipboard-routes.test.tsx',
     'src/renderer/src/components/dashboard-popout/preview-remote-terminal-session.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-claim.test.ts',
+    'src/renderer/src/components/dashboard-popout/preview-terminal-fit.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-focus-handoff.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-focus-ownership.test.ts',
     'src/renderer/src/components/terminal-pane/pty-connection-visibility-resume-size.test.ts',
@@ -290,6 +292,7 @@ if (!$SkipValidation) {
     'src/renderer/src/lib/run-quick-command-in-new-tab.test.ts',
     'src/renderer/src/lib/launch-warp-tab.test.ts',
     'config/scripts/build-custom-orca-update.test.mjs',
+    'config/scripts/project-renderer-web-client.test.mjs',
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/release-channel.test.ts'
