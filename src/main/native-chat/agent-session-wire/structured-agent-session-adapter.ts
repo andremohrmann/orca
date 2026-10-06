@@ -12,6 +12,7 @@ import type {
 
 import type { AgentSessionBackgroundTaskStops } from '../../../shared/agent-child-work-stop-targets'
 import type {
+  AgentJournalAnsweredTurnIdentity,
   AgentJournalItemIdentity,
   AgentJournalItemBody,
   AgentJournalMessageItem,
@@ -127,7 +128,10 @@ export type AgentSessionAcquisition = {
 /** A refusal before spawn that a person can act on; the site that refused names it. */
 export type AgentSessionPreSpawnReason = Extract<
   AgentSessionRefusalReason<'agent_session_operation_invalid'>,
-  'managedAccountEnvOverride' | 'accountSwitchInProgress' | 'managedAccountUnsupported'
+  | 'managedAccountEnvOverride'
+  | 'accountSwitchInProgress'
+  | 'managedAccountUnsupported'
+  | 'launchFolderMissing'
 >
 
 /** Acquisition failed with first-hand proof that no provider process existed. */
@@ -176,8 +180,12 @@ export type AgentSessionDispatchOutcome =
    * anything and never promotes this to `unknown`.
    */
   | { state: 'admitted' }
-  /** Words from `agentSessionFailureWords`, never written by hand. */
-  | ({ state: 'rejected' } & AgentJournalDispatchRejection)
+  /** Words from `agentSessionFailureWords`, never written by hand. `answeredInTurn`: the turn the
+   *  provider answered the send into, which ended before the answer was read. */
+  | ({
+      state: 'rejected'
+      answeredInTurn?: AgentJournalAnsweredTurnIdentity
+    } & AgentJournalDispatchRejection)
   /** The call did not settle. Never re-send on the user's behalf. */
   | { state: 'unknown'; reason: string }
 
@@ -265,7 +273,8 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
     /** Revalidate after preparation, immediately before writing to the provider. */
     beforeDispatch?: () => Promise<void>
   }): Promise<AgentSessionDispatchOutcome>
-  /** `agent` answers for a session with no child running, from the provider alone. */
+  /** How this session narrows its agent's declared rewind; `agent` answers for one with no child
+   *  running. The router applies the declaration first, so an adapter's answer never widens it. */
   rewindSupport?(sessionId: string, agent?: string): AgentSessionRewindSupport
   recoverRewind?(input: {
     sessionId: string
@@ -319,10 +328,6 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
      *  start a new goal rather than rewrite that one's objective in place. */
     replacesGoal: boolean
   }): Promise<{ ok: true } | { ok: false; rejected: string }>
-  /** Whether this session can change its goal; `agent` answers one at rest. */
-  supportsThreadGoal?(sessionId: string, agent?: string): boolean
-  /** Whether this session writes context facts to its turn rows; `agent` answers one at rest. */
-  recordsContextUsage?(sessionId: string, agent?: string): boolean
   /** Stops exactly the tasks `taskIds` names, which the host resolves from its child records. */
   stopBackgroundTasks?(input: {
     sessionId: string
@@ -360,7 +365,21 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
    *  closed; at once for any other. A start that did not land resolves with the chat's words for
    *  why. Never rejects. */
   awaitStarted?(sessionId: string): Promise<void | SubmissionRejectionFact>
+  /** Fetch off the lane, then apply the result under the same child's fence. */
+  prepareReadOptions?(input: {
+    sessionId: string
+    fence: number
+  }): Promise<() => AgentSessionOptionsResult> | undefined
   readOptions?(input: { sessionId: string; fence: number }): Promise<AgentSessionOptionsResult>
+  /** Effective options already known after acquisition, without discovering picker choices. */
+  readAcquisitionOptions?(input: {
+    sessionId: string
+    fence: number
+    priorOptions?: Readonly<Record<string, string>>
+  }):
+    | Promise<Readonly<Record<string, string>> | undefined>
+    | Readonly<Record<string, string>>
+    | undefined
   /** Option keys skipped after a provider rejected their persisted restore value. */
   readOptionRestoreFailures?(sessionId: string): readonly string[]
   /** Provider history for restart reconciliation, bounded to what the provider
