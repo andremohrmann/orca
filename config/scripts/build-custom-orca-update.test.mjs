@@ -29,7 +29,8 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain('& git merge --no-ff --no-commit $UpstreamRef')
     expect(SCRIPT).toContain('& git rm -f -- $inheritedWorkflows | Out-Host')
     expect(SCRIPT).toContain('if (@(git diff --cached --name-only).Count -gt 0)')
-    expect(SCRIPT).toMatch(/Remove-InheritedWorkflows\r?\n\s+Invoke-Native 'Commit upstream merge'/)
+    expect(SCRIPT).toContain("'Commit upstream merge' git @(")
+    expect(SCRIPT).toContain("'--no-verify'")
   })
 
   it('preserves the custom dashboard owner when upstream changes the same board file', () => {

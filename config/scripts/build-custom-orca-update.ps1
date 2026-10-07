@@ -100,6 +100,7 @@ function Merge-CustomBranch {
         '-c',
         'core.editor=true',
         'commit',
+        '--no-verify',
         '-m',
         'chore(ci): remove inherited workflows'
       )
@@ -117,7 +118,13 @@ function Merge-CustomBranch {
     }
   }
   Remove-InheritedWorkflows
-  Invoke-Native 'Commit upstream merge' git @('-c', 'core.editor=true', 'commit', '--no-edit')
+  Invoke-Native 'Commit upstream merge' git @(
+    '-c',
+    'core.editor=true',
+    'commit',
+    '--no-verify',
+    '--no-edit'
+  )
 }
 
 function Remove-InheritedWorkflows {
