@@ -26,7 +26,7 @@ const RESUME_KEY = '\u0000resume'
 export type MobileNativeChatQueuedMessagesProps = {
   cards?: MobileQueuedMessageCard[]
   /** Steer for a waiting card, the paused queue's included; plain Send for a card held on its own
-   *  (its send failed, or the host kept it unsent), or a returned one. */
+   *  (its send failed), or a returned one. */
   onSend?: (messageId: string) => Promise<boolean>
   onDelete?: (messageId: string) => Promise<boolean>
   /** Copy the card's text into the composer, then delete the card. */
@@ -123,6 +123,11 @@ export function MobileNativeChatQueuedMessages({
                 <ListEnd size={14} color={colors.textMuted} strokeWidth={2} />
               )}
               <View style={styles.textColumn}>
+                {card.attribution ? (
+                  <Text style={styles.caption} numberOfLines={1}>
+                    {card.attribution}
+                  </Text>
+                ) : null}
                 {/* Two lines, not the desktop's one: the phone row has no hover title to read the rest. */}
                 <Text style={styles.body} numberOfLines={2}>
                   {card.text}

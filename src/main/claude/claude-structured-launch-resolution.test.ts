@@ -62,7 +62,9 @@ function resolverFor(
   stripAuthEnv = false,
   // Manual by default so a test that is not about permissions is not silently about them.
   agentDefaultArgs: Record<string, string> = { claude: '' },
-  hasTranscript: () => Promise<boolean> = async () => true
+  hasTranscript: () => Promise<boolean> = async () => true,
+  resolveLaunchArgs?: () => string[],
+  attachmentDirectory?: string
 ) {
   return createClaudeStructuredLaunchResolver({
     store: { getRecord: () => value, pinLaunchDirectory: vi.fn() },
@@ -71,7 +73,9 @@ function resolverFor(
     resolveAuthPolicy: () => ({ stripAuthEnv }),
     resolvePermissionMode: () => claudeStructuredPermissionModeForSettings({ agentDefaultArgs }),
     hasTranscript,
-    ...(resolveEnv ? { resolveEnv } : {})
+    resolveLaunchArgs: resolveLaunchArgs ?? (() => value?.launchArgs ?? []),
+    ...(resolveEnv ? { resolveEnv } : {}),
+    ...(attachmentDirectory ? { attachmentDirectory } : {})
   })
 }
 
@@ -304,18 +308,75 @@ describe('claude structured launch resolution', () => {
     }
   )
 
-  // The configured CLI arguments are a terminal concern: a durable record written before they
-  // stopped being read must not smuggle one back into the child.
-  it("ignores the record's durable launch arguments", async () => {
+  it('passes configured arguments on start without taking over permission or session flags', async () => {
     const launch = await resolverFor(
       record({
-        launchArgs: ['--model', 'claude-sonnet-4-5', '--dangerously-skip-permissions']
+        launchArgs: [
+          '--model',
+          'claude-sonnet-4-5',
+          '--dangerously-skip-permissions',
+          '--resume=wrong-session',
+          '--permission-mode',
+          'bypassPermissions'
+        ]
       })
     )({ identity: IDENTITY })
 
     expect(launch.options.model).toBeUndefined()
-    expect(launch.options.extraArgs).toEqual({ 'replay-user-messages': null })
+    expect(launch.options.extraArgs).toEqual({
+      model: 'claude-sonnet-4-5',
+      'replay-user-messages': null
+    })
     expect(launch.options.permissionMode).toBeUndefined()
+    expect(launch.options.sessionId).toBe(launch.providerSessionId)
+  })
+
+  it('re-reads saved Arguments after a refusal and on resume instead of using a stale record', async () => {
+    let args = ['--model', 'one', '--model', 'two']
+    const resolve = resolverFor(
+      record({ ...RESUMABLE, launchArgs: ['--model', 'stale'] }),
+      undefined,
+      false,
+      { claude: '' },
+      async () => true,
+      () => args
+    )
+    await expect(resolve({ identity: identityAt('leaf-current') })).rejects.toThrow(/Arguments/)
+    args = ['--effort', 'high']
+    expect((await resolve({ identity: identityAt('leaf-current') })).options.extraArgs).toEqual({
+      effort: 'high',
+      'replay-user-messages': null
+    })
+    args = []
+    expect((await resolve({ identity: identityAt('leaf-current') })).options.extraArgs).toEqual({
+      'replay-user-messages': null
+    })
+  })
+
+  it('passes configured arguments when resuming a transcript', async () => {
+    const launch = await resolverFor(
+      record({
+        ...RESUMABLE,
+        launchArgs: [
+          '--effort',
+          'high',
+          '-r',
+          'wrong-session',
+          '--add-dir',
+          '/one',
+          '/two',
+          '--add-dir',
+          '/three'
+        ]
+      })
+    )({ identity: identityAt('leaf-current') })
+
+    expect(launch.options.resume).toBe('provider-current')
+    expect(launch.options.additionalDirectories).toEqual(['/one', '/two', '/three'])
+    expect(launch.options.extraArgs).toEqual({
+      effort: 'high',
+      'replay-user-messages': null
+    })
   })
 
   it('keeps the session launch environment pinned after account settings change', async () => {
@@ -365,8 +426,41 @@ describe('claude structured launch resolution', () => {
     }
   })
 
+  it("lets the agent read the host's chat attachment store, outside the workspace", async () => {
+    const launch = await resolverFor(
+      record(),
+      undefined,
+      false,
+      { claude: '' },
+      async () => true,
+      undefined,
+      '/state/agent-session-attachments'
+    )({ identity: IDENTITY })
+
+    expect(launch.options.additionalDirectories).toEqual(['/state/agent-session-attachments'])
+    expect(launch.cwd).toBe('/repos/workspace-1')
+  })
+
+  it('grants the attachment store beside folders the saved Arguments add', async () => {
+    const launch = await resolverFor(
+      record(),
+      undefined,
+      false,
+      { claude: '' },
+      async () => true,
+      () => ['--add-dir', '/extra'],
+      '/state/agent-session-attachments'
+    )({ identity: IDENTITY })
+
+    expect(launch.options.additionalDirectories).toEqual([
+      '/extra',
+      '/state/agent-session-attachments'
+    ])
+  })
+
   it('builds on the supplied inherited env instead of Orca process env', async () => {
     const launch = await createClaudeStructuredLaunchResolver({
+      resolveLaunchArgs: () => [],
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
@@ -379,6 +473,7 @@ describe('claude structured launch resolution', () => {
 
   it('drops an inherited CLAUDE_CONFIG_DIR so the record stays the only Claude home the pin sees', async () => {
     const launch = await createClaudeStructuredLaunchResolver({
+      resolveLaunchArgs: () => [],
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
@@ -397,6 +492,7 @@ describe('claude structured launch resolution', () => {
 
   it('keeps a configured overlay CLAUDE_CONFIG_DIR over the dropped inherited one', async () => {
     const launch = await createClaudeStructuredLaunchResolver({
+      resolveLaunchArgs: () => [],
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
@@ -410,6 +506,7 @@ describe('claude structured launch resolution', () => {
 
   it('still strips an inherited auth key under a managed account', async () => {
     const launch = await createClaudeStructuredLaunchResolver({
+      resolveLaunchArgs: () => [],
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
@@ -447,6 +544,7 @@ describe('claude structured launch resolution', () => {
     makeExecutable(nodeCommand)
 
     const launch = await createClaudeStructuredLaunchResolver({
+      resolveLaunchArgs: () => [],
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => claudeCommand,
@@ -489,6 +587,7 @@ describe('claude structured launch resolution', () => {
   describe('managed-account gate on every acquisition', () => {
     function resolverWithGate(read: () => ClaudeManagedAccountGateSettings | null) {
       return createClaudeStructuredLaunchResolver({
+        resolveLaunchArgs: () => [],
         store: { getRecord: () => RESUMABLE, pinLaunchDirectory: vi.fn() },
         resolveWorkspacePath: async (id) => `/repos/${id}`,
         resolveCommand: () => '/usr/local/bin/claude',
@@ -541,11 +640,13 @@ describe('readable Claude thinking', () => {
   const launchWith = (
     thinkingDisplay?: ClaudeStructuredLaunchResolverDeps['thinkingDisplay'],
     authSwitchSettleTimeoutMs?: number,
-    command = '/usr/local/bin/claude'
+    command = '/usr/local/bin/claude',
+    launchArgs: string[] = []
   ) =>
     createClaudeStructuredLaunchResolver({
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
+      resolveLaunchArgs: () => launchArgs,
       resolveCommand: () => command,
       resolveAuthPolicy: () => ({ stripAuthEnv: false }),
       resolveEnv: () => ({ PROJECT_SHIM: '1', ANTHROPIC_API_KEY: 'sk-user' }),
@@ -599,6 +700,20 @@ describe('readable Claude thinking', () => {
     const launch = await launchWith({ argsFor: async () => ({}) })
     expect(launch.options.extraArgs).toEqual({ 'replay-user-messages': null })
     expect((await launchWith()).options.extraArgs).toEqual({ 'replay-user-messages': null })
+  })
+
+  it('keeps saved Arguments beside readable thinking, with the display left to Orca', async () => {
+    const launch = await launchWith(
+      { argsFor: async () => ({ 'thinking-display': 'summarized' }) },
+      undefined,
+      undefined,
+      ['--effort', 'high', '--thinking-display', 'omitted']
+    )
+    expect(launch.options.extraArgs).toEqual({
+      effort: 'high',
+      'replay-user-messages': null,
+      'thinking-display': 'summarized'
+    })
   })
 
   it('still rechecks an account switch that began while the probe ran', async () => {

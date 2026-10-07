@@ -209,7 +209,10 @@ async function minifyWebOutput() {
         const result = await transform(await readFileWithTransientLockRetry(targetPath), {
           legalComments: 'none',
           loader,
-          minify: true,
+          // Vite asset scripts already have short names; keep them stable across asset hash changes.
+          minifyIdentifiers: !outputPath.startsWith('assets/'),
+          minifySyntax: true,
+          minifyWhitespace: true,
           target: 'es2020'
         })
         writeFileSync(targetPath, result.code)
