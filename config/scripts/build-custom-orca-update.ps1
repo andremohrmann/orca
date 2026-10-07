@@ -19,6 +19,8 @@ $customWorkflowAllowlist = @(
 $customContentConflictAllowlist = @(
   # This branch owns the dashboard board composition while upstream evolves its board.
   'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'
+  # Keep the matching custom tests with the preserved board implementation.
+  'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'
 )
 
 function Invoke-Native {
