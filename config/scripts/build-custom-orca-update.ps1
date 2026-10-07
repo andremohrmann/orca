@@ -16,6 +16,10 @@ $customWorkflowAllowlist = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml'
 )
+$customContentConflictAllowlist = @(
+  # This branch owns the dashboard board composition while upstream evolves its board.
+  'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'
+)
 
 function Invoke-Native {
   param(
@@ -151,6 +155,24 @@ function Resolve-DeletedWorkflowMergeConflicts {
   if ($workflowConflicts.Count -gt 0) {
     Write-Host "`n==> Preserve removed inherited workflows"
     & git rm -- $workflowConflicts | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+  }
+  $customContentConflicts = @(
+    $conflicts | Where-Object {
+      $customContentConflictAllowlist -contains $_ -and
+      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 2\s') -and
+      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 3\s')
+    }
+  )
+  foreach ($path in $customContentConflicts) {
+    Write-Host "`n==> Preserve custom content for $path"
+    & git checkout --ours -- $path | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+    & git add -- $path | Out-Host
     if ($LASTEXITCODE -ne 0) {
       return $false
     }

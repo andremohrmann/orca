@@ -32,6 +32,13 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toMatch(/Remove-InheritedWorkflows\r?\n\s+Invoke-Native 'Commit upstream merge'/)
   })
 
+  it('preserves the custom dashboard owner when upstream changes the same board file', () => {
+    expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'")
+    expect(SCRIPT).toContain('& git checkout --ours -- $path | Out-Host')
+    expect(SCRIPT).toContain('& git add -- $path | Out-Host')
+    expect(SCRIPT).toContain('customContentConflictAllowlist -contains $_')
+  })
+
   it('blocks publishing when the packaged renderer cannot start', () => {
     expect(SCRIPT).toContain("'src/renderer/src/renderer-node-builtin-boundary.test.ts'")
     expect(SCRIPT).toContain("'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'")
