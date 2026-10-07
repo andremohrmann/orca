@@ -319,7 +319,7 @@ describe('AgentKanbanBoard', () => {
     expect(screen.getByTestId('card').dataset.unseen).toBe('true')
 
     fireEvent.click(screen.getByTestId('card'))
-    expect(ackAgent).toHaveBeenCalledWith('pk-ack')
+    expect(ackAgent).toHaveBeenCalledWith('pk-ack', 'explicit')
     ackAgent.mockClear()
 
     // The ack round-trips through the main window; the next snapshot mutes it.
@@ -347,6 +347,6 @@ describe('AgentKanbanBoard', () => {
         }}
       />
     )
-    expect(ackAgent).toHaveBeenCalledWith('pk-ack')
+    expect(ackAgent).toHaveBeenCalledWith('pk-ack', 'view')
   })
 })

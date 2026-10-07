@@ -8,6 +8,7 @@ import {
   type DashboardSnapshot
 } from '../../../../shared/dashboard-snapshot'
 import type { AgentDashboardView } from '../../../../shared/agent-dashboard-view'
+import type { AgentSubjectReadIntent } from '@/attention/agent-subject-read-actions'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
@@ -29,8 +30,8 @@ import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 /** Ack an agent in the pop-out window: relayed over IPC to the main renderer.
  *  ?. shields dialog-opening from dev-HMR preload skew (renderer updates hot,
  *  the preload only on app restart) — acks just no-op until restart. */
-function ackAgentViaPopoutRelay(paneKey: string): void {
-  void window.api.dashboard.ackAgent?.(paneKey)
+function ackAgentViaPopoutRelay(paneKey: string, intent: AgentSubjectReadIntent): void {
+  void window.api.dashboard.ackAgent?.(paneKey, intent)
 }
 
 /** Reveal an agent from the pop-out window: raise the main window and route it
@@ -56,7 +57,7 @@ type AgentKanbanBoardProps = {
   containerClassName?: string
   /** Marks an agent as seen. Defaults to the pop-out IPC relay; the in-window
    *  host acks the store directly. */
-  onAckAgent?: (paneKey: string) => void
+  onAckAgent?: (paneKey: string, intent: AgentSubjectReadIntent) => void
   /** Focuses the agent's pane. Defaults to the pop-out IPC relay; the in-window
    *  host activates the worktree/pane locally and closes the overlay. */
   onRevealAgent?: (args: AgentRevealArgs) => void
@@ -178,7 +179,7 @@ export function AgentKanbanBoard({
   // with unseen=false.
   const handleOpenTerminal = useCallback(
     (card: DashboardCard) => {
-      onAckAgent(card.paneKey)
+      onAckAgent(card.paneKey, 'explicit')
       setOpenedCard(card)
     },
     [onAckAgent]
@@ -199,7 +200,7 @@ export function AgentKanbanBoard({
   // without this, an agent finishing while you watch would re-flag its card.
   useEffect(() => {
     if (dialogCard?.unseen) {
-      onAckAgent(dialogCard.paneKey)
+      onAckAgent(dialogCard.paneKey, 'view')
     }
   }, [dialogCard?.paneKey, dialogCard?.unseen, onAckAgent])
 
