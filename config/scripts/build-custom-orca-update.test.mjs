@@ -42,7 +42,7 @@ describe('custom Windows updater merge safety', () => {
   })
 
   it('accepts upstream content for non-custom files while retaining a conflict guard', () => {
-    expect(SCRIPT).toContain("'Accept upstream content for non-custom file $path'")
+    expect(SCRIPT).toContain('Accept upstream content for non-custom file $path')
     expect(SCRIPT).toContain('& git checkout --theirs -- $path | Out-Host')
     expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
   })
