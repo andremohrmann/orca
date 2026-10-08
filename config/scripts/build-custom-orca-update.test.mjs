@@ -41,6 +41,12 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain('customContentConflictAllowlist -contains $_')
   })
 
+  it('accepts upstream content for non-custom files while retaining a conflict guard', () => {
+    expect(SCRIPT).toContain("'Accept upstream content for non-custom file $path'")
+    expect(SCRIPT).toContain('& git checkout --theirs -- $path | Out-Host')
+    expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
+  })
+
   it('blocks publishing when the packaged renderer cannot start', () => {
     expect(SCRIPT).toContain("'src/renderer/src/renderer-node-builtin-boundary.test.ts'")
     expect(SCRIPT).toContain("'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'")
