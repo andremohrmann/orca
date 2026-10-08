@@ -21,6 +21,8 @@ $customContentConflictAllowlist = @(
   'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'
   # Keep the matching custom tests with the preserved board implementation.
   'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'
+  # The custom dashboard still consumes these legacy settings during migration.
+  'src/shared/global-settings-types.ts'
 )
 
 function Invoke-Native {
