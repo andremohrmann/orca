@@ -230,6 +230,8 @@ export type GlobalSettings = NativeChatGlobalSettings &
     /** Chat-wide: hold a mid-turn send as an editable queued draft that goes when the turn ends
      *  (capable hosts only). Absent = on; off keeps mid-turn sends immediate. */
     nativeChatQueueFollowUps?: boolean
+    /** Whether inline visual content is rendered in native chat markdown. */
+    nativeChatInlineVisuals?: boolean
     /** Structured chat only: Codex/Claude children inherit the whole login-shell environment.
      *  Off passes only `nativeChatShellEnvironmentVariables` (plus a PATH/locale baseline). */
     nativeChatInheritShellEnvironment?: boolean
@@ -361,6 +363,8 @@ export type GlobalSettings = NativeChatGlobalSettings &
     claudeAgentTeamsDefaultDisabledMigrated?: boolean
     /** Why: worktree deletion is destructive (rm -rf of the working dir), so confirm by default. */
     skipDeleteWorktreeConfirm: boolean
+    /** Allows worktree deletion without the confirmation dialog. */
+    alwaysForceDeleteWorktrees?: boolean
     /** Why: closing a terminal with child processes kills foreground work; keep this skip separate from other confirmations. */
     skipCloseTerminalWithRunningProcessConfirm: boolean
     /** Why: deleting an automation also deletes its run history; keep this skip separate from worktree deletion. */
