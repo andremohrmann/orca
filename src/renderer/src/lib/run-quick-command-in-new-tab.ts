@@ -80,10 +80,7 @@ export function runQuickCommandInNewTab({
       launchSource: 'quick_command',
       quickCommandLabel: command.label
     })
-    if (
-      result?.surface.kind === 'local-terminal' ||
-      result?.surface.kind === 'local-agent-session'
-    ) {
+    if (result?.surface.kind === 'local-terminal') {
       const launchedGroupId = resolveQuickCommandGroupId(worktreeId, result.surface.tabId, groupId)
       if (launchedGroupId && historyId !== null) {
         useAppStore.getState().setRecentQuickCommandForGroup(launchedGroupId, historyId)
