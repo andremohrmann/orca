@@ -35,8 +35,6 @@ function expectLaunch(windows: boolean): void {
     expect.objectContaining({
       worktreeId: 'repo::C:\\repo',
       groupId: 'pane-2',
-      historyId: null,
-      shellOverride: windows ? 'powershell.exe' : undefined,
       command: expect.objectContaining({
         command: windows ? WINDOWS_WARP_AGENT_COMMAND : 'warp',
         appendEnter: true
@@ -188,7 +186,6 @@ describe('launchWarpTab', () => {
     expect(mocks.launch).toHaveBeenCalledWith(
       expect.objectContaining({
         worktreeId: 'folder:folder-1',
-        shellOverride: windows ? 'powershell.exe' : undefined,
         command: expect.objectContaining({ command: windows ? WINDOWS_WARP_AGENT_COMMAND : 'warp' })
       })
     )
