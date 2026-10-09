@@ -58,12 +58,10 @@ describe('runQuickCommandInNewTab', () => {
     mocks.launchAgentInNewTab.mockReset()
   })
 
-  it('preserves a built-in launcher shell and skips quick-command recency', () => {
+  it('launches a built-in command with the default quick-command history', () => {
     runQuickCommandInNewTab({
       worktreeId: 'wt-1',
       groupId: 'group-1',
-      historyId: null,
-      shellOverride: 'powershell.exe',
       command: {
         id: 'warp',
         label: 'Warp',
@@ -72,7 +70,7 @@ describe('runQuickCommandInNewTab', () => {
         appendEnter: true
       }
     })
-    expect(mockState.createTab).toHaveBeenCalledWith('wt-1', 'group-1', 'powershell.exe', {
+    expect(mockState.createTab).toHaveBeenCalledWith('wt-1', 'group-1', undefined, {
       quickCommandLabel: 'Warp'
     })
     expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', {
@@ -80,7 +78,7 @@ describe('runQuickCommandInNewTab', () => {
     })
     expect(mockState.setActiveTabType).toHaveBeenCalledWith('terminal', 'wt-1')
     expect(mockState.setTabBarOrder).toHaveBeenCalledWith('wt-1', ['tab-existing', 'tab-new'])
-    expect(mockState.setRecentQuickCommandForGroup).not.toHaveBeenCalled()
+    expect(mockState.setRecentQuickCommandForGroup).toHaveBeenCalledWith('group-1', 'warp')
     expect(mocks.launchAgentInNewTab).not.toHaveBeenCalled()
   })
 

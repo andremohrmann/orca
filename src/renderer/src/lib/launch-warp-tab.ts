@@ -61,8 +61,6 @@ export function launchWarpTab(
   const result = runQuickCommandInNewTab({
     worktreeId,
     groupId,
-    historyId: null,
-    shellOverride: useWindowsCli ? 'powershell.exe' : undefined,
     command: {
       id: 'warp',
       label: 'Warp',
