@@ -320,6 +320,8 @@ export type GlobalSettings = NativeChatGlobalSettings &
     activeCodexManagedAccountIdsByRuntime?: CodexManagedAccountRuntimeSelection
     /** Why: persist only per-account auth (not a CLAUDE_CONFIG_DIR swap) so switching accounts doesn't fork Claude's shared chat/session context. */
     claudeManagedAccounts: ClaudeManagedAccount[]
+    /** Whether the copied Claude system-default notice was dismissed. */
+    claudeCopiedSystemDefaultNoticeDismissed?: boolean
     activeClaudeManagedAccountId: string | null
     activeClaudeManagedAccountIdsByRuntime?: ClaudeManagedAccountRuntimeSelection
     /** Per-worktree shell history so ArrowUp doesn't surface other worktrees' commands (a HISTFILE for

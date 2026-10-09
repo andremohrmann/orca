@@ -51,6 +51,12 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
   })
 
+  it('restores every declared custom-owned file even when Git merges it cleanly', () => {
+    expect(SCRIPT).toContain('git cat-file -e "HEAD:$path"')
+    expect(SCRIPT).toContain('& git checkout HEAD -- $path | Out-Host')
+    expect(SCRIPT).toContain('Restore custom-owned file $path')
+  })
+
   it('blocks publishing when the packaged renderer cannot start', () => {
     expect(SCRIPT).toContain("'src/renderer/src/renderer-node-builtin-boundary.test.ts'")
     expect(SCRIPT).toContain("'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'")
