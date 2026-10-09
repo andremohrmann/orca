@@ -1,10 +1,7 @@
-import {
-  AgentSessionPreSpawnError,
-  type AgentSessionAcquisition,
-  type StructuredAgentSessionAcquireInput
+import type {
+  AgentSessionAcquisition,
+  StructuredAgentSessionAcquireInput
 } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
-import { CLAUDE_AUTH_SWITCH_IN_PROGRESS_MESSAGE } from '../claude-accounts/environment'
-import { isClaudeAuthSwitchInProgress } from '../claude-accounts/live-pty-gate'
 import { openClaudeStreamJsonConnection } from './claude-stream-json-connection'
 import { buildClaudePermissionCallbacks } from './claude-structured-inbound-control'
 import { resolveClaudeReplayTurn } from './claude-replay-turn-resolution'
@@ -20,7 +17,6 @@ import { claudeConfigDirEnvPatch } from './claude-config-dir-pin'
 import { CLAUDE_SPAWN_TOKEN_ENV, claudeProcessIdentity } from './claude-structured-owner-identity'
 import { ClaudePromptRegistry } from './claude-structured-prompt-replies'
 import { adoptClaudeStructuredSpawnOptions } from './claude-structured-spawn-options'
-import { createClaudeSessionJournalTranslator } from './claude-structured-journal-translation'
 import { observeClaudeFastModeFacts } from './claude-structured-session-options'
 import {
   readClaudeStartupFacts,
@@ -42,10 +38,9 @@ import { readClaudeTranscriptEntryUuid } from './claude-transcript-entry-uuid'
 import { persistClaudeTurnResumePoint } from './claude-structured-resume-point'
 import { withAgentSessionCreatePhase } from '../observability/agent-session-instrumentation'
 import { resolveClaudeAcquisitionLaunch } from './claude-structured-acquisition-launch'
-import { claudeAcquireCatalogAccess } from './claude-structured-acquire-catalog'
 import {
   bindClaudeConnectionJournalControls,
-  createClaudeJournalFailureHandler
+  createClaudeSessionJournalTranslator
 } from './claude-structured-session-journal-control'
 
 export async function acquireClaudeSession({
@@ -63,13 +58,6 @@ export async function acquireClaudeSession({
   exits: Map<string, ClaudeSessionExit>
   callbacks: ClaudeAcquireCallbacks
 }): Promise<AgentSessionAcquisition> {
-  // A managed-account switch is mid-swap of the pinned credential home; refuse here,
-  // before this acquisition cancels the previous attempt and closes the live session.
-  if (isClaudeAuthSwitchInProgress()) {
-    throw new AgentSessionPreSpawnError(new Error(CLAUDE_AUTH_SWITCH_IN_PROGRESS_MESSAGE), {
-      reason: 'accountSwitchInProgress'
-    })
-  }
   const sessionId = input.identity.sessionId
   const prompts = new ClaudePromptRegistry()
   const { previous, attempt } = acquisitions.start(sessionId, prompts)
@@ -82,12 +70,12 @@ export async function acquireClaudeSession({
   // Frames are admitted only after launch resolution proves the provider session
   // this acquisition owns. Keep the check ahead of every stateful consumer.
   const initProof = createClaudeInitProof()
-  const translator = createClaudeSessionJournalTranslator(
-    input.events,
-    prompts,
-    String(input.fence),
-    createClaudeJournalFailureHandler({ attempt, initProof, callbacks, sessionId })
-  )
+  const translator = createClaudeSessionJournalTranslator(input.events, String(input.fence), {
+    attempt,
+    initProof,
+    callbacks,
+    sessionId
+  })
 
   const onMessage = (message: Record<string, unknown>): void => {
     const init = readClaudeInit(message)
@@ -170,6 +158,7 @@ export async function acquireClaudeSession({
       attempt
     })
     expectedProviderSessionId = launch.providerSessionId
+    attempt.account = launch.account
     observedLeafUuid = launch.resumeLeafUuid
     const open = deps.openConnection ?? openClaudeStreamJsonConnection
     const connection = await withAgentSessionCreatePhase('spawn', input.recordPhase, () =>
@@ -260,10 +249,6 @@ export async function acquireClaudeSession({
     const session = publication.session
     liveSession = session
     adoptClaudeStructuredSpawnOptions(session, launch.savedOptions)
-    const catalogAccess = claudeAcquireCatalogAccess(deps.modelCatalog, launch.claudeConfigDir)
-    if (catalogAccess) {
-      session.catalogAccess = catalogAccess
-    }
     acquisitions.deleteIfCurrent(sessionId, attempt)
     await withAgentSessionCreatePhase('publish', input.recordPhase, async () => {
       sessions.set(sessionId, session)
