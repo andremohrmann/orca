@@ -37,6 +37,9 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'")
     expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'")
     expect(SCRIPT).toContain("'src/shared/global-settings-types.ts'")
+    expect(SCRIPT).toContain(
+      "'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'"
+    )
     expect(SCRIPT).toContain('& git checkout --ours -- $path | Out-Host')
     expect(SCRIPT).toContain('& git add -- $path | Out-Host')
     expect(SCRIPT).toContain('customContentConflictAllowlist -contains $_')

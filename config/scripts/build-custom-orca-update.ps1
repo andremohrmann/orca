@@ -23,6 +23,8 @@ $customContentConflictAllowlist = @(
   'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'
   # The custom dashboard still consumes these legacy settings during migration.
   'src/shared/global-settings-types.ts'
+  # Keep the compatibility predicate used by the custom terminal viewport code.
+  'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'
 )
 
 function Invoke-Native {
