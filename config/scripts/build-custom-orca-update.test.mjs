@@ -40,6 +40,9 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain(
       "'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'"
     )
+    expect(SCRIPT).toContain(
+      "'src/renderer/src/components/terminal-pane/pty-connection/pty-connect-limits.ts'"
+    )
     expect(SCRIPT).toContain('& git checkout --ours -- $path | Out-Host')
     expect(SCRIPT).toContain('& git add -- $path | Out-Host')
     expect(SCRIPT).toContain('customContentConflictAllowlist -contains $_')

@@ -25,6 +25,7 @@ $customContentConflictAllowlist = @(
   'src/shared/global-settings-types.ts'
   # Keep the compatibility predicate used by the custom terminal viewport code.
   'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'
+  'src/renderer/src/components/terminal-pane/pty-connection/pty-connect-limits.ts'
 )
 
 function Invoke-Native {
