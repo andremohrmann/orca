@@ -72,6 +72,11 @@ describe('custom Windows updater merge safety', () => {
     )
   })
 
+  it('installs desktop dependencies after merging upstream changes', () => {
+    expect(SCRIPT).toContain("Invoke-Native 'Install merged desktop dependencies' pnpm @(")
+    expect(SCRIPT).toContain("'install', '--frozen-lockfile'")
+  })
+
   it('does not fail a successful startup proof on transient Windows profile locks', () => {
     expect(PACKAGED_STARTUP_SMOKE).toContain('maxRetries: 20')
     expect(PACKAGED_STARTUP_SMOKE).toContain('retryDelay: 250')

@@ -308,6 +308,8 @@ Set-Location -LiteralPath $repoRoot
 Enable-Node24IfAvailable
 Assert-CleanWorktree
 Merge-CustomBranch -BranchName $Branch -UpstreamRef $Upstream
+# Upstream may have changed package.json or the lockfile during the merge.
+Invoke-Native 'Install merged desktop dependencies' pnpm @('install', '--frozen-lockfile')
 
 if ($StampCustomVersion) {
   Set-CustomBuildVersion
