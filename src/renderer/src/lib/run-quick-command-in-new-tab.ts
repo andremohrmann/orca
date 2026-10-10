@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store'
-import { reconcileTabOrder } from '@/components/tab-bar/reconcile-order'
+import { persistAgentLaunchTabOrder } from '@/lib/launch-agent-tab-order'
 import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import { newAgentLaunchRequestId } from '@/lib/agent-launch-request-id'
 import {
@@ -12,12 +12,10 @@ import type { TerminalQuickCommand } from '../../../shared/terminal-quick-comman
 export type RunQuickCommandInNewTabArgs = {
   command: TerminalQuickCommand
   worktreeId: string
-  /** Null skips recency for built-in launchers that are not saved quick commands. */
-  historyId?: string | null
+  historyId?: string
   /** Tab group the user clicked from. Keeps the spawned terminal in the
    *  pane the user initiated from when available. */
   groupId?: string | null
-  shellOverride?: string
 }
 
 function resolveQuickCommandGroupId(
@@ -60,7 +58,6 @@ export function runQuickCommandInNewTab({
   command,
   worktreeId,
   groupId,
-  shellOverride,
   historyId = command.id
 }: RunQuickCommandInNewTabArgs): { tabId: string } | null {
   const targetGroupId = groupId ?? undefined
@@ -82,14 +79,14 @@ export function runQuickCommandInNewTab({
     })
     if (result?.surface.kind === 'local-terminal') {
       const launchedGroupId = resolveQuickCommandGroupId(worktreeId, result.surface.tabId, groupId)
-      if (launchedGroupId && historyId !== null) {
+      if (launchedGroupId) {
         useAppStore.getState().setRecentQuickCommandForGroup(launchedGroupId, historyId)
       }
       return { tabId: result.surface.tabId }
     }
     if (result?.surface.kind === 'host-published') {
       const launchedGroupId = resolveQuickCommandLaunchGroupId(worktreeId, groupId)
-      if (launchedGroupId && historyId !== null) {
+      if (launchedGroupId) {
         useAppStore.getState().setRecentQuickCommandForGroup(launchedGroupId, historyId)
       }
     }
@@ -105,7 +102,7 @@ export function runQuickCommandInNewTab({
     return null
   }
   const store = useAppStore.getState()
-  const tab = store.createTab(worktreeId, targetGroupId, shellOverride, {
+  const tab = store.createTab(worktreeId, targetGroupId, undefined, {
     quickCommandLabel: command.label
   })
 
@@ -121,23 +118,11 @@ export function runQuickCommandInNewTab({
   // Why: persist tab-bar order with the new terminal appended. Without this,
   // reconcileTabOrder falls back to terminals-first when the stored order is
   // unset, jumping the new tab to index 0.
-  const fresh = useAppStore.getState()
-  const termIds = (fresh.tabsByWorktree[worktreeId] ?? []).map((t) => t.id)
-  const editorIds = fresh.openFiles.filter((f) => f.worktreeId === worktreeId).map((f) => f.id)
-  const browserIds = (fresh.browserTabsByWorktree?.[worktreeId] ?? []).map((t) => t.id)
-  const base = reconcileTabOrder(
-    fresh.tabBarOrderByWorktree[worktreeId],
-    termIds,
-    editorIds,
-    browserIds
-  )
-  const order = base.filter((id) => id !== tab.id)
-  order.push(tab.id)
-  fresh.setTabBarOrder(worktreeId, order)
+  persistAgentLaunchTabOrder(worktreeId, tab.id)
 
   const launchedGroupId = resolveQuickCommandGroupId(worktreeId, tab.id, groupId)
-  if (launchedGroupId && historyId !== null) {
-    fresh.setRecentQuickCommandForGroup(launchedGroupId, historyId)
+  if (launchedGroupId) {
+    useAppStore.getState().setRecentQuickCommandForGroup(launchedGroupId, historyId)
   }
 
   return { tabId: tab.id }

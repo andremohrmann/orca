@@ -3,6 +3,7 @@ import type { OnboardingChecklistState } from '../../../shared/onboarding-state-
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import { getDefaultOnboardingState } from '../../../shared/onboarding-defaults'
 import type { FeatureInteractionId } from '../../../shared/feature-interactions'
+import { parseNativeChatUpgradeTipAudience } from '../../../shared/native-chat-upgrade-tip-audience'
 import {
   updateSettings as updateSettingsOperation,
   type SettingsMutationOperations
@@ -166,6 +167,14 @@ export class ProfilePreferences {
     return this.getOnboarding()
   }
 
+  /** Fails closed: a missing or damaged record reads as not in the audience. */
+  isInNativeChatUpgradeTipAudience(): boolean {
+    const audience = parseNativeChatUpgradeTipAudience(
+      this[profilePreferencesContext].runtime.state.nativeChatUpgradeTipAudience
+    )
+    return audience?.membership === 'eligible'
+  }
+
   getGitHubCache(): PersistedState['githubCache'] {
     return this[profilePreferencesContext].runtime.state.githubCache
   }
@@ -234,13 +243,4 @@ export function getFeatureInteractionOperations(
     notifyUIChanged: () => notifyUIChanged(owner),
     getUI: () => owner.getUI()
   }
-}
-
-export function installProfilePreferencesContext(
-  target: ProfilePreferences,
-  source: ProfilePreferences
-): void {
-  Object.defineProperty(target, profilePreferencesContext, {
-    value: source[profilePreferencesContext]
-  })
 }
