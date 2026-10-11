@@ -145,7 +145,7 @@ function Merge-CustomBranch {
       if ($LASTEXITCODE -ne 0) {
         throw "Could not restore custom-owned file $path."
       }
-      & git add -- $path | Out-Host
+      & git add -f -- $path | Out-Host
       if ($LASTEXITCODE -ne 0) {
         throw "Could not stage restored custom-owned file $path."
       }
