@@ -78,8 +78,8 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain("'install', '--frozen-lockfile'")
   })
 
-  it('derives custom-owned files from the branch diff before merging upstream', () => {
-    expect(SCRIPT).toContain("git diff --name-only \"$UpstreamRef..HEAD\" --")
+  it('derives custom-owned files from the dashboard module before merging upstream', () => {
+    expect(SCRIPT).toContain("git ls-files -- 'src/renderer/src/components/dashboard-popout/*'")
     expect(SCRIPT).toContain('$script:customContentConflictAllowlist = @(')
   })
 

@@ -98,15 +98,16 @@ function Merge-CustomBranch {
     Invoke-Native "Switch to $BranchName" git @('switch', $BranchName)
   }
   Invoke-NativeOutput git @('rev-parse', '--verify', $UpstreamRef) | Out-Null
-  $customBranchOwnedPaths = @(
-    git diff --name-only "$UpstreamRef..HEAD" -- |
-      Where-Object { $_ -and !$_.StartsWith('.github/workflows/') }
+  $customDashboardPaths = @(
+    git ls-files -- 'src/renderer/src/components/dashboard-popout/*' `
+      'src/renderer/src/components/settings/AgentDashboardExperimentalSetting.tsx' `
+      'src/renderer/src/components/sidebar/AgentDashboardSidebarEntry.tsx'
   )
   if ($LASTEXITCODE -ne 0) {
-    throw 'Could not determine custom-owned files.'
+    throw 'Could not determine custom dashboard files.'
   }
   $script:customContentConflictAllowlist = @(
-    $customContentConflictAllowlist + $customBranchOwnedPaths | Sort-Object -Unique
+    $customContentConflictAllowlist + $customDashboardPaths | Sort-Object -Unique
   )
   & git merge-base --is-ancestor $UpstreamRef HEAD
   if ($LASTEXITCODE -eq 0) {
