@@ -55,7 +55,7 @@ describe('custom Windows updater merge safety', () => {
   })
 
   it('restores every declared custom-owned file even when Git merges it cleanly', () => {
-    expect(SCRIPT).toContain('git cat-file -e "HEAD:$path"')
+    expect(SCRIPT).toContain('git ls-tree -r --name-only HEAD -- $path')
     expect(SCRIPT).toContain('& git checkout HEAD -- $path | Out-Host')
     expect(SCRIPT).toContain('Restore custom-owned file $path')
   })
