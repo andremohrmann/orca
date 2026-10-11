@@ -77,6 +77,11 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain("'install', '--frozen-lockfile'")
   })
 
+  it('derives custom-owned files from the branch diff before merging upstream', () => {
+    expect(SCRIPT).toContain("git diff --name-only \"$UpstreamRef..HEAD\" --")
+    expect(SCRIPT).toContain('$script:customContentConflictAllowlist = @(')
+  })
+
   it('does not fail a successful startup proof on transient Windows profile locks', () => {
     expect(PACKAGED_STARTUP_SMOKE).toContain('maxRetries: 20')
     expect(PACKAGED_STARTUP_SMOKE).toContain('retryDelay: 250')
