@@ -82,6 +82,11 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain('$script:customContentConflictAllowlist = @(')
   })
 
+  it('skips custom-owned paths deleted from the branch without treating Git output as a failure', () => {
+    expect(SCRIPT).toContain('git ls-tree -r --name-only HEAD -- $path')
+    expect(SCRIPT).not.toContain('git cat-file -e')
+  })
+
   it('does not fail a successful startup proof on transient Windows profile locks', () => {
     expect(PACKAGED_STARTUP_SMOKE).toContain('maxRetries: 20')
     expect(PACKAGED_STARTUP_SMOKE).toContain('retryDelay: 250')

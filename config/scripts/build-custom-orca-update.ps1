@@ -135,8 +135,11 @@ function Merge-CustomBranch {
     }
   }
   foreach ($path in $customContentConflictAllowlist) {
-    & git cat-file -e "HEAD:$path" 2>$null
+    $headPath = @(git ls-tree -r --name-only HEAD -- $path)
     if ($LASTEXITCODE -eq 0) {
+      if ($headPath.Count -eq 0) {
+        continue
+      }
       Write-Host "`n==> Restore custom-owned file $path"
       & git checkout HEAD -- $path | Out-Host
       if ($LASTEXITCODE -ne 0) {
