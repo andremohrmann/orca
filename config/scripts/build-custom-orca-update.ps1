@@ -21,7 +21,12 @@ $customPreservePaths = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml',
   'config/scripts/build-custom-orca-update.ps1',
-  'config/scripts/build-custom-orca-update.test.mjs'
+  'config/scripts/build-custom-orca-update.test.mjs',
+  'config/scripts/verify-custom-windows-packaging.mjs',
+  'config/scripts/verify-custom-windows-packaging.test.mjs',
+  'config/scripts/verify-custom-orca-update.ps1',
+  'config/electron-builder.config.cjs',
+  'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'
 )
 
 function Invoke-Native {
