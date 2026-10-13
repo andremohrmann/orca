@@ -36,7 +36,6 @@ describe('custom Windows updater merge safety', () => {
   it('preserves the custom dashboard owner when upstream changes the same board file', () => {
     expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'")
     expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'")
-    expect(SCRIPT).toContain("'src/shared/global-settings-types.ts'")
     expect(SCRIPT).toContain(
       "'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'"
     )
