@@ -34,30 +34,16 @@ describe('custom Windows updater merge safety', () => {
   })
 
   it('preserves the custom dashboard owner when upstream changes the same board file', () => {
-    expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'")
-    expect(SCRIPT).toContain("'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'")
-    expect(SCRIPT).toContain(
-      "'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'"
-    )
-    expect(SCRIPT).toContain(
-      "'src/renderer/src/components/terminal-pane/pty-connection/pty-connect-limits.ts'"
-    )
-    expect(SCRIPT).toContain('& git checkout --ours -- $path | Out-Host')
-    expect(SCRIPT).toContain('& git add -- $path | Out-Host')
-    expect(SCRIPT).toContain('customContentConflictAllowlist -contains $_')
+    expect(SCRIPT).toContain('Align-ChangedFilesToUpstream -UpstreamRef $UpstreamRef')
+    expect(SCRIPT).toContain('git diff --name-only "$UpstreamRef...HEAD" --')
+    expect(SCRIPT).toContain("'config/scripts/build-custom-orca-update.ps1'")
+    expect(SCRIPT).toContain('& git checkout $UpstreamRef -- $path | Out-Host')
   })
 
   it('accepts upstream content for non-custom files while retaining a conflict guard', () => {
     expect(SCRIPT).toContain('Accept upstream content for non-custom file $path')
     expect(SCRIPT).toContain('& git checkout --theirs -- $path | Out-Host')
     expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
-  })
-
-  it('restores every declared custom-owned file even when Git merges it cleanly', () => {
-    expect(SCRIPT).toContain('git ls-tree -r --name-only HEAD -- $path')
-    expect(SCRIPT).toContain('& git checkout HEAD -- $path | Out-Host')
-    expect(SCRIPT).toContain('& git add -f -- $path | Out-Host')
-    expect(SCRIPT).toContain('Restore custom-owned file $path')
   })
 
   it('blocks publishing when the packaged renderer cannot start', () => {
@@ -75,11 +61,6 @@ describe('custom Windows updater merge safety', () => {
   it('installs desktop dependencies after merging upstream changes', () => {
     expect(SCRIPT).toContain("Invoke-Native 'Install merged desktop dependencies' pnpm @(")
     expect(SCRIPT).toContain("'install', '--frozen-lockfile'")
-  })
-
-  it('skips custom-owned paths deleted from the branch without treating Git output as a failure', () => {
-    expect(SCRIPT).toContain('git ls-tree -r --name-only HEAD -- $path')
-    expect(SCRIPT).not.toContain('git cat-file -e')
   })
 
   it('does not fail a successful startup proof on transient Windows profile locks', () => {

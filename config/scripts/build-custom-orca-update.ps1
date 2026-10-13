@@ -16,14 +16,12 @@ $customWorkflowAllowlist = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml'
 )
-$customContentConflictAllowlist = @(
-  # This branch owns the dashboard board composition while upstream evolves its board.
-  'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.tsx'
-  # Keep the matching custom tests with the preserved board implementation.
-  'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx'
-  # Keep the compatibility predicate used by the custom terminal viewport code.
-  'src/renderer/src/components/terminal-pane/pty-connection/paired-parked-terminal-restore.ts'
-  'src/renderer/src/components/terminal-pane/pty-connection/pty-connect-limits.ts'
+$customContentConflictAllowlist = @()
+$customPreservePaths = @(
+  '.github/workflows/custom-windows-update.yml',
+  '.github/workflows/pr-test-loc.yml',
+  'config/scripts/build-custom-orca-update.ps1',
+  'config/scripts/build-custom-orca-update.test.mjs'
 )
 
 function Invoke-Native {
@@ -122,6 +120,7 @@ function Merge-CustomBranch {
       throw 'Merge stopped. Resolve the reported conflicts, commit the merge, then rerun this script.'
     }
   }
+  Align-ChangedFilesToUpstream -UpstreamRef $UpstreamRef
   foreach ($path in $customContentConflictAllowlist) {
     $headPath = @(git ls-tree -r --name-only HEAD -- $path)
     if ($LASTEXITCODE -eq 0) {
@@ -147,6 +146,37 @@ function Merge-CustomBranch {
     '--no-verify',
     '--no-edit'
   )
+}
+
+function Align-ChangedFilesToUpstream {
+  param([string]$UpstreamRef)
+  $changedPaths = @(git diff --name-only "$UpstreamRef...HEAD" --)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Could not determine files changed by the custom branch.'
+  }
+  foreach ($path in $changedPaths) {
+    if (!$path -or $customPreservePaths -contains $path) {
+      continue
+    }
+    $upstreamPath = @(git ls-tree -r --name-only $UpstreamRef -- $path)
+    if ($LASTEXITCODE -ne 0) {
+      throw "Could not inspect upstream path $path."
+    }
+    if ($upstreamPath.Count -gt 0) {
+      Write-Host "`n==> Use upstream version of $path"
+      & git checkout $UpstreamRef -- $path | Out-Host
+      if ($LASTEXITCODE -ne 0) {
+        throw "Could not restore upstream version of $path."
+      }
+      & git add -f -- $path | Out-Host
+    } else {
+      Write-Host "`n==> Remove custom-only file $path"
+      & git rm -f --ignore-unmatch -- $path | Out-Host
+    }
+    if ($LASTEXITCODE -ne 0) {
+      throw "Could not stage upstream alignment for $path."
+    }
+  }
 }
 
 function Remove-InheritedWorkflows {
