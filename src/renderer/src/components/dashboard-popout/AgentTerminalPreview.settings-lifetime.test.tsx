@@ -50,13 +50,7 @@ vi.mock('@/lib/keyboard-layout/use-effective-mac-option-as-alt', () => ({
   useEffectiveMacOptionAsAlt: (value: string) => value
 }))
 vi.mock('./preview-grid-claim', () => ({
-  createPreviewGridClaim: () => ({
-    schedule: vi.fn(),
-    requestNow: vi.fn(),
-    reclaim: vi.fn(),
-    release: vi.fn(),
-    dispose: vi.fn()
-  })
+  createPreviewGridClaim: () => ({ schedule: vi.fn(), dispose: vi.fn() })
 }))
 vi.mock('./preview-terminal-box-fit', () => ({
   createPreviewBoxFit: () => ({ schedule: vi.fn(), dispose: vi.fn() })
@@ -158,7 +152,7 @@ describe('preview terminal settings lifetime', () => {
     for (let index = 1; index <= 10; index += 1) {
       await updateSettings({ editorAutoSaveDelayMs: 1000 + index })
     }
-    expect(connect).toHaveBeenCalledExactlyOnceWith('pty-1', { scrollbackRows: 1000 })
+    expect(connect).toHaveBeenCalledExactlyOnceWith('pty-1', { scrollbackRows: 24 })
     expect(harness.instances).toHaveLength(1)
     expect(terminal().options.theme).toBe(theme)
     expect(unsubscribe).not.toHaveBeenCalled()

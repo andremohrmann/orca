@@ -118,13 +118,36 @@ describe('AgentKanbanBoard', () => {
     expect(headers.map((h) => h.textContent)).toEqual(['Needs You', 'Working', 'Done'])
   })
 
-  it('shows the dashboard view selector', () => {
+  it('hides the agent map from dashboard chrome', () => {
     renderBoard([])
 
-    expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Live view' })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Dashboard view' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Agent Map' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dashboard' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Dashboard view' })).not.toBeInTheDocument()
     expect(screen.getByText('Needs You')).toBeInTheDocument()
+  })
+
+  it('names the visible column regions and keeps cards inside their region', () => {
+    renderBoard([card({ bucket: 'attention', worktreeName: 'needs-review' })])
+
+    expect(
+      screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'))
+    ).toEqual(['Needs You', 'Working', 'Done'])
+    expect(
+      within(screen.getByRole('region', { name: 'Needs You' })).getByText('needs-review')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Idle' })).not.toBeInTheDocument()
+  })
+
+  it('uses the visible translated names for all regions when idle agents are shown', async () => {
+    await i18n.changeLanguage('zh')
+    renderBoard([], { showIdle: true })
+
+    expect(screen.getAllByRole('region')).toHaveLength(4)
+    for (const name of ['需要你', '工作中', '已完成', '空闲']) {
+      const region = screen.getByRole('region', { name })
+      expect(within(region).getByText(name)).toBeInTheDocument()
+    }
   })
 
   it('offers project filters without agent-state map filters', async () => {
@@ -319,7 +342,8 @@ describe('AgentKanbanBoard', () => {
     expect(screen.getByTestId('card').dataset.unseen).toBe('true')
 
     fireEvent.click(screen.getByTestId('card'))
-    expect(ackAgent).toHaveBeenCalledWith('pk-ack', 'explicit')
+    // Only the click is a user read; it may claim the edges the card already surfaced.
+    expect(ackAgent.mock.calls).toEqual([['pk-ack', 'explicit']])
     ackAgent.mockClear()
 
     // The ack round-trips through the main window; the next snapshot mutes it.
@@ -347,6 +371,6 @@ describe('AgentKanbanBoard', () => {
         }}
       />
     )
-    expect(ackAgent).toHaveBeenCalledWith('pk-ack', 'view')
+    expect(ackAgent.mock.calls).toEqual([['pk-ack', 'view']])
   })
 })

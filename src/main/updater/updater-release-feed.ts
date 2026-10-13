@@ -4,8 +4,6 @@ import {
   getReleaseDownloadUrl
 } from '../updater-prerelease-feed'
 import { isMissingUpdateManifestFailure, isPrereleaseVersion } from '../updater-fallback'
-import { isCustomVersion } from '../../shared/release-channel'
-import { getReleaseLatestDownloadUrl, getUpdateFeedInfo } from '../../shared/update-feed-info'
 import type { CheckFailureSource } from './updater-state'
 import type { UpdateCheckVariant } from './updater-types'
 import { ReleaseFeedPreflightError } from './updater-state'
@@ -208,17 +206,9 @@ export abstract class UpdaterReleaseFeed extends UpdaterInstallExecution {
       }
       throw new Error('Could not resolve perf update feed')
     }
-    if (getUpdateFeedInfo().isCustom || isCustomVersion(currentVersion)) {
-      this.clearPrereleaseFallbackContext()
-      this.clearPublishingWindowLastGoodCheck()
-      console.info(
-        `[updater] custom release feed has no installable custom update: current=${currentVersion} includePrerelease=${includePrerelease}`
-      )
-      return 'not-available'
-    }
     this.clearPrereleaseFallbackContext()
     this.clearPublishingWindowLastGoodCheck()
-    const url = getReleaseLatestDownloadUrl()
+    const url = 'https://github.com/stablyai/orca/releases/latest/download'
     console.info(
       `[updater] release feed fallback: current=${currentVersion} includePrerelease=${includePrerelease} → ${url}`
     )

@@ -58,30 +58,6 @@ describe('runQuickCommandInNewTab', () => {
     mocks.launchAgentInNewTab.mockReset()
   })
 
-  it('launches a built-in command with the default quick-command history', () => {
-    runQuickCommandInNewTab({
-      worktreeId: 'wt-1',
-      groupId: 'group-1',
-      command: {
-        id: 'warp',
-        label: 'Warp',
-        action: 'terminal-command',
-        command: '& $orcaWarpCli',
-        appendEnter: true
-      }
-    })
-    expect(mockState.createTab).toHaveBeenCalledWith('wt-1', 'group-1', undefined, {
-      quickCommandLabel: 'Warp'
-    })
-    expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', {
-      command: '& $orcaWarpCli'
-    })
-    expect(mockState.setActiveTabType).toHaveBeenCalledWith('terminal', 'wt-1')
-    expect(mockState.setTabBarOrder).toHaveBeenCalledWith('wt-1', ['tab-existing', 'tab-new'])
-    expect(mockState.setRecentQuickCommandForGroup).toHaveBeenCalledWith('group-1', 'warp')
-    expect(mocks.launchAgentInNewTab).not.toHaveBeenCalled()
-  })
-
   it('flattens multiline quick commands before queuing', () => {
     const result = runQuickCommandInNewTab({
       command: {

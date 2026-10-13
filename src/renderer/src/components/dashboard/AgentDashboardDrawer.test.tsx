@@ -93,26 +93,6 @@ describe('AgentDashboardDrawer', () => {
     expect(useAppStore.getState().agentDashboardDrawerOpen).toBe(false)
   })
 
-  it('opens the drawer with the default board view', () => {
-    render(<AgentDashboardDrawer statusBarVisible />)
-    expect(mocks.boardProps).toBeNull()
-
-    act(() => useAppStore.setState({ agentDashboardDrawerOpen: true }))
-    expect(mocks.boardProps).not.toBeNull()
-    expect(mocks.boardProps?.initialView).toBe('board')
-  })
-
-  it('uses the saved default view when opened in-window', () => {
-    useAppStore.setState({
-      settings: { experimentalAgentDashboardDefaultView: 'live' } as never
-    })
-    render(<AgentDashboardDrawer statusBarVisible />)
-
-    act(() => useAppStore.getState().setAgentDashboardDrawerOpen(true))
-
-    expect(mocks.boardProps?.initialView).toBe('live')
-  })
-
   type RevealAgent = (args: {
     repoId: string
     worktreeId: string

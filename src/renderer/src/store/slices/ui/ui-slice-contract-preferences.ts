@@ -19,7 +19,6 @@ import type { WorkspacePortScanResult } from '../../../../../shared/workspace-po
 import type { CustomPet } from '../../../../../shared/pet-types'
 import type { ReleaseChannel } from '../../../../../shared/release-channel'
 import type { ChangelogData, UpdateStatus } from '../../../../../shared/update-status-types'
-import type { AgentDashboardView } from '../../../../../shared/agent-dashboard-view'
 import type { StatusBarUsageMode } from '../../../../../shared/status-bar-usage-mode'
 import type { PersistedUIWriteBaseline } from '../persisted-ui-write-baseline'
 import type { UISliceCore } from './ui-slice-contract-core'
@@ -106,8 +105,7 @@ export type UISlicePreferences = {
   setSyncTaskStatusFromWorkspaceBoard: (enabled: boolean) => void
   /** Transient: the in-window Agent Dashboard companion drawer is open. Not persisted. */
   agentDashboardDrawerOpen: boolean
-  agentDashboardDrawerInitialView: AgentDashboardView | null
-  setAgentDashboardDrawerOpen: (open: boolean, initialView?: AgentDashboardView) => void
+  setAgentDashboardDrawerOpen: (open: boolean) => void
   statusBarItems: StatusBarItem[]
   toggleStatusBarItem: (item: StatusBarItem) => void
   statusBarVisible: boolean

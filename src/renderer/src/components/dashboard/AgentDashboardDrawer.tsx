@@ -16,7 +16,6 @@ import {
 import { AgentDashboardSettingsMenu } from './AgentDashboardSettingsMenu'
 import { useLiveDashboardSnapshot } from './useLiveDashboardSnapshot'
 import { translate } from '@/i18n/i18n'
-import { normalizeAgentDashboardView } from '../../../../shared/agent-dashboard-view'
 
 // Why: Escape should dismiss interactive nested overlays (e.g. the terminal
 // preview dialog) before this companion sheet, which is excluded by its own
@@ -41,11 +40,6 @@ function AgentDashboardDrawerBody({
   onMenuOpenChange: (open: boolean) => void
 }): React.JSX.Element {
   const snapshot = useLiveDashboardSnapshot()
-  const initialView = useAppStore((s) =>
-    normalizeAgentDashboardView(
-      s.agentDashboardDrawerInitialView ?? s.settings?.experimentalAgentDashboardDefaultView
-    )
-  )
 
   // In-window ack/reveal act on the local store directly — the pop-out's IPC
   // relay is gated to the pop-out renderer and would reject calls from here.
@@ -67,30 +61,14 @@ function AgentDashboardDrawerBody({
     void window.api.dashboard.openPopout?.()
   }, [onClose])
 
-  const handleAssignWorkspaceStatus = useCallback(
-    ({ worktreeId, status }: { worktreeId: string; status: string }) => {
-      void useAppStore.getState().updateWorktreeMeta(worktreeId, { workspaceStatus: status })
-    },
-    []
-  )
-  const handleRenameWorkspace = useCallback(
-    ({ worktreeId, displayName }: { worktreeId: string; displayName: string }) => {
-      void useAppStore.getState().updateWorktreeMeta(worktreeId, { displayName })
-    },
-    []
-  )
-
   return (
     <AgentKanbanBoard
       snapshot={snapshot}
-      initialView={initialView}
       // Why: bg-transparent lets the sheet's worktree-sidebar surface through
       // so the board reads as the same companion panel as the workspace board.
       containerClassName="h-full w-full bg-transparent"
       onAckAgent={handleAckAgent}
       onRevealAgent={handleRevealAgent}
-      onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
-      onRenameWorkspace={handleRenameWorkspace}
       onClose={onClose}
       headerActions={
         <AgentDashboardSettingsMenu
@@ -229,7 +207,7 @@ export function AgentDashboardDrawer({
             top: WORKSPACE_TOP_CHROME_HEIGHT,
             bottom: drawerBottom,
             height: 'auto',
-            width: `calc(100vw - ${drawerLeftCss})`
+            width: `min(calc(100vw - ${drawerLeftCss}), 1294px)`
           } as React.CSSProperties
         }
         data-agent-dashboard-sheet=""

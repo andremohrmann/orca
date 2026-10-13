@@ -46,6 +46,7 @@ describe('web preload API composition', () => {
       'gl',
       'hostedReview',
       'linear',
+      'jira',
       'hooks',
       'stats',
       'memory',
@@ -84,10 +85,6 @@ describe('web preload API composition', () => {
     expect(Object.keys(globals.window.api.projects)).toEqual([])
     const projects: Record<string, unknown> = globals.window.api.projects
     expect(projects.then).toBeUndefined()
-    await expect(globals.window.api.updater.getFeedInfo()).resolves.toMatchObject({
-      repo: 'stablyai/orca',
-      isCustom: false
-    })
   })
 
   it('snapshots E2E config before runtime storage initialization', async () => {

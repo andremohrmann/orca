@@ -14,14 +14,6 @@ import {
   type KeybindingInput,
   type KeybindingOverrides
 } from '../../shared/keybindings'
-import {
-  normalizeAgentDashboardView,
-  type AgentDashboardView
-} from '../../shared/agent-dashboard-view'
-import {
-  normalizeDashboardPopoutOpacity,
-  type DashboardPopoutOpacityState
-} from '../../shared/dashboard-popout-opacity'
 
 const MIN_WIDTH = 480
 const MIN_HEIGHT = 360
@@ -45,35 +37,6 @@ export function getDashboardPopoutWindow(): BrowserWindow | null {
 
 export function isDashboardPopoutRenderer(sender: WebContents): boolean {
   return getDashboardPopoutWindow()?.webContents === sender
-}
-
-function dashboardPopoutOpacitySupported(): boolean {
-  return process.platform === 'win32' || process.platform === 'darwin'
-}
-
-export function getDashboardPopoutOpacityState(store: Store): DashboardPopoutOpacityState {
-  const supported = dashboardPopoutOpacitySupported()
-  return {
-    opacity: supported ? normalizeDashboardPopoutOpacity(store.getUI().dashboardPopoutOpacity) : 1,
-    supported
-  }
-}
-
-export function setDashboardPopoutOpacity(
-  store: Store,
-  requestedOpacity: number
-): DashboardPopoutOpacityState {
-  const supported = dashboardPopoutOpacitySupported()
-  const state = {
-    opacity: supported ? normalizeDashboardPopoutOpacity(requestedOpacity) : 1,
-    supported
-  }
-  if (!state.supported) {
-    return state
-  }
-  getDashboardPopoutWindow()?.setOpacity(state.opacity)
-  store.updateUI({ dashboardPopoutOpacity: state.opacity })
-  return state
 }
 
 function zoomDashboardPopout(window: BrowserWindow, direction: UIZoomDirection): void {
@@ -135,32 +98,14 @@ function broadcastPopoutOpenChanged(open: boolean): void {
   }
 }
 
-function loadDashboardPopout(window: BrowserWindow, view: string): void {
-  const search = `view=${encodeURIComponent(view)}`
+function loadDashboardPopout(window: BrowserWindow): void {
   // Why: mirror loadMainWindow's dev/prod branch — the dev server serves the
   // second HTML entry, prod loads the emitted file.
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(`${process.env.ELECTRON_RENDERER_URL}/popout.html?${search}`)
+    void window.loadURL(`${process.env.ELECTRON_RENDERER_URL}/popout.html`)
   } else {
-    void window.loadFile(join(__dirname, '../renderer/popout.html'), { search })
+    void window.loadFile(join(__dirname, '../renderer/popout.html'))
   }
-}
-
-function showAndMaximizeDashboardPopout(window: BrowserWindow): void {
-  if (window.isDestroyed()) {
-    return
-  }
-  if (isBackgroundLaunch()) {
-    showWindowWithoutStealingFocus(window)
-  } else {
-    window.show()
-  }
-  window.maximize()
-  setTimeout(() => {
-    if (!window.isDestroyed() && !window.isMaximized()) {
-      window.maximize()
-    }
-  }, 0)
 }
 
 function resolveRestoredBounds(store: Store | null): {
@@ -188,29 +133,21 @@ function resolveRestoredBounds(store: Store | null): {
  * Open the pop-out dashboard window, or focus it if already open. The window is
  * a standalone top-level BrowserWindow with a native frame that reuses the same
  * preload/window.api as the main window but renders its own React root
- * (popout.html?view=…).
+ * (popout.html).
  */
 export function createOrFocusDashboardPopout(
   store: Store | null,
-  view?: AgentDashboardView,
   options: { getKeybindings?: () => KeybindingOverrides | undefined } = {}
 ): BrowserWindow {
   if (dashboardPopoutWindow && !dashboardPopoutWindow.isDestroyed()) {
     if (dashboardPopoutWindow.isMinimized()) {
       dashboardPopoutWindow.restore()
     }
-    dashboardPopoutWindow.maximize()
     if (!isBackgroundLaunch()) {
       dashboardPopoutWindow.focus()
     }
-    if (view) {
-      dashboardPopoutWindow.webContents.send('dashboard:viewRequested', view)
-    }
     return dashboardPopoutWindow
   }
-
-  const initialView =
-    view ?? normalizeAgentDashboardView(store?.getSettings().experimentalAgentDashboardDefaultView)
 
   const savedBounds = resolveRestoredBounds(store)
 
@@ -241,9 +178,6 @@ export function createOrFocusDashboardPopout(
       webviewTag: false
     }
   })
-  if (dashboardPopoutOpacitySupported()) {
-    window.setOpacity(normalizeDashboardPopoutOpacity(store?.getUI().dashboardPopoutOpacity))
-  }
   installPrivilegedWindowNavigationPolicy(window.webContents)
   // Why: isolated sessions do not inherit the main session's deny-by-default permission policy.
   window.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) =>
@@ -303,7 +237,7 @@ export function createOrFocusDashboardPopout(
   })
 
   window.once('ready-to-show', () => {
-    showAndMaximizeDashboardPopout(window)
+    showWindowWithoutStealingFocus(window)
   })
 
   // Bounds persistence — mirrors the main window's debounced/frozen approach so
@@ -317,30 +251,18 @@ export function createOrFocusDashboardPopout(
     }
     boundsTimer = setTimeout(() => {
       boundsTimer = null
-      if (
-        windowClosing ||
-        window.isDestroyed() ||
-        window.isMinimized() ||
-        window.isFullScreen() ||
-        window.isMaximized()
-      ) {
+      if (windowClosing || window.isDestroyed() || window.isMinimized() || window.isFullScreen()) {
         return
       }
       const bounds = window.getBounds()
       if (bounds.width < MIN_WIDTH || bounds.height < MIN_HEIGHT) {
         return
       }
-      store?.updateUI({ dashboardPopoutBounds: bounds, dashboardPopoutMaximized: false })
+      store?.updateUI({ dashboardPopoutBounds: bounds })
     }, 500)
   }
   window.on('resize', saveBounds)
   window.on('move', saveBounds)
-  window.on('maximize', () => {
-    store?.updateUI({ dashboardPopoutMaximized: true })
-  })
-  window.on('unmaximize', () => {
-    store?.updateUI({ dashboardPopoutMaximized: false })
-  })
 
   const freezeBounds = (event?: Event): void => {
     if (event?.defaultPrevented) {
@@ -364,7 +286,7 @@ export function createOrFocusDashboardPopout(
     broadcastPopoutOpenChanged(false)
   })
 
-  loadDashboardPopout(window, initialView)
+  loadDashboardPopout(window)
   return window
 }
 

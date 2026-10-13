@@ -226,7 +226,6 @@ export const UiUpdateFields = z
       .nullable()
       .optional(),
     windowMaximized: z.boolean().optional(),
-    dashboardPopoutMaximized: z.boolean().optional(),
     _sortBySmartMigrated: z.boolean().optional(),
     _inlineAgentsDefaultedForExperiment: z.boolean().optional(),
     _inlineAgentsDefaultedForAllUsers: z.boolean().optional(),

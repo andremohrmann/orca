@@ -26,9 +26,7 @@ const mocks = vi.hoisted(() => ({
   agentBucketCounts: { attention: 0, working: 0, done: 0, idle: 0 },
   getAgentBucketCounts: vi.fn(),
   dismissMobileOnboardingBadge: vi.fn(),
-  setSetupGuideSidebarDismissed: vi.fn(),
-  setAgentDashboardDrawerOpen: vi.fn(),
-  openDashboardPopout: vi.fn()
+  setSetupGuideSidebarDismissed: vi.fn()
 }))
 
 vi.mock('@/store', () => ({
@@ -146,9 +144,7 @@ function setSidebarState({
     persistedUIReady: true,
     activeModal: null,
     setupGuideSidebarDismissed: true,
-    setSetupGuideSidebarDismissed: mocks.setSetupGuideSidebarDismissed,
-    agentDashboardDrawerOpen: false,
-    setAgentDashboardDrawerOpen: mocks.setAgentDashboardDrawerOpen
+    setSetupGuideSidebarDismissed: mocks.setSetupGuideSidebarDismissed
   }
 }
 
@@ -217,9 +213,6 @@ describe('SidebarNav', () => {
     await i18n.changeLanguage('en')
     mocks.hasPairedMobileDevice = false
     mocks.agentBucketCounts = { attention: 0, working: 0, done: 0, idle: 0 }
-    ;(window as unknown as { api: unknown }).api = {
-      dashboard: { openPopout: mocks.openDashboardPopout }
-    }
     setSidebarState()
   })
 

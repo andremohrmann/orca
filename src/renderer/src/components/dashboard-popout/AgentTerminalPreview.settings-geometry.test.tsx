@@ -242,16 +242,13 @@ it('ignores a pending connection retired by a metric change', async () => {
   expect(fit).toHaveBeenCalledExactlyOnceWith('pty-1', 50, 15)
 })
 
-it('claims each metric change immediately without replaying an obsolete scheduled claim', async () => {
+it('cancels an obsolete metric owner grid claim before the next change', async () => {
   render(<AgentTerminalPreview ptyId="pty-1" />)
   await settleGeometry()
   await act(async () => useAppStore.getState().updateSettings({ terminalFontSize: 18 }))
   await act(async () => useAppStore.getState().updateSettings({ terminalLineHeight: 1.5 }))
   await settleGeometry()
   expect(harness.instances).toHaveLength(3)
-  expect(fit.mock.calls).toEqual([
-    ['pty-1', 60, 15],
-    ['pty-1', 50, 15],
-    ['pty-1', 50, 10]
-  ])
+  expect(fit).toHaveBeenCalledTimes(2)
+  expect(fit).toHaveBeenLastCalledWith('pty-1', 50, 10)
 })

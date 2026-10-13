@@ -61,8 +61,6 @@ if (!rootElement) {
   throw new Error('Pop-out root element not found.')
 }
 
-const requestedView = new URLSearchParams(window.location.search).get('view')
-
 function PopoutSettingsSync(): null {
   const settings = useAppStore((state) => state.settings)
 
@@ -118,7 +116,7 @@ function PopoutRoot(): React.JSX.Element {
         'The dashboard could not finish rendering. Retry to remount it, or reopen it.'
       )}
     >
-      <DashboardPopoutRoot view={requestedView} />
+      <DashboardPopoutRoot />
     </RecoverableRenderErrorBoundary>
   )
 }

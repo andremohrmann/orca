@@ -5,11 +5,9 @@ import type {
   UpdateStatus
 } from '../../shared/update-status-types'
 import type { ReleaseChannel } from '../../shared/release-channel'
-import type { UpdateFeedInfo } from '../../shared/update-feed-info'
 
 export type UpdaterApi = {
   getVersion: () => Promise<string>
-  getFeedInfo: () => Promise<UpdateFeedInfo>
   getStatus: () => Promise<UpdateStatus>
   check: (options?: UpdateCheckOptions) => Promise<void>
   download: () => Promise<void>

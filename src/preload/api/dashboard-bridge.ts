@@ -1,19 +1,15 @@
 import { ipcRenderer } from 'electron'
 import type {
-  DashboardAssignWorkspaceStatusArgs,
-  DashboardRenameWorkspaceArgs,
   DashboardRevealAgentArgs,
   DashboardSleepWorkspaceArgs,
   DashboardSnapshot,
   DashboardSpawnAgentArgs
 } from '../../shared/dashboard-snapshot'
-import type { AgentDashboardView } from '../../shared/agent-dashboard-view'
 import type { PreloadApi } from '../api-types'
 
 export const dashboardApi = {
   // Open the pop-out dashboard window, or focus it if already open.
-  openPopout: (view?: AgentDashboardView): Promise<void> =>
-    ipcRenderer.invoke('dashboardPopout:open', view),
+  openPopout: (): Promise<void> => ipcRenderer.invoke('dashboardPopout:open'),
 
   // ── Producer side (main window) ──────────────────────────────────────
   publishSnapshot: (snapshot: DashboardSnapshot): Promise<void> =>
@@ -55,24 +51,6 @@ export const dashboardApi = {
     ipcRenderer.on('ui:sleepDashboardWorkspace', listener)
     return () => ipcRenderer.removeListener('ui:sleepDashboardWorkspace', listener)
   },
-  onAssignWorkspaceStatus: (
-    callback: (args: DashboardAssignWorkspaceStatusArgs) => void
-  ): (() => void) => {
-    const listener = (
-      _event: Electron.IpcRendererEvent,
-      args: DashboardAssignWorkspaceStatusArgs
-    ): void => callback(args)
-    ipcRenderer.on('ui:assignDashboardWorkspaceStatus', listener)
-    return () => ipcRenderer.removeListener('ui:assignDashboardWorkspaceStatus', listener)
-  },
-  onRenameWorkspace: (callback: (args: DashboardRenameWorkspaceArgs) => void): (() => void) => {
-    const listener = (
-      _event: Electron.IpcRendererEvent,
-      args: DashboardRenameWorkspaceArgs
-    ): void => callback(args)
-    ipcRenderer.on('ui:renameDashboardWorkspace', listener)
-    return () => ipcRenderer.removeListener('ui:renameDashboardWorkspace', listener)
-  },
 
   // ── Consumer side (pop-out window) ───────────────────────────────────
   requestSnapshot: (): Promise<void> => ipcRenderer.invoke('dashboard:requestSnapshot'),
@@ -82,14 +60,6 @@ export const dashboardApi = {
     ipcRenderer.on('dashboard:snapshot', listener)
     return () => ipcRenderer.removeListener('dashboard:snapshot', listener)
   },
-  onViewRequested: (callback: (view: AgentDashboardView) => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, view: AgentDashboardView): void =>
-      callback(view)
-    ipcRenderer.on('dashboard:viewRequested', listener)
-    return () => ipcRenderer.removeListener('dashboard:viewRequested', listener)
-  },
-  getPopoutOpacity: () => ipcRenderer.invoke('dashboardPopout:getOpacity'),
-  setPopoutOpacity: (opacity: number) => ipcRenderer.invoke('dashboardPopout:setOpacity', opacity),
   revealAgent: (args: DashboardRevealAgentArgs): Promise<void> =>
     ipcRenderer.invoke('dashboardPopout:revealAgent', args),
   ackAgent: (paneKey: string, intent: 'view' | 'explicit'): Promise<void> =>
@@ -97,9 +67,5 @@ export const dashboardApi = {
   spawnAgent: (args: DashboardSpawnAgentArgs): Promise<void> =>
     ipcRenderer.invoke('dashboardPopout:spawnAgent', args),
   sleepWorkspace: (args: DashboardSleepWorkspaceArgs): Promise<void> =>
-    ipcRenderer.invoke('dashboardPopout:sleepWorkspace', args),
-  assignWorkspaceStatus: (args: DashboardAssignWorkspaceStatusArgs): Promise<void> =>
-    ipcRenderer.invoke('dashboardPopout:assignWorkspaceStatus', args),
-  renameWorkspace: (args: DashboardRenameWorkspaceArgs): Promise<void> =>
-    ipcRenderer.invoke('dashboardPopout:renameWorkspace', args)
+    ipcRenderer.invoke('dashboardPopout:sleepWorkspace', args)
 } satisfies PreloadApi['dashboard']

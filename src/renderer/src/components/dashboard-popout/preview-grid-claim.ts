@@ -1,6 +1,6 @@
 import type { Terminal } from '@xterm/xterm'
-import type { TerminalPreviewApi } from '../../../../preload/api/dashboard-api'
 import { clampTerminalViewport } from '../../../../shared/terminal-viewport'
+import { terminalPreviewApiFor } from './terminal-preview-api'
 
 const FIT_REQUEST_DEBOUNCE_MS = 200
 /**
@@ -8,33 +8,22 @@ const FIT_REQUEST_DEBOUNCE_MS = 200
  * terminal's cell size, computes the grid the dialog box can hold, and asks
  * main to claim it (remote-desktop viewer machinery — the main-window pane
  * parks at the claimed grid and reclaims its own geometry once the claim is
- * released). Routine requests are keyed by target dims to avoid a resize
- * tug-of-war; explicit activation can reclaim an unchanged grid.
+ * released). Requests are keyed by target dims and never re-sent for an
+ * unchanged target, so a host or phone taking the grid back doesn't start a
+ * resize tug-of-war.
  */
 export function createPreviewGridClaim(args: {
   ptyId: string
   container: HTMLElement
   getTerminal: () => Terminal | null
-  isActive?: () => boolean
-  onFitApplied?: () => void
-  transport?: Pick<TerminalPreviewApi, 'fit' | 'releaseFit'>
-}): {
-  requestNow: () => void
-  reclaim: () => void
-  release: () => void
-  schedule: () => void
-  dispose: () => void
-} {
+}): { schedule: () => void; dispose: () => void } {
   let lastRequestedFit: string | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
-  let generation = 0
-  let releaseInFlight: Promise<void> | null = null
-  const transport = args.transport ?? window.api.terminalPreview
 
   const request = (): void => {
     const terminal = args.getTerminal()
-    if (disposed || args.isActive?.() === false || !terminal) {
+    if (disposed || !terminal) {
       return
     }
     const screen = args.container.querySelector<HTMLElement>('.xterm-screen')
@@ -64,25 +53,16 @@ export function createPreviewGridClaim(args: {
       return
     }
     lastRequestedFit = fitKey
-    const requestGeneration = ++generation
-    // The resize triggers a main-side resync push; the reconnect snapshot
+    // The resize triggers a resync push from the PTY's owner; the reconnect snapshot
     // carries the new grid. If the claim didn't land (a phone owns the size),
     // the dialog's scaled fallback rendering stays correct as-is.
-    void transport
+    void terminalPreviewApiFor(args.ptyId)
       .fit(args.ptyId, cols, rows)
-      .then((applied) => {
-        if (!applied && generation === requestGeneration) {
-          lastRequestedFit = null
-        }
-        if (applied && !disposed && generation === requestGeneration) {
-          args.onFitApplied?.()
-        }
-      })
       .catch(() => undefined)
   }
 
   const schedule = (): void => {
-    if (disposed || args.isActive?.() === false) {
+    if (disposed) {
       return
     }
     if (timer) {
@@ -95,34 +75,6 @@ export function createPreviewGridClaim(args: {
   }
 
   return {
-    requestNow: request,
-    reclaim: (): void => {
-      lastRequestedFit = null
-      const pendingRelease = releaseInFlight
-      if (pendingRelease) {
-        void pendingRelease.then(request)
-      } else {
-        request()
-      }
-    },
-    release: (): void => {
-      if (disposed) {
-        return
-      }
-      generation++
-      lastRequestedFit = null
-      if (timer) {
-        clearTimeout(timer)
-        timer = null
-      }
-      const pendingRelease = transport.releaseFit(args.ptyId).catch(() => undefined)
-      releaseInFlight = pendingRelease
-      void pendingRelease.then(() => {
-        if (releaseInFlight === pendingRelease) {
-          releaseInFlight = null
-        }
-      })
-    },
     schedule,
     dispose: (): void => {
       disposed = true

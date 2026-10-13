@@ -46,11 +46,6 @@ import { buildDashboardSnapshotFilterOptions } from './dashboard-snapshot-filter
 import { groupSubagentsByParentPaneKey } from './dashboard-subagent-cards'
 import { selectDashboardOrchestration } from './dashboard-orchestration-selection'
 import { dashboardRowBucketProjection } from './dashboard-row-bucket'
-import {
-  buildDashboardUsageSnapshot,
-  type DashboardUsageSnapshotState
-} from './dashboard-usage-snapshot'
-import { buildDashboardCardTerminalLinks } from './dashboard-card-terminal-links'
 
 /** The store slices the snapshot builder reads. Kept as a Pick so unit tests
  *  can pass a partial store without constructing the whole AppState. */
@@ -73,7 +68,6 @@ export type DashboardSnapshotState = Pick<
   Partial<
     DashboardCardTerminalInputState &
       DashboardLaunchDetectionState &
-      DashboardUsageSnapshotState &
       Pick<AppState, 'runtimeEnvironments' | 'sshTargetLabels' | 'unifiedTabsByWorktree'>
   >
 
@@ -262,11 +256,7 @@ export function buildDashboardSnapshot(
             paneTitlesByTabId[row.tab.id]
           )
         ),
-        ...(terminalInput ? { terminalInput } : {}),
-        terminalLinks:
-          ptyId && includeCardDetails
-            ? buildDashboardCardTerminalLinks(ptyId, worktreeId, worktree.path, row.tab.startupCwd)
-            : undefined
+        ...(terminalInput ? { terminalInput } : {})
       })
     }
   }
@@ -292,7 +282,6 @@ export function buildDashboardSnapshot(
           )
         }
       : {}),
-    repoIconsByRepoId,
-    usage: buildDashboardUsageSnapshot(state)
+    repoIconsByRepoId
   }
 }

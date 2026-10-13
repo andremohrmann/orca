@@ -3,12 +3,14 @@ import { useStructuredAgentSessionSends } from './use-structured-agent-session-s
 import { useStructuredAgentSessionCommandWrite } from './use-structured-agent-session-command-write'
 import { structuredAgentSessionNewSendsQueue } from './structured-agent-session-queue-request'
 import type { AgentType } from '../../../../shared/agent-status-types'
-import type { RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
+import type { AgentSessionCancelResult } from '../../../../shared/agent-session-wire'
+import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-label'
 import { useStructuredLegacyLaunchStop } from '@/lib/structured-agent-session-legacy-launch-stop'
 import { supportsStructuredAgentSessionPromptCancel } from '@/runtime/structured-agent-session-client'
 import {
   useStructuredAgentSessionHostQueuesCommands,
+  useStructuredAgentSessionHostEditsQueuedMessages,
   useStructuredAgentSessionHostQueuesMessagesState
 } from '@/runtime/structured-agent-session-host-capability'
 import { structuredAgentSessionStopControl } from './structured-agent-session-stop-control'
@@ -61,6 +63,8 @@ export function useStructuredAgentSession(args: {
   queueFollowUps?: boolean
   /** The host says a person's Stop is still ending this session's work. */
   hostStopping?: boolean
+  /** The option values the host's status carries; a change re-reads the chat's options. */
+  hostOptionStamp?: string
   /** The host's rewind latch and what follows a message returned by a rewind. */
   rewind?: NativeChatRewindHost
 }) {
@@ -102,7 +106,8 @@ export function useStructuredAgentSession(args: {
     unavailable,
     threadGoal: threadGoalSupport,
     contextUsage: contextUsageSupport,
-    rewind: rewindSupport
+    rewind: rewindSupport,
+    acceptsImages
   } = useStructuredAgentSessionOptions({
     agent,
     sessionId,
@@ -112,6 +117,7 @@ export function useStructuredAgentSession(args: {
     providerVisible,
     providerStarting,
     ...(args.providerRunning ? { providerRunning: true } : {}),
+    ...(args.hostOptionStamp ? { hostOptionStamp: args.hostOptionStamp } : {}),
     fence: state.fence,
     turnId: transportState.turnId,
     unloadedTurnRevisions: state.unloadedTurnRevisions,
@@ -210,6 +216,11 @@ export function useStructuredAgentSession(args: {
     transcriptPending,
     transportState.submissions
   )
+  const editCapable = useStructuredAgentSessionHostEditsQueuedMessages(target)
+  const editTransport = useMemo(
+    () => ({ target, sessionId, capable: editCapable, write }),
+    [editCapable, sessionId, target, write]
+  )
   const queuedController = useStructuredAgentSessionQueuedMessages({
     // Its published list, pause and submissions; the rest is named below.
     ...transportState,
@@ -219,7 +230,8 @@ export function useStructuredAgentSession(args: {
     // Hidden from the transcript, a queue send on its way reads as sending among the cards.
     sending: pending,
     composerScopeKey,
-    mutate
+    mutate,
+    editTransport
   })
   return {
     epoch: state.epoch,
@@ -299,7 +311,7 @@ export function useStructuredAgentSession(args: {
       })
     },
     stopBackgroundTask: (taskId?: string) =>
-      mutate('agentSession.cancel', 'agentSession.cancel', {
+      mutate<AgentSessionCancelResult>('agentSession.cancel', 'agentSession.cancel', {
         turnId: 'background-tasks',
         scope: 'background-tasks',
         ...(taskId ? { taskId } : {})
@@ -313,6 +325,8 @@ export function useStructuredAgentSession(args: {
     /** Why the host's catalog probe says no chat can start here; the chat shows it as a notice. */
     unavailable,
     threadGoal,
-    contextUsage
+    contextUsage,
+    /** Whether this session takes images, by its options report; undefined until it answers. */
+    acceptsImages
   }
 }

@@ -197,10 +197,6 @@ export type PersistedUIState = {
   /** Saved bounds for the pop-out dashboard window so it restores to its last
    *  position/size. Independent of the main window's bounds. */
   dashboardPopoutBounds?: { x: number; y: number; width: number; height: number } | null
-  /** Whether the pop-out dashboard was maximized independently of the main window. */
-  dashboardPopoutMaximized?: boolean
-  /** Native opacity for the pop-out dashboard window. */
-  dashboardPopoutOpacity?: number
   /** One-shot flag: 'recent' once meant the smart sort (v1→v2 rename), migrated to 'smart' once so the new last-activity 'recent' isn't re-clobbered. */
   _sortBySmartMigrated?: boolean
   /** LEGACY inline-agents flag, stamped unconditionally every load so it can't gate migration; kept only for rollback forward-compat (real gate: _inlineAgentsDefaultedForAllUsers). */

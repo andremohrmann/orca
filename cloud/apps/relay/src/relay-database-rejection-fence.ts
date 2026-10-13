@@ -25,6 +25,16 @@ const FENCED_SQLSTATE_CLASSES = new Set(['08', '23', '40', '53', '55', '57', '58
 // does to any backend caught idle mid-transaction at its onset.
 const FENCED_SQLSTATES = new Set(['25P03'])
 
+export function isPostgresReadTimeout(error: unknown): error is Error {
+  return error instanceof Error && error.message === POSTGRES_READ_TIMEOUT_MESSAGE
+}
+
+// The database layer threw or rethrew this; an errno or message alone could be any socket's.
+export function isRelayDatabaseLayerError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  return databaseLayerErrors.has(error) || isPostgresPoolAcquireFailure(error)
+}
+
 export function markRelayDatabaseError(error: unknown): void {
   if (typeof error === 'object' && error !== null) databaseLayerErrors.add(error)
 }
@@ -57,8 +67,9 @@ function rejectionFields(reason: unknown): { code: string; message: string } {
 
 // Installed once by the process entry point. Fatal rejections are rethrown, which ends the
 // process exactly as Node's default would, after one line that names them.
-export function handleRelayUnhandledRejection(reason: unknown): void {
-  if (isFencedRelayDatabaseRejection(reason)) {
+// `fenced` false is the per-cell switch turned off: every rejection is fatal, as before #26817.
+export function handleRelayUnhandledRejection(reason: unknown, fenced = true): void {
+  if (fenced && isFencedRelayDatabaseRejection(reason)) {
     console.warn(
       JSON.stringify({ event: 'orca_relay_database_rejection_fenced', ...rejectionFields(reason) })
     )

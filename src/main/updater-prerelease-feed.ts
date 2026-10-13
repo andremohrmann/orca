@@ -1,24 +1,16 @@
 import { net } from 'electron'
 import { parse } from 'yaml'
-import { getReleaseDownloadBaseUrl, getUpdateFeedInfo } from '../shared/update-feed-info'
 import { compareVersions, isPrereleaseVersion, isValidVersion } from './updater-fallback'
 
-const updateFeedInfo = getUpdateFeedInfo()
-const RELEASES_DOWNLOAD_BASE = getReleaseDownloadBaseUrl()
+const ATOM_FEED_URL = 'https://github.com/stablyai/orca/releases.atom'
+const RELEASES_DOWNLOAD_BASE = 'https://github.com/stablyai/orca/releases/download'
 const FETCH_TIMEOUT_MS = 5000
 const MAX_MANIFEST_PROBE_CANDIDATES = 6
 
 // Why: GitHub's atom feed lists every release (prerelease or stable) in a
 // single flat list. Each entry has a /releases/tag/<tag> URL we can mine
 // without any channel filtering.
-const TAG_HREF_RE = new RegExp(
-  `href="${escapeRegExp(`https://github.com/${updateFeedInfo.repo}/releases/tag/`)}([^"]+)"`,
-  'g'
-)
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+const TAG_HREF_RE = /href="https:\/\/github\.com\/stablyai\/orca\/releases\/tag\/([^"]+)"/g
 
 export function getReleaseDownloadUrl(tag: string): string {
   return `${RELEASES_DOWNLOAD_BASE}/${encodeURIComponent(tag)}`
@@ -43,18 +35,12 @@ function getReleaseAssetUrl(tag: string, assetName: string): string {
 }
 
 export function normalizeTagToVersion(tag: string): string {
-  return tag.replace(/^custom-windows-/i, '').replace(/^v/i, '')
+  return tag.replace(/^v/i, '')
 }
 
 type ReleaseFeedTag = {
   tag: string
   version: string
-}
-
-const CUSTOM_VERSION = /^\d+\.\d+\.\d+-custom\.\d{14}$/
-
-export function isCustomReleaseTag(tag: string): boolean {
-  return CUSTOM_VERSION.test(normalizeTagToVersion(tag))
 }
 
 export function isPerfPrereleaseTag(tag: string): boolean {
@@ -71,9 +57,7 @@ export function isPerfPrereleaseTag(tag: string): boolean {
 
 async function fetchReleaseFeedTags(): Promise<ReleaseFeedTag[] | null> {
   try {
-    const res = await net.fetch(updateFeedInfo.atomUrl, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
-    })
+    const res = await net.fetch(ATOM_FEED_URL, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
     if (!res.ok) {
       return null
     }
@@ -280,19 +264,14 @@ export async function fetchNewerReleaseTagsWithReadiness(
     return { tags: [], state: 'unavailable', unavailableReason: 'feed' }
   }
 
-  const currentIsCustom = isCustomReleaseTag(currentVersion)
-  const channelTags =
-    updateFeedInfo.isCustom || currentIsCustom
-      ? tags.filter(({ tag }) => isCustomReleaseTag(tag))
-      : tags
   // Why: perf builds are explicit opt-in; regular prerelease checks should
   // stay on the main RC/stable series even though perf tags are semver-newer.
   const candidates =
     options.releaseFilter === 'perf'
-      ? channelTags.filter(({ tag }) => isPerfPrereleaseTag(tag))
+      ? tags.filter(({ tag }) => isPerfPrereleaseTag(tag))
       : includePrerelease
-        ? channelTags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
-        : channelTags.filter(({ version }) => !isPrereleaseVersion(version))
+        ? tags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
+        : tags.filter(({ version }) => !isPrereleaseVersion(version))
   const newestNewerIndex = candidates.findIndex(
     ({ version }) => compareVersions(version, currentVersion) > 0
   )

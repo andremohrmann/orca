@@ -9,7 +9,6 @@ import { patchDashboardSnapshotFromAgentStatus } from './dashboard-agent-status-
 
 const TOPOLOGY_REFRESH_DEBOUNCE_MS = 250
 const TOPOLOGY_REFRESH_MAX_WAIT_MS = 1_000
-const CLOSED_TERMINAL_REFRESH_INTERVAL_MS = 5_000
 
 /** Which column each card sits in — the only thing a view transition should
  *  animate on. Content-only updates (such as new messages) must not. */
@@ -48,7 +47,6 @@ export function useDashboardSnapshot(): DashboardSnapshot {
     let topologyRefreshTimer: ReturnType<typeof setTimeout> | null = null
     let topologyRefreshStartedAt: number | null = null
     let staleRefreshTimer: ReturnType<typeof setTimeout> | null = null
-    let closedTerminalRefreshTimer: ReturnType<typeof setTimeout> | null = null
     const transientClearWatermarks = new Map<string, number>()
 
     const requestTopologyRefresh = (): void => {
@@ -95,22 +93,6 @@ export function useDashboardSnapshot(): DashboardSnapshot {
       }
     }
 
-    const scheduleClosedTerminalRefresh = (next: DashboardSnapshot): void => {
-      if (closedTerminalRefreshTimer) {
-        clearTimeout(closedTerminalRefreshTimer)
-        closedTerminalRefreshTimer = null
-      }
-      if (!next.cards.some((card) => !card.ptyId)) {
-        return
-      }
-      // Pty-less retained cards can become live after session restore without a
-      // status event; ask the main window until topology catches up.
-      closedTerminalRefreshTimer = setTimeout(
-        requestTopologyRefresh,
-        CLOSED_TERMINAL_REFRESH_INTERVAL_MS
-      )
-    }
-
     const apply = (incoming: DashboardSnapshot): void => {
       // The bridge omits repoIconsByRepoId on throttled republishes when it has
       // not changed, rather than re-sending data URLs 4x/sec. Retain the last
@@ -125,7 +107,6 @@ export function useDashboardSnapshot(): DashboardSnapshot {
       }
       snapshotRef.current = next
       scheduleStaleRefresh(next)
-      scheduleClosedTerminalRefresh(next)
       const nextSignature = columnSignature(next)
       const layoutChanged = nextSignature !== columnSignatureRef.current
       columnSignatureRef.current = nextSignature
@@ -185,9 +166,6 @@ export function useDashboardSnapshot(): DashboardSnapshot {
       }
       if (staleRefreshTimer) {
         clearTimeout(staleRefreshTimer)
-      }
-      if (closedTerminalRefreshTimer) {
-        clearTimeout(closedTerminalRefreshTimer)
       }
     }
   }, [])

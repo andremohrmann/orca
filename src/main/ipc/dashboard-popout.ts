@@ -2,15 +2,12 @@ import { app, ipcMain } from 'electron'
 import type { Store } from '../persistence'
 import type { KeybindingService } from '../keybindings/keybinding-service'
 import type { DashboardSnapshot } from '../../shared/dashboard-snapshot'
-import { isAgentDashboardView } from '../../shared/agent-dashboard-view'
 import {
   createOrFocusDashboardPopout,
   closeDashboardPopout,
-  getDashboardPopoutOpacityState,
   getDashboardPopoutWindow,
   isDashboardPopoutRenderer,
-  onDashboardPopoutOpenChanged,
-  setDashboardPopoutOpacity
+  onDashboardPopoutOpenChanged
 } from '../window/dashboard-popout-window'
 import { safelyRevealWindow } from '../window/focus-existing-window'
 import { isBackgroundLaunch } from '../window/foreground-activation-policy'
@@ -22,10 +19,6 @@ import {
   isDashboardSleepWorkspaceArgs,
   isDashboardSpawnAgentArgs
 } from './dashboard-payload-validation'
-import {
-  isDashboardAssignWorkspaceStatusArgs,
-  isDashboardRenameWorkspaceArgs
-} from './dashboard-workspace-mutation-validation'
 
 // The most recent snapshot the main renderer published, replayed to the popout
 // the instant it mounts so the board paints without waiting for the next tick.
@@ -48,10 +41,6 @@ export function registerDashboardPopoutHandlers(
   ipcMain.removeHandler('dashboardPopout:ackAgent')
   ipcMain.removeHandler('dashboardPopout:spawnAgent')
   ipcMain.removeHandler('dashboardPopout:sleepWorkspace')
-  ipcMain.removeHandler('dashboardPopout:assignWorkspaceStatus')
-  ipcMain.removeHandler('dashboardPopout:renameWorkspace')
-  ipcMain.removeHandler('dashboardPopout:getOpacity')
-  ipcMain.removeHandler('dashboardPopout:setOpacity')
 
   onDashboardPopoutOpenChanged((open) => {
     if (!open) {
@@ -68,14 +57,11 @@ export function registerDashboardPopoutHandlers(
     }
   })
 
-  ipcMain.handle('dashboardPopout:open', (event, view: unknown): void => {
+  ipcMain.handle('dashboardPopout:open', (event): void => {
     if (!isTrustedUIRenderer(event.sender) || !isDashboardEnabled(store)) {
       return
     }
-    if (view !== undefined && !isAgentDashboardView(view)) {
-      return
-    }
-    createOrFocusDashboardPopout(store, view, {
+    createOrFocusDashboardPopout(store, {
       getKeybindings: () => keybindings?.getOverrides()
     })
   })
@@ -123,25 +109,6 @@ export function registerDashboardPopoutHandlers(
       ? getDashboardPopoutWindow() !== null
       : false
   )
-
-  ipcMain.handle('dashboardPopout:getOpacity', (event) => {
-    if (!isDashboardPopoutRenderer(event.sender) || !isDashboardEnabled(store)) {
-      return null
-    }
-    return getDashboardPopoutOpacityState(store)
-  })
-
-  ipcMain.handle('dashboardPopout:setOpacity', (event, opacity: unknown) => {
-    if (
-      !isDashboardPopoutRenderer(event.sender) ||
-      !isDashboardEnabled(store) ||
-      typeof opacity !== 'number' ||
-      !Number.isFinite(opacity)
-    ) {
-      return null
-    }
-    return setDashboardPopoutOpacity(store, opacity)
-  })
 
   // Seen-sync: opening a card's terminal dialog acknowledges the agent in the
   // main renderer's store — the same ack that mutes its sidebar row.
@@ -205,27 +172,5 @@ export function registerDashboardPopoutHandlers(
       return
     }
     sendToTrustedUIRenderer('ui:sleepDashboardWorkspace', args)
-  })
-
-  ipcMain.handle('dashboardPopout:assignWorkspaceStatus', (event, args: unknown): void => {
-    if (
-      !isDashboardPopoutRenderer(event.sender) ||
-      !isDashboardEnabled(store) ||
-      !isDashboardAssignWorkspaceStatusArgs(args)
-    ) {
-      return
-    }
-    sendToTrustedUIRenderer('ui:assignDashboardWorkspaceStatus', args)
-  })
-
-  ipcMain.handle('dashboardPopout:renameWorkspace', (event, args: unknown): void => {
-    if (
-      !isDashboardPopoutRenderer(event.sender) ||
-      !isDashboardEnabled(store) ||
-      !isDashboardRenameWorkspaceArgs(args)
-    ) {
-      return
-    }
-    sendToTrustedUIRenderer('ui:renameDashboardWorkspace', args)
   })
 }

@@ -19,8 +19,6 @@ export const terminalPreviewApi = {
     rows: number
   ): Promise<{ cols: number; rows: number } | null> =>
     ipcRenderer.invoke('terminalPreview:fit', { ptyId, cols, rows }),
-  releaseFit: (ptyId: string): Promise<void> =>
-    ipcRenderer.invoke('terminalPreview:releaseFit', { ptyId }),
   ack: (ptyId: string, bytes: number): Promise<void> =>
     ipcRenderer.invoke('terminalPreview:ack', { ptyId, bytes }),
   unsubscribe: (ptyId: string): Promise<void> =>

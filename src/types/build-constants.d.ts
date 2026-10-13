@@ -21,5 +21,5 @@ declare const ORCA_POSTHOG_WRITE_KEY: string | null
 // release pipeline.
 declare const ORCA_DIAGNOSTICS_TOKEN_URL: string | null
 
-// Optional custom GitHub repo used by forked builds for update checks.
-declare const ORCA_UPDATE_FEED_REPO: string | null
+// Full commit the build was made from (`git rev-parse HEAD`); official skill installs pin to it.
+declare const ORCA_BUILD_COMMIT: string

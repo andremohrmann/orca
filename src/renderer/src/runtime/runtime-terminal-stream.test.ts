@@ -3,7 +3,6 @@ import {
   TerminalStreamOpcode,
   decodeTerminalStreamFrame,
   decodeTerminalStreamJson,
-  decodeTerminalStreamText,
   encodeTerminalStreamFrame,
   encodeTerminalStreamJson,
   encodeTerminalStreamText
@@ -18,6 +17,7 @@ import {
   subscribeToRuntimeTerminalData,
   toRemoteRuntimePtyId
 } from './runtime-terminal-stream'
+import { stubRuntimeEnvironmentBridge } from './runtime-environment-bridge-fixture'
 
 describe('remote runtime terminal ids', () => {
   it('encodes and decodes the owning runtime environment', () => {
@@ -66,13 +66,7 @@ describe('remote runtime terminal data subscriptions', () => {
       )
       return { unsubscribe, sendBinary }
     })
-    vi.stubGlobal('window', {
-      api: {
-        runtimeEnvironments: {
-          subscribe: runtimeSubscribe
-        }
-      }
-    })
+    stubRuntimeEnvironmentBridge({ subscribe: runtimeSubscribe })
   })
 
   afterEach(() => {
@@ -83,7 +77,6 @@ describe('remote runtime terminal data subscriptions', () => {
     const watcher = vi.fn()
 
     const dispose = await subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-1',
       'watcher-1',
       watcher
@@ -152,7 +145,6 @@ describe('remote runtime terminal data subscriptions', () => {
 
   it('echoes the opaque stream generation in cumulative source-range ACKs', async () => {
     const dispose = await subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-1',
       'watcher-1',
       vi.fn()
@@ -196,7 +188,6 @@ describe('remote runtime terminal data subscriptions', () => {
   it('can start at the live tail without replaying the initial snapshot', async () => {
     const watcher = vi.fn()
     const subscription = subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-1',
       'watcher-1',
       watcher,
@@ -247,45 +238,13 @@ describe('remote runtime terminal data subscriptions', () => {
     dispose()
   })
 
-  it('exposes input on the subscribed remote terminal stream', async () => {
-    let sendInput: (data: string) => boolean = () => false
-    const dispose = await subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
-      'remote:env-1@@terminal-1',
-      'preview-1',
-      vi.fn(),
-      {
-        onInputReady: (send) => {
-          sendInput = send
-        }
-      }
-    )
-    await vi.waitFor(() => expect(sendBinary).toHaveBeenCalled())
-    const subscribeFrame = decodeTerminalStreamFrame(sendBinary.mock.calls[0][0])
-    const subscribePayload =
-      subscribeFrame && decodeTerminalStreamJson<{ streamId: number }>(subscribeFrame.payload)
-
-    expect(sendInput('answer\r')).toBe(true)
-    const inputFrame = sendBinary.mock.calls
-      .slice(1)
-      .map((call) => decodeTerminalStreamFrame(call[0]))
-      .find((frame) => frame?.opcode === TerminalStreamOpcode.Input)
-    expect(inputFrame?.streamId).toBe(subscribePayload!.streamId)
-    expect(inputFrame && decodeTerminalStreamText(inputFrame.payload)).toBe('answer\r')
-
-    dispose()
-    expect(sendInput('ignored')).toBe(false)
-  })
-
   it('keeps the shared terminal multiplexer until the last watcher closes', async () => {
     const firstDispose = await subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-1',
       'watcher-1',
       vi.fn()
     )
     const secondDispose = await subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-2',
       'watcher-2',
       vi.fn()
@@ -307,12 +266,7 @@ describe('remote runtime terminal data subscriptions', () => {
     runtimeSubscribe.mockRejectedValueOnce(new Error('offline'))
 
     await expect(
-      subscribeToRuntimeTerminalData(
-        { activeRuntimeEnvironmentId: 'env-fallback' },
-        'remote:env-1@@terminal-1',
-        'watcher-1',
-        vi.fn()
-      )
+      subscribeToRuntimeTerminalData('remote:env-1@@terminal-1', 'watcher-1', vi.fn())
     ).rejects.toThrow('offline')
 
     expect(sendBinary).not.toHaveBeenCalled()
@@ -333,7 +287,6 @@ describe('remote runtime terminal data subscriptions', () => {
     })
 
     const subscriptionPromise = subscribeToRuntimeTerminalData(
-      { activeRuntimeEnvironmentId: 'env-fallback' },
       'remote:env-1@@terminal-1',
       'watcher-1',
       vi.fn()

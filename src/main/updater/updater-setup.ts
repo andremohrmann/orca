@@ -19,7 +19,6 @@ import { registerAutoUpdaterHandlers } from '../updater-events'
 import { getServeUpdateHandoffFailure } from '../serve-update-handoff'
 import { recordUpdaterLifecycle } from '../updater-lifecycle-diagnostics'
 import { AUTO_UPDATE_CHECK_INTERVAL_MS } from './updater-state'
-import { getReleaseLatestDownloadUrl } from '../../shared/update-feed-info'
 import { UpdaterDownloadInstall } from './updater-download-install'
 import type { PreQuitCleanupFailureMode, UpdateInstallMode } from './updater-state'
 
@@ -112,8 +111,9 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     super.dismissAvailableUpdate()
   }
 
-  setupAutoUpdater(mainWindow: BrowserWindow, opts?: UpdaterSetupOptions): void {
-    this.mainWindowRef = mainWindow
+  setupAutoUpdater(mainWindow: BrowserWindow | null, opts?: UpdaterSetupOptions): void {
+    // Why keep: headless serve sets up without a window; a later window attach must not be undone.
+    this.mainWindowRef = mainWindow ?? this.mainWindowRef
     this.onBeforeQuitCleanup = opts?.onBeforeQuit ?? null
     this.onBeforeQuitFailure = opts?.onBeforeQuitFailure ?? 'continue'
     this.persistLastUpdateCheckAt = opts?.setLastUpdateCheckAt ?? null
@@ -162,7 +162,7 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     if (this.activeUpdateSource === 'release') {
       autoUpdater.setFeedURL({
         provider: 'generic',
-        url: getReleaseLatestDownloadUrl()
+        url: 'https://github.com/stablyai/orca/releases/latest/download'
       })
     }
     if (this.autoUpdaterInitialized) {
@@ -200,6 +200,10 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
       markMissingManifestPrereleaseFallbackChecking: () =>
         this.markMissingManifestPrereleaseFallbackChecking(),
       performQuitAndInstall: () => this.performQuitAndInstall(),
+      commitStagedMacInstall: () => this.commitStagedMacInstall(),
+      failMacStaging: (error) => this.failMacStaging(error),
+      isAwaitingMacStaging: () => this.isAwaitingMacStaging(),
+      isMacStagingDeferredToInstall: () => this.isMacStagingDeferredToInstall(),
       shouldDeferMacQuitForInstall: () => this.updateInstallMode === 'interactive',
       recordCompletedUpdateCheck: () => this.recordCompletedUpdateCheck(),
       restoreReleaseUpdateSource: () => this.restoreReleaseUpdateSource(),

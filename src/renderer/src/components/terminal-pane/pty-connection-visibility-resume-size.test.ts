@@ -471,47 +471,6 @@ describe('connectPanePty', () => {
       }
     })
 
-    it('reports host geometry without stealing a remotely owned viewport', async () => {
-      const originalDocument = globalThis.document
-      ;(globalThis as { document?: Document }).document = {
-        visibilityState: 'visible',
-        hasFocus: vi.fn(() => false)
-      } as unknown as Document
-      const { setFitOverride } = await import('@/lib/pane-manager/mobile-fit-overrides')
-      const pane = createPane(2)
-      const observer = installObservedPane(pane)
-      try {
-        const { connectPanePty } = await import('./pty-connection')
-        const transport = createMockTransport('pty-pane-2')
-        transportFactoryQueue.push(transport)
-        const manager = createManager(2)
-        const deps = createDeps({
-          restoredLeafId: LEAF_2,
-          paneTransportsRef: { current: new Map([[1, createMockTransport('pty-pane-1')]]) }
-        })
-        pane.fitAddon = {
-          ...pane.fitAddon,
-          proposeDimensions: vi.fn(() => ({ cols: 151, rows: 47 }))
-        } as never
-
-        connectPanePty(pane as never, manager as never, deps as never)
-        await flushAsyncTicks()
-        setFitOverride('pty-pane-2', 'remote-desktop-fit', 80, 24)
-        transport.resize.mockClear()
-        vi.mocked(window.api.pty.reportGeometry).mockClear()
-
-        observer.trigger()
-        await flushAsyncTicks()
-
-        expect(window.api.pty.reportGeometry).toHaveBeenCalledWith('pty-pane-2', 151, 47)
-        expect(transport.resize).not.toHaveBeenCalled()
-      } finally {
-        setFitOverride('pty-pane-2', 'desktop-fit', 0, 0)
-        observer.restore()
-        globalThis.document = originalDocument
-      }
-    })
-
     it('defers a remote-desktop viewport claim until structural replay completes', async () => {
       const originalDocument = globalThis.document
       ;(globalThis as { document?: Document }).document = {
@@ -703,60 +662,6 @@ describe('connectPanePty', () => {
         expect(transport.resize).not.toHaveBeenCalled()
       }
     })
-
-    it.each(['pty-pane-2', 'ssh:devbox@@pty-2'])(
-      'reclaims a Live View hold on window focus without input for %s',
-      async (ptyId) => {
-        let focused = false
-        globalThis.document = {
-          visibilityState: 'visible',
-          hasFocus: () => focused
-        } as unknown as Document
-        const { setFitOverride } = await import('@/lib/pane-manager/mobile-fit-overrides')
-        const { connectPanePty } = await import('./pty-connection')
-        const transport = createMockTransport(ptyId)
-        transportFactoryQueue.push(transport)
-        const deps = createDeps({
-          restoredLeafId: LEAF_2,
-          restoredPtyIdByLeafId: { [LEAF_2]: ptyId },
-          paneTransportsRef: { current: new Map([[1, createMockTransport('pty-pane-1')]]) }
-        })
-        const pane = createPane(2)
-        pane.fitAddon.proposeDimensions = vi.fn(() => ({ cols: 132, rows: 42 }))
-        const binding = connectPanePty(pane as never, createManager(2) as never, deps as never)
-        await flushAsyncTicks()
-        transport.claimViewport.mockClear()
-        transport.sendInput.mockClear()
-        try {
-          setFitOverride(ptyId, 'remote-desktop-fit', 80, 24)
-          binding.reassertPtySizeAfterWindowWake()
-          expect(transport.claimViewport).not.toHaveBeenCalled()
-
-          focused = true
-          binding.reassertPtySizeAfterWindowWake()
-          expect(transport.claimViewport).toHaveBeenCalledExactlyOnceWith(132, 42)
-          expect(transport.sendInput).not.toHaveBeenCalled()
-
-          setFitOverride(ptyId, 'desktop-fit', 132, 42)
-          transport.claimViewport.mockClear()
-          binding.reassertPtySizeAfterWindowWake()
-          expect(transport.claimViewport).not.toHaveBeenCalled()
-
-          setFitOverride(ptyId, 'remote-desktop-fit', 80, 24)
-          deps.isVisibleRef.current = false
-          binding.reassertPtySizeAfterWindowWake()
-          expect(transport.claimViewport).not.toHaveBeenCalled()
-
-          deps.isVisibleRef.current = true
-          setFitOverride(ptyId, 'mobile-fit', 40, 30)
-          binding.reassertPtySizeAfterWindowWake()
-          expect(transport.claimViewport).not.toHaveBeenCalled()
-        } finally {
-          setFitOverride(ptyId, 'desktop-fit', 132, 42)
-          binding.dispose()
-        }
-      }
-    )
 
     it('claims a focused visible remote mirror once when its passive fit hold arrives', async () => {
       let documentFocused = true

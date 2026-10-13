@@ -21,11 +21,9 @@ const {
     private onceHandlers: Record<string, ((...args: unknown[]) => void)[]> = {}
     destroyed = false
     minimized = false
-    maximized = false
     fullscreen = false
     focused = false
     zoomLevel = 0
-    opacity = 1
     private webContentsHandlers: Record<string, ((...args: unknown[]) => void)[]> = {}
     webContents = {
       id: created.length + 1,
@@ -53,12 +51,6 @@ const {
     show = vi.fn()
     restore = vi.fn(() => {
       this.minimized = false
-    })
-    maximize = vi.fn(() => {
-      this.maximized = true
-    })
-    setOpacity = vi.fn((opacity: number) => {
-      this.opacity = opacity
     })
     loadURL = vi.fn()
     loadFile = vi.fn()
@@ -104,9 +96,6 @@ const {
     isFullScreen(): boolean {
       return this.fullscreen
     }
-    isMaximized(): boolean {
-      return this.maximized
-    }
     getBounds(): { x: number; y: number; width: number; height: number } {
       return this.bounds
     }
@@ -148,21 +137,15 @@ vi.mock('./privileged-window-navigation', () => ({
 import {
   createOrFocusDashboardPopout,
   closeDashboardPopout,
-  getDashboardPopoutOpacityState,
   isDashboardPopoutRenderer,
-  setDashboardPopoutOpacity,
   zoomDashboardPopoutIfFocused
 } from './dashboard-popout-window'
 import { readBrowserClientHostIdArgument } from '../../shared/browser-client-host-id-argument'
 
 type FakeWindow = InstanceType<typeof BrowserWindowMock>
 
-function makeStore(
-  ui: Record<string, unknown> = {},
-  settings: Record<string, unknown> = {}
-): {
+function makeStore(ui: Record<string, unknown> = {}): {
   getUI: () => Record<string, unknown>
-  getSettings: () => Record<string, unknown>
   updateUI: ReturnType<typeof vi.fn>
   onUIChanged: ReturnType<typeof vi.fn>
   emitUIChanged: (next: Record<string, unknown>) => void
@@ -172,7 +155,6 @@ function makeStore(
   const uiChangeUnsubscribe = vi.fn()
   return {
     getUI: () => ui,
-    getSettings: () => settings,
     updateUI: vi.fn(),
     onUIChanged: vi.fn((listener: (next: Record<string, unknown>) => void) => {
       listeners.push(listener)
@@ -245,80 +227,31 @@ describe('createOrFocusDashboardPopout', () => {
     expect(sendToTrustedUIRendererMock).toHaveBeenCalledWith('dashboard:popoutOpenChanged', true)
   })
 
-  it('restores and persists a bounded native opacity on supported platforms', () => {
-    const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
-    const store = makeStore({ dashboardPopoutOpacity: 0.65 })
-
-    const win = createOrFocusDashboardPopout(store as never) as unknown as FakeWindow
-    expect(win.setOpacity).toHaveBeenCalledWith(0.65)
-    expect(getDashboardPopoutOpacityState(store as never)).toEqual({
-      opacity: 0.65,
-      supported: true
-    })
-
-    expect(setDashboardPopoutOpacity(store as never, 0.05)).toEqual({
-      opacity: 0.2,
-      supported: true
-    })
-    expect(win.setOpacity).toHaveBeenLastCalledWith(0.2)
-    expect(store.updateUI).toHaveBeenCalledWith({ dashboardPopoutOpacity: 0.2 })
-    platform.mockRestore()
-  })
-
   it('shows the window on ready-to-show', () => {
     createOrFocusDashboardPopout(makeStore() as never)
     const win = instances[0]
     expect(win.show).not.toHaveBeenCalled()
-    expect(win.maximize).not.toHaveBeenCalled()
     win.emit('ready-to-show')
-    expect(win.maximize).toHaveBeenCalledTimes(1)
-    expect(win.show).toHaveBeenCalledTimes(1)
-    expect(win.show.mock.invocationCallOrder[0]).toBeLessThan(
-      win.maximize.mock.invocationCallOrder[0]
-    )
-  })
-
-  it('maximizes even after the user previously restored the dashboard window', () => {
-    createOrFocusDashboardPopout(makeStore({ dashboardPopoutMaximized: false }) as never)
-    const win = instances[0]
-
-    win.emit('ready-to-show')
-
-    expect(win.maximize).toHaveBeenCalledTimes(1)
     expect(win.show).toHaveBeenCalledTimes(1)
   })
 
-  it('loads the prod file entry with the requested view', () => {
-    createOrFocusDashboardPopout(makeStore() as never, 'live')
+  it('loads the prod file entry', () => {
+    createOrFocusDashboardPopout(makeStore() as never)
     const win = instances[0]
     expect(win.loadURL).not.toHaveBeenCalled()
     expect(win.loadFile).toHaveBeenCalledTimes(1)
     const [file, options] = win.loadFile.mock.calls[0]
     expect(String(file)).toMatch(/renderer[\\/]popout\.html$/)
-    expect(options).toEqual({ search: 'view=live' })
+    expect(options).toBeUndefined()
   })
 
-  it('opens on the current dashboard view by default', () => {
-    createOrFocusDashboardPopout(makeStore() as never)
-
-    expect(instances[0].loadFile.mock.calls[0][1]).toEqual({ search: 'view=board' })
-  })
-
-  it('uses the saved default dashboard view when no view is requested', () => {
-    createOrFocusDashboardPopout(
-      makeStore({}, { experimentalAgentDashboardDefaultView: 'live' }) as never
-    )
-
-    expect(instances[0].loadFile.mock.calls[0][1]).toEqual({ search: 'view=live' })
-  })
-
-  it('loads the dev server URL with the requested view when in dev', () => {
+  it('loads the dev server URL when in dev', () => {
     isMock.dev = true
     vi.stubEnv('ELECTRON_RENDERER_URL', RENDERER_URL)
-    createOrFocusDashboardPopout(makeStore() as never, 'live')
+    createOrFocusDashboardPopout(makeStore() as never)
     const win = instances[0]
     expect(win.loadFile).not.toHaveBeenCalled()
-    expect(win.loadURL).toHaveBeenCalledWith(`${RENDERER_URL}/popout.html?view=live`)
+    expect(win.loadURL).toHaveBeenCalledWith(`${RENDERER_URL}/popout.html`)
   })
 
   it('focuses the existing window instead of creating a second one', () => {
@@ -327,18 +260,7 @@ describe('createOrFocusDashboardPopout', () => {
     const second = createOrFocusDashboardPopout(store as never)
     expect(instances).toHaveLength(1)
     expect(second).toBe(first)
-    expect(instances[0].maximize).toHaveBeenCalledTimes(1)
     expect(instances[0].focus).toHaveBeenCalledTimes(1)
-  })
-
-  it('switches an existing popout to an explicitly requested view', () => {
-    const store = makeStore()
-    createOrFocusDashboardPopout(store as never)
-    const win = instances[0]
-
-    createOrFocusDashboardPopout(store as never, 'live')
-
-    expect(win.webContents.send).toHaveBeenCalledWith('dashboard:viewRequested', 'live')
   })
 
   it('trusts only the live popout webContents', () => {
@@ -355,7 +277,6 @@ describe('createOrFocusDashboardPopout', () => {
     win.minimized = true
     createOrFocusDashboardPopout(store as never)
     expect(win.restore).toHaveBeenCalledTimes(1)
-    expect(win.maximize).toHaveBeenCalledTimes(1)
     expect(win.focus).toHaveBeenCalledTimes(1)
   })
 
@@ -395,8 +316,7 @@ describe('createOrFocusDashboardPopout', () => {
       win.emit('resize')
       vi.advanceTimersByTime(500)
       expect(store.updateUI).toHaveBeenCalledWith({
-        dashboardPopoutBounds: { x: 10, y: 10, width: 1200, height: 900 },
-        dashboardPopoutMaximized: false
+        dashboardPopoutBounds: { x: 10, y: 10, width: 1200, height: 900 }
       })
 
       store.updateUI.mockClear()
@@ -407,17 +327,6 @@ describe('createOrFocusDashboardPopout', () => {
     } finally {
       vi.useRealTimers()
     }
-  })
-
-  it('persists explicit maximize and restore state', () => {
-    const store = makeStore()
-    const win = createOrFocusDashboardPopout(store as never) as unknown as FakeWindow
-
-    win.emit('maximize')
-    expect(store.updateUI).toHaveBeenCalledWith({ dashboardPopoutMaximized: true })
-
-    win.emit('unmaximize')
-    expect(store.updateUI).toHaveBeenCalledWith({ dashboardPopoutMaximized: false })
   })
 
   it('keeps saving bounds after a vetoed quit and freezes them only on an allowed quit', () => {
@@ -434,8 +343,7 @@ describe('createOrFocusDashboardPopout', () => {
       win.emit('resize')
       vi.advanceTimersByTime(500)
       expect(store.updateUI).toHaveBeenCalledWith({
-        dashboardPopoutBounds: { x: 10, y: 20, width: 1200, height: 900 },
-        dashboardPopoutMaximized: false
+        dashboardPopoutBounds: { x: 10, y: 20, width: 1200, height: 900 }
       })
 
       store.updateUI.mockClear()
@@ -549,12 +457,14 @@ describe('createOrFocusDashboardPopout', () => {
   })
 
   it('respects zoom keybinding overrides for keyboard and mouse-wheel paths', () => {
-    const win = createOrFocusDashboardPopout(makeStore() as never, undefined, {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: makeStore() is a partial store stub; this path only reads UI/getKeybindings, matching every other popout call here.
+    createOrFocusDashboardPopout(makeStore() as never, {
       getKeybindings: () => ({
         'zoom.in': ['Mod+Y'],
         'zoom.out': []
       })
-    }) as unknown as FakeWindow
+    })
+    const win = instances[0]
     const mod =
       process.platform === 'darwin'
         ? { meta: true, control: false }

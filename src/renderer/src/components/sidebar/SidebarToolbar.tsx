@@ -89,7 +89,7 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
                 type="button"
                 aria-label={translate(
                   'auto.components.sidebar.SidebarToolbar.49f62c5665',
-                  'All worktrees'
+                  'Workspace board'
                 )}
                 aria-pressed={workspaceBoardOpen}
                 data-workspace-board-trigger=""
@@ -109,9 +109,12 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
                 : workspaceBoardOpen
                   ? translate(
                       'auto.components.sidebar.SidebarToolbar.a30e34eb5c',
-                      'Close all worktrees'
+                      'Close workspace board'
                     )
-                  : translate('auto.components.sidebar.SidebarToolbar.49f62c5665', 'All worktrees')}
+                  : translate(
+                      'auto.components.sidebar.SidebarToolbar.49f62c5665',
+                      'Workspace board'
+                    )}
             </TooltipContent>
           </Tooltip>
         </div>

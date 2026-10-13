@@ -5,6 +5,7 @@ import { translateSearchKeyword } from './settings-search-keywords'
 import { getNewWorktreeCardStyleSearchEntry } from './new-worktree-card-style-search-entry'
 import { getNativeChatExperimentalSearchEntry } from './native-chat-experimental-search-entry'
 import { getEphemeralVmsSearchEntry } from './ephemeral-vms-search'
+import { getWslHostsExperimentalSearchEntry } from './wsl-hosts-experimental-search'
 
 export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
   (): SettingsSearchEntry[] => [
@@ -80,26 +81,6 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
         ...translateSearchKeyword(
           'auto.components.settings.experimental.search.agentDashboard.board',
           'board'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.experimental.search.agentDashboard.live',
-          'live view'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.experimental.search.agentDashboard.hideChildAgents',
-          'hide child agents spawned terminals'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.experimental.search.agentDashboard.autoMinimize',
-          'auto minimize'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.experimental.search.agentDashboard.inactive',
-          'inactive'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.experimental.search.agentDashboard.startup',
-          'startup'
         ),
         ...translateSearchKeyword(
           'auto.components.settings.experimental.search.agentDashboard.inWindow',
@@ -200,7 +181,11 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
       ]
     },
     getNewWorktreeCardStyleSearchEntry(),
-    getEphemeralVmsSearchEntry()
+    getEphemeralVmsSearchEntry(),
+    // Why: only a Windows desktop shows this toggle, so only there may search find it.
+    ...(typeof window !== 'undefined' && window.api?.runtimeEnvironments?.wslHosts
+      ? [getWslHostsExperimentalSearchEntry()]
+      : [])
   ]
 )
 
