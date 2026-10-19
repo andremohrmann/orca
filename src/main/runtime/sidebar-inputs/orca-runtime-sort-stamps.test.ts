@@ -10,14 +10,18 @@ vi.mock('../../../shared/sidebar-inputs-switch', () => ({ ORCA_SIDEBAR_INPUTS_IS
 
 const WT = 'repo-1::/tmp/worktree-a'
 
-function createHeadlessRuntime() {
+function createHeadlessRuntime(
+  stored: Pick<WorktreeMeta, 'lastActivityAt' | 'smartTier' | 'smartAt'> = { lastActivityAt: 0 }
+) {
   const meta: Record<string, Pick<WorktreeMeta, 'lastActivityAt' | 'smartTier' | 'smartAt'>> = {
-    [WT]: { lastActivityAt: 0 }
+    [WT]: stored
   }
   const store = {
     getRepos: () => [],
+    getRepo: (id: string) => (id === 'repo-1' ? { id, connectionId: null } : undefined),
     getSettings: () => ({}),
     getWorktreeMeta: (id: string) => meta[id],
+    getAllWorktreeMeta: () => meta,
     setWorktreeMeta: (id: string, updates: Partial<WorktreeMeta>) => {
       meta[id] = { ...meta[id], ...updates }
       return meta[id]
@@ -56,6 +60,21 @@ describe('host sort stamps on a headless runtime', () => {
     }
   })
 
+  it('announces a stamp write as a metadata change of the row’s repo', () => {
+    vi.useFakeTimers({ now: 55_000 })
+    try {
+      const { runtime } = createHeadlessRuntime()
+      const events: unknown[] = []
+      runtime.onClientEvent((event) => events.push(event), { consumesTerminalSideEffects: false })
+      runtime.onPtyData('pty-1', '\x07', 1)
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: 'worktreesChanged', repoId: 'repo-1' })
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('stamps a bell the daemon reports for a parked terminal', () => {
     vi.useFakeTimers({ now: 60_000 })
     try {
@@ -72,16 +91,36 @@ describe('host sort stamps on a headless runtime', () => {
     try {
       const { runtime, meta } = createHeadlessRuntime()
       const server = new AgentHookServer()
-      runtime.sidebarFacts?.attachSidebarAgentStatusStore(server)
+      runtime.attachAgentStatusStore(server)
       server.ingestTerminalStatus({
         paneKey: 'tab-1:11111111-1111-4111-8111-111111111111',
         tabId: 'tab-1',
         worktreeId: WT,
         payload: { state: 'waiting', prompt: 'task', agentType: 'claude' }
       })
-      expect(meta[WT]).toEqual({ lastActivityAt: 70_000, smartTier: 'needs-you', smartAt: 70_000 })
+      // No client is looking, so the request for input also raises the unread flag.
+      expect(meta[WT]).toEqual({
+        lastActivityAt: 70_000,
+        smartTier: 'needs-you',
+        smartAt: 70_000,
+        isUnread: true
+      })
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('reconciles stored tiers once the provider can answer for the workspace’s terminals', async () => {
+    const live = createHeadlessRuntime({ lastActivityAt: 5, smartTier: 'done', smartAt: 4 })
+    live.runtime.attachAgentStatusStore(new AgentHookServer())
+    await live.runtime.sidebarFacts?.reconcileSortStampTiers({ probePtyLiveness: async () => true })
+    expect(live.meta[WT]).toEqual({ lastActivityAt: 5, smartTier: 'done', smartAt: 4 })
+
+    const gone = createHeadlessRuntime({ lastActivityAt: 5, smartTier: 'done', smartAt: 4 })
+    gone.runtime.attachAgentStatusStore(new AgentHookServer())
+    await gone.runtime.sidebarFacts?.reconcileSortStampTiers({
+      probePtyLiveness: async () => false
+    })
+    expect(gone.meta[WT]).toEqual({ lastActivityAt: 5, smartTier: undefined, smartAt: undefined })
   })
 })

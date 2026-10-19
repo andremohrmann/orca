@@ -12,6 +12,7 @@ import { dispatchTerminalCommandFinishedEvent } from '@/hooks/terminal-command-f
 import { resolveLiveAgentStatusConnectionRouting } from '@/lib/agent-status-connection-ownership'
 import { getConnectionIdFromState } from '@/lib/connection-owner-resolution'
 import { rendererAgentStatusObservations } from '@/lib/renderer-agent-status-observations'
+import { isRetainedProgramResult } from '@/lib/program-status/row'
 import { useAppStore } from '@/store'
 import {
   cancelCommandCodeDoneSettle,
@@ -106,7 +107,9 @@ export function createParkedTerminalCommandStatusPolicy(options: {
     if (!unchanged) {
       return
     }
-    state.dropAgentStatus(paneKey)
+    if (!isRetainedProgramResult(current)) {
+      state.dropAgentStatus(paneKey)
+    }
   }
 
   // Complete the row only while it is still this turn's command-code/working entry.
@@ -160,7 +163,7 @@ export function createParkedTerminalCommandStatusPolicy(options: {
       return
     }
     // Why: a parked pane holds no remote incarnation to fence host evidence with, so it has no answer.
-    const remote = isRemoteExecutionHostPtyId(ptyId) || parseAppSshPtyId(ptyId) !== null
+    const remote = isRemoteExecutionHostPtyId(ptyId)
     let processName: string | null = null
     if (!remote) {
       try {
