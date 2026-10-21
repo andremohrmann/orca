@@ -16,7 +16,31 @@ $customWorkflowAllowlist = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml'
 )
-$customContentConflictAllowlist = @()
+# The files that tell this build which repo to update from. Leaving them off these lists cost the
+# fork its update feed for a week in October 2026: every build kept publishing to the fork while
+# the app itself checked upstream, because Align-ChangedFilesToUpstream reverts any custom change
+# it is not told to keep — and deletes custom-only files outright.
+$customUpdateFeedPaths = @(
+  'config/update-feed-defaults.json',
+  'config/dev-app-update.yml',
+  'electron.vite.config.ts',
+  'src/types/build-constants.d.ts',
+  'src/shared/update-feed-info.ts',
+  'src/shared/update-feed-info.test.ts',
+  'src/shared/release-channel.ts',
+  'src/main/updater-prerelease-feed.ts',
+  'src/main/updater/updater-release-feed.ts',
+  'src/main/updater/updater-setup.ts'
+)
+# Only the files the fork owns outright take --ours on a conflict. The shared ones stay off this
+# list on purpose: upstream edits them often, and silently discarding an updater fix is worse than
+# a merge that stops and asks. Both kinds stay out of the forced upstream alignment below.
+$customContentConflictAllowlist = @(
+  'config/update-feed-defaults.json',
+  'config/dev-app-update.yml',
+  'src/shared/update-feed-info.ts',
+  'src/shared/update-feed-info.test.ts'
+)
 $customPreservePaths = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml',
@@ -27,7 +51,7 @@ $customPreservePaths = @(
   'config/scripts/verify-custom-orca-update.ps1',
   'config/electron-builder.config.cjs',
   'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'
-)
+) + $customUpdateFeedPaths
 
 function Invoke-Native {
   param(
@@ -404,7 +428,9 @@ if (!$SkipValidation) {
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/agent-dashboard-live-layout.test.ts',
-    'src/shared/release-channel.test.ts'
+    'src/shared/release-channel.test.ts',
+    'src/shared/update-feed-info.test.ts',
+    'config/scripts/electron-vite-output-contract.test.ts'
   )
 }
 

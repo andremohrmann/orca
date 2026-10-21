@@ -11,6 +11,8 @@ import { createProcessHostDevRebuildPlugin } from './config/build-plugins/proces
 import { createViteCacheRetentionPlugin } from './config/build-plugins/vite-cache-retention'
 import { MAIN_BUILD_ENTRY_POINTS } from './config/build-plugins/main-build-entry-points'
 import { createPlainNodeEntryGuardPlugin } from './config/build-plugins/plain-node-entry-guard'
+import { createStartupDiagnosticsBanner } from './config/build-plugins/startup-diagnostics-banner'
+import updateFeedDefaults from './config/update-feed-defaults.json' with { type: 'json' }
 import { resolveBuildSourceCommit } from './config/scripts/build-source-commit.mjs'
 
 const BUNDLED_MAIN_DEPENDENCIES = new Set([
@@ -55,6 +57,16 @@ const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
     ? JSON.stringify(orcaDiagnosticsTokenUrl)
     : 'null'
 
+// Why substituted rather than read at runtime: the updater pins a concrete feed URL before
+// electron-updater consults app-update.yml, so a fork's installers and its update checks have to
+// name the same repo. config/update-feed-defaults.json is the shared default for both halves.
+const orcaUpdateFeedOwner = process.env.ORCA_UPDATE_OWNER || updateFeedDefaults.owner
+const orcaUpdateFeedRepo = process.env.ORCA_UPDATE_REPO || updateFeedDefaults.repo
+const ORCA_UPDATE_FEED_REPO_LITERAL =
+  orcaUpdateFeedOwner.length > 0 && orcaUpdateFeedRepo.length > 0
+    ? JSON.stringify(`${orcaUpdateFeedOwner}/${orcaUpdateFeedRepo}`)
+    : 'null'
+
 const darkBuildSwitches: {
   darkBuildDefines: () => Record<string, string>
   darkBuildMarkers: () => { fileName: string; text: string }[]
@@ -76,118 +88,6 @@ function createDarkBuildMarkerPlugin(): Plugin {
 // Why: official skill installs pin to the commit the build came from, so they match the
 // bundled skills on every channel. Main runs the installer; the renderer prints the command.
 const ORCA_BUILD_COMMIT_LITERAL = JSON.stringify(resolveBuildSourceCommit())
-
-function createStartupDiagnosticsBanner(chunkName: string): string {
-  return `
-;(() => {
-  const env = typeof process !== 'undefined' ? process.env : undefined
-  const mode = env?.ORCA_STARTUP_DIAGNOSTICS
-  if (mode !== '1' && mode !== 'trace') {
-    return
-  }
-  const safeJson = (value) => {
-    try {
-      return JSON.stringify(value)
-    } catch {
-      return '"<unserializable>"'
-    }
-  }
-  let diagnosticFileDescriptor
-  let closeSync, openSync, writeSync
-  try {
-    const fs = require('node:fs')
-    closeSync = fs.closeSync
-    openSync = fs.openSync
-    writeSync = fs.writeSync
-  } catch {
-    closeSync = undefined
-    openSync = undefined
-    writeSync = undefined
-  }
-  const diagnosticFile = env?.ORCA_STARTUP_DIAGNOSTICS_FILE
-  if (typeof diagnosticFile === 'string' && diagnosticFile.length > 0 && typeof openSync === 'function') {
-    try {
-      diagnosticFileDescriptor = openSync(diagnosticFile, 'a', 0o600)
-    } catch {
-      diagnosticFileDescriptor = undefined
-    }
-  }
-  const writeLine = (message) => {
-    try {
-      const line = message.endsWith('\\n') ? message : message + '\\n'
-      if (typeof writeSync === 'function') {
-        writeSync(2, line)
-        if (typeof diagnosticFileDescriptor === 'number') {
-          writeSync(diagnosticFileDescriptor, line)
-        }
-      }
-    } catch {
-      // Diagnostics must never affect startup.
-    }
-  }
-  const chunkName = ${JSON.stringify(chunkName)}
-  writeLine('[bootstrap] bundle-enter chunk=' + safeJson(chunkName) + ' pid=' + process.pid + ' ppid=' + process.ppid + ' execPath=' + safeJson(process.execPath) + ' argv=' + safeJson(process.argv) + ' electronRunAsNode=' + safeJson(env?.ELECTRON_RUN_AS_NODE ?? null))
-  if (!globalThis.__ORCA_BOOTSTRAP_EXIT_LOG_INSTALLED__) {
-    globalThis.__ORCA_BOOTSTRAP_EXIT_LOG_INSTALLED__ = true
-    process.once('exit', (code) => {
-      writeLine('[bootstrap] process-exit code=' + code)
-      if (typeof closeSync === 'function' && typeof diagnosticFileDescriptor === 'number') {
-        try {
-          closeSync(diagnosticFileDescriptor)
-        } catch {
-          // Diagnostics must never affect shutdown.
-        }
-      }
-    })
-    process.on('uncaughtExceptionMonitor', (error, origin) => {
-      const message = error && typeof error === 'object' && 'stack' in error ? error.stack : error
-      writeLine('[bootstrap] uncaught-exception origin=' + safeJson(origin) + ' error=' + safeJson(String(message)))
-    })
-    process.on('unhandledRejection', (reason) => {
-      const message = reason && typeof reason === 'object' && 'stack' in reason ? reason.stack : reason
-      writeLine('[bootstrap] unhandled-rejection error=' + safeJson(String(message)))
-    })
-  }
-  if (mode === 'trace' && !globalThis.__ORCA_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__) {
-    globalThis.__ORCA_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__ = true
-    try {
-      const Module = require('node:module')
-      const originalLoad = Module._load
-      const parsedTraceLimit = Number(env?.ORCA_STARTUP_DIAGNOSTICS_TRACE_LIMIT ?? 20000)
-      const traceLimit = Number.isFinite(parsedTraceLimit) && parsedTraceLimit > 0 ? parsedTraceLimit : 20000
-      let traceLineCount = 0
-      let traceLimitReported = false
-      const writeTraceLine = (message) => {
-        if (traceLineCount >= traceLimit) {
-          if (!traceLimitReported) {
-            traceLimitReported = true
-            writeLine('[bootstrap] require-trace-limit-reached limit=' + safeJson(traceLimit))
-          }
-          return
-        }
-        traceLineCount += 1
-        writeLine(message)
-      }
-      Module._load = function (request, parent, isMain) {
-        const parentName = parent && parent.filename ? parent.filename : null
-        writeTraceLine('[bootstrap] require-start request=' + safeJson(request) + ' parent=' + safeJson(parentName) + ' isMain=' + safeJson(Boolean(isMain)))
-        try {
-          const result = Reflect.apply(originalLoad, this, arguments)
-          writeTraceLine('[bootstrap] require-ok request=' + safeJson(request))
-          return result
-        } catch (error) {
-          const message = error && typeof error === 'object' && 'stack' in error ? error.stack : error
-          writeTraceLine('[bootstrap] require-error request=' + safeJson(request) + ' error=' + safeJson(String(message)))
-          throw error
-        }
-      }
-    } catch (error) {
-      writeLine('[bootstrap] require-trace-install-error error=' + safeJson(String(error)))
-    }
-  }
-})();
-`
-}
 
 function createMainBootstrapPlugin() {
   return {
@@ -268,6 +168,7 @@ export const electronViteConfig: UserConfig = {
       ORCA_POSTHOG_WRITE_KEY: ORCA_POSTHOG_WRITE_KEY_LITERAL,
       ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL,
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
+      ORCA_UPDATE_FEED_REPO: ORCA_UPDATE_FEED_REPO_LITERAL,
       ...DARK_BUILD_DEFINES
     },
     // Why: @xterm/headless declares "exports": null in package.json, which
@@ -294,6 +195,7 @@ export const electronViteConfig: UserConfig = {
     cacheDir: resolve('.cache/vite/renderer'),
     define: {
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
+      ORCA_UPDATE_FEED_REPO: ORCA_UPDATE_FEED_REPO_LITERAL,
       ...DARK_BUILD_DEFINES
     },
     resolve: {

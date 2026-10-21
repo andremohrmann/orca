@@ -1,4 +1,5 @@
 import { compareAppVersions, isValidAppVersion } from './app-version'
+import { getConfiguredUpdateFeedRepo } from './update-feed-info'
 
 export type ReleaseChannel = 'stable' | 'rc' | 'hourly' | 'daily' | 'adhoc'
 
@@ -24,7 +25,13 @@ export const RELEASE_CHANNEL_LABELS: Readonly<Record<ReleaseChannel, string>> = 
 export const HOURLY_RELEASE_REPO = 'stablyai/orca-hourly'
 export const DAILY_RELEASE_REPO = 'stablyai/orca-daily'
 export const ADHOC_RELEASE_REPO = 'stablyai/orca-adhoc'
+/** Upstream's repo. Content the project itself publishes — the agent state rules bundle — comes
+ *  from here even on a fork build, which cuts no such releases. */
 export const MAIN_RELEASE_REPO = 'stablyai/orca'
+
+/** Where this build's own installers come from. A fork substitutes its repo at build time, so
+ *  stable and RC resolve to the releases that actually carry the running app's changes. */
+const UPDATE_FEED_REPO = getConfiguredUpdateFeedRepo()
 
 /** The dev channels, each published to its own repo rather than the main one. */
 const DEDICATED_REPO_CHANNELS = ['hourly', 'daily', 'adhoc'] as const
@@ -32,8 +39,8 @@ const DEDICATED_REPO_CHANNELS = ['hourly', 'daily', 'adhoc'] as const
 export type DedicatedRepoChannel = (typeof DEDICATED_REPO_CHANNELS)[number]
 
 const CHANNEL_RELEASE_REPOS: Record<ReleaseChannel, string> = {
-  stable: MAIN_RELEASE_REPO,
-  rc: MAIN_RELEASE_REPO,
+  stable: UPDATE_FEED_REPO,
+  rc: UPDATE_FEED_REPO,
   hourly: HOURLY_RELEASE_REPO,
   daily: DAILY_RELEASE_REPO,
   adhoc: ADHOC_RELEASE_REPO
@@ -228,7 +235,7 @@ export function getVersionChannel(version: string): ReleaseChannel | null {
  */
 export function getReleaseNotesUrlForVersion(version: string | null): string {
   const channel = version ? getVersionChannel(version) : null
-  const repo = channel ? getReleaseRepoForChannel(channel) : MAIN_RELEASE_REPO
+  const repo = channel ? getReleaseRepoForChannel(channel) : UPDATE_FEED_REPO
   return version
     ? `https://github.com/${repo}/releases/tag/v${normalizeTagToVersion(version)}`
     : `https://github.com/${repo}/releases`

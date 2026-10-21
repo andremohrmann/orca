@@ -7,6 +7,10 @@ const WORKFLOW = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/custom-windows-update.yml'),
   'utf8'
 )
+const VERIFY_UPDATE = readFileSync(
+  resolve(import.meta.dirname, 'verify-custom-orca-update.ps1'),
+  'utf8'
+)
 const PACKAGED_STARTUP_SMOKE = readFileSync(
   resolve(import.meta.dirname, '../../tests/tools/win-update-e2e/packaged-startup-smoke.mjs'),
   'utf8'
@@ -44,6 +48,39 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain('Accept upstream content for non-custom file $path')
     expect(SCRIPT).toContain('& git checkout --theirs -- $path | Out-Host')
     expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
+  })
+
+  it('keeps the update feed files out of the forced upstream alignment', () => {
+    // The October 2026 regression: an automated upstream merge reverted these, so the installer
+    // published to the fork while the app itself offered upstream's releases.
+    for (const path of [
+      'config/update-feed-defaults.json',
+      'config/dev-app-update.yml',
+      'electron.vite.config.ts',
+      'src/shared/update-feed-info.ts',
+      'src/shared/release-channel.ts',
+      'src/main/updater-prerelease-feed.ts',
+      'src/main/updater/updater-release-feed.ts',
+      'src/main/updater/updater-setup.ts'
+    ]) {
+      expect(SCRIPT).toContain(`'${path}'`)
+    }
+    expect(SCRIPT).toContain(') + $customUpdateFeedPaths')
+  })
+
+  it('resolves conflicts to the fork only in files upstream does not own', () => {
+    const allowlist = SCRIPT.match(/\$customContentConflictAllowlist = @\(([\s\S]+?)\)/)?.[1]
+
+    expect(allowlist).toContain("'src/shared/update-feed-info.ts'")
+    // Shared updater sources must stop the merge instead, so an upstream fix is never dropped.
+    expect(allowlist).not.toContain("'src/main/updater/updater-setup.ts'")
+    expect(allowlist).not.toContain("'electron.vite.config.ts'")
+  })
+
+  it('verifies the built bundle checks the repo the installer publishes to', () => {
+    expect(VERIFY_UPDATE).toContain('$expectedFeedRepo')
+    expect(VERIFY_UPDATE).toContain("Join-Path (Get-Location).Path 'out/main'")
+    expect(VERIFY_UPDATE).toContain('Main bundle does not embed update feed $expectedFeedRepo')
   })
 
   it('blocks publishing when the packaged renderer cannot start', () => {

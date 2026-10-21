@@ -114,8 +114,12 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-const updateFeedOwner = process.env.ORCA_UPDATE_OWNER || 'stablyai'
-const updateFeedRepo = process.env.ORCA_UPDATE_REPO || devChannelRepo || 'orca'
+// Why a shared file: electron.vite.config.ts bakes the same coordinates into the running app, and
+// an installer that publishes to one repo while the app checks another is exactly how a fork ends
+// up offering upstream's releases.
+const updateFeedDefaults = require('./update-feed-defaults.json')
+const updateFeedOwner = process.env.ORCA_UPDATE_OWNER || updateFeedDefaults.owner
+const updateFeedRepo = process.env.ORCA_UPDATE_REPO || devChannelRepo || updateFeedDefaults.repo
 const appId = 'com.stablyai.orca'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
