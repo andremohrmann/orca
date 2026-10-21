@@ -37,39 +37,36 @@ describe('custom Windows updater merge safety', () => {
     expect(SCRIPT).toContain("'--no-verify'")
   })
 
-  it('preserves the custom dashboard owner when upstream changes the same board file', () => {
-    expect(SCRIPT).toContain('Align-ChangedFilesToUpstream -UpstreamRef $UpstreamRef')
-    expect(SCRIPT).toContain('git diff --name-only "$UpstreamRef...HEAD" --')
-    expect(SCRIPT).toContain("'config/scripts/build-custom-orca-update.ps1'")
-    expect(SCRIPT).toContain('& git checkout $UpstreamRef -- $path | Out-Host')
-  })
-
   it('accepts upstream content for non-custom files while retaining a conflict guard', () => {
     expect(SCRIPT).toContain('Accept upstream content for non-custom file $path')
     expect(SCRIPT).toContain('& git checkout --theirs -- $path | Out-Host')
     expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
   })
 
-  it('keeps the update feed files out of the forced upstream alignment', () => {
-    // The October 2026 regression: an automated upstream merge reverted these, so the installer
-    // published to the fork while the app itself offered upstream's releases.
+  it('never force-aligns every differing file to upstream after a merge', () => {
+    // The October 13 2026 incident: a function that ran after every merge — conflict or not — and
+    // reverted or deleted any file merely differing from upstream (not just ones with a real
+    // conflict) silently erased this fork's entire Live View dashboard feature (~148 files, two
+    // months of work) plus its update-feed wiring, and every scheduled merge after kept re-erasing
+    // it, because "differs from upstream" is true of nearly every custom file by definition.
+    expect(SCRIPT).not.toContain('function Align-ChangedFilesToUpstream')
+    expect(SCRIPT).not.toContain('Align-ChangedFilesToUpstream -UpstreamRef')
+    expect(SCRIPT).not.toContain('$customPreservePaths')
+    // A plain 3-way merge must be what runs — it keeps everything that doesn't textually conflict.
+    expect(SCRIPT).toContain('& git merge --no-ff --no-commit $UpstreamRef')
+  })
+
+  it('takes the fork side only on an actual conflict in files upstream does not own', () => {
+    // The update-feed files the Oct 13 incident deleted. Listing them here only matters for a
+    // genuine textual conflict (resolved below) — a non-conflicting merge already keeps them.
     for (const path of [
       'config/update-feed-defaults.json',
       'config/dev-app-update.yml',
-      'config/build-plugins/startup-diagnostics-banner.ts',
-      'electron.vite.config.ts',
       'src/shared/update-feed-info.ts',
-      'src/shared/release-channel.ts',
-      'src/main/updater-prerelease-feed.ts',
-      'src/main/updater/updater-release-feed.ts',
-      'src/main/updater/updater-setup.ts'
+      'src/shared/update-feed-info.test.ts'
     ]) {
       expect(SCRIPT).toContain(`'${path}'`)
     }
-    expect(SCRIPT).toContain(') + $customUpdateFeedPaths')
-  })
-
-  it('resolves conflicts to the fork only in files upstream does not own', () => {
     const allowlist = SCRIPT.match(/\$customContentConflictAllowlist = @\(([\s\S]+?)\)/)?.[1]
 
     expect(allowlist).toContain("'src/shared/update-feed-info.ts'")

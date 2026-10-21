@@ -16,43 +16,16 @@ $customWorkflowAllowlist = @(
   '.github/workflows/custom-windows-update.yml',
   '.github/workflows/pr-test-loc.yml'
 )
-# The files that tell this build which repo to update from. Leaving them off these lists cost the
-# fork its update feed for a week in October 2026: every build kept publishing to the fork while
-# the app itself checked upstream, because Align-ChangedFilesToUpstream reverts any custom change
-# it is not told to keep — and deletes custom-only files outright.
-$customUpdateFeedPaths = @(
-  'config/update-feed-defaults.json',
-  'config/dev-app-update.yml',
-  'config/build-plugins/startup-diagnostics-banner.ts',
-  'electron.vite.config.ts',
-  'src/types/build-constants.d.ts',
-  'src/shared/update-feed-info.ts',
-  'src/shared/update-feed-info.test.ts',
-  'src/shared/release-channel.ts',
-  'src/main/updater-prerelease-feed.ts',
-  'src/main/updater/updater-release-feed.ts',
-  'src/main/updater/updater-setup.ts'
-)
-# Only the files the fork owns outright take --ours on a conflict. The shared ones stay off this
-# list on purpose: upstream edits them often, and silently discarding an updater fix is worse than
-# a merge that stops and asks. Both kinds stay out of the forced upstream alignment below.
+# Only these take --ours when they genuinely conflict with upstream (not merely differ from it —
+# see the incident note on Merge-CustomBranch below). Everything else stays off this list on
+# purpose: upstream edits these files too, and silently discarding an upstream fix is worse than a
+# merge that stops and asks a human to reconcile it by hand.
 $customContentConflictAllowlist = @(
   'config/update-feed-defaults.json',
   'config/dev-app-update.yml',
   'src/shared/update-feed-info.ts',
   'src/shared/update-feed-info.test.ts'
 )
-$customPreservePaths = @(
-  '.github/workflows/custom-windows-update.yml',
-  '.github/workflows/pr-test-loc.yml',
-  'config/scripts/build-custom-orca-update.ps1',
-  'config/scripts/build-custom-orca-update.test.mjs',
-  'config/scripts/verify-custom-windows-packaging.mjs',
-  'config/scripts/verify-custom-windows-packaging.test.mjs',
-  'config/scripts/verify-custom-orca-update.ps1',
-  'config/electron-builder.config.cjs',
-  'tests/tools/win-update-e2e/packaged-startup-smoke.mjs'
-) + $customUpdateFeedPaths
 
 function Invoke-Native {
   param(
@@ -143,14 +116,21 @@ function Merge-CustomBranch {
   if ($LASTEXITCODE -ne 1) {
     throw "Could not compare $BranchName with $UpstreamRef."
   }
-  Write-Host "`n==> Merge $UpstreamRef into $BranchName"
+  # Why plain `git merge` and nothing stronger: a prior version of this function added
+  # Align-ChangedFilesToUpstream, which ran after every merge — conflict or not — and force-reverted
+  # or deleted any file that merely differed from upstream unless it was named on an allowlist. On
+  # Oct 13 2026 that silently erased this fork's entire Live View dashboard feature (~148 files, two
+  # months of work) and its update-feed wiring, and every scheduled merge after kept re-erasing it,
+  # because "differs from upstream" is true of nearly every custom file by definition. An ordinary
+  # 3-way merge already does the right thing for the files that don't conflict — which is most of
+  # them — and a real conflict should stop the build and ask a human, not get silently resolved in
+  # either direction. Never reintroduce a step that treats "differs from upstream" as "needs fixing".
   & git merge --no-ff --no-commit $UpstreamRef
   if ($LASTEXITCODE -ne 0) {
     if (!(Resolve-DeletedWorkflowMergeConflicts)) {
       throw 'Merge stopped. Resolve the reported conflicts, commit the merge, then rerun this script.'
     }
   }
-  Align-ChangedFilesToUpstream -UpstreamRef $UpstreamRef
   foreach ($path in $customContentConflictAllowlist) {
     $headPath = @(git ls-tree -r --name-only HEAD -- $path)
     if ($LASTEXITCODE -eq 0) {
@@ -176,37 +156,6 @@ function Merge-CustomBranch {
     '--no-verify',
     '--no-edit'
   )
-}
-
-function Align-ChangedFilesToUpstream {
-  param([string]$UpstreamRef)
-  $changedPaths = @(git diff --name-only "$UpstreamRef...HEAD" --)
-  if ($LASTEXITCODE -ne 0) {
-    throw 'Could not determine files changed by the custom branch.'
-  }
-  foreach ($path in $changedPaths) {
-    if (!$path -or $customPreservePaths -contains $path) {
-      continue
-    }
-    $upstreamPath = @(git ls-tree -r --name-only $UpstreamRef -- $path)
-    if ($LASTEXITCODE -ne 0) {
-      throw "Could not inspect upstream path $path."
-    }
-    if ($upstreamPath.Count -gt 0) {
-      Write-Host "`n==> Use upstream version of $path"
-      & git checkout $UpstreamRef -- $path | Out-Host
-      if ($LASTEXITCODE -ne 0) {
-        throw "Could not restore upstream version of $path."
-      }
-      & git add -f -- $path | Out-Host
-    } else {
-      Write-Host "`n==> Remove custom-only file $path"
-      & git rm -f --ignore-unmatch -- $path | Out-Host
-    }
-    if ($LASTEXITCODE -ne 0) {
-      throw "Could not stage upstream alignment for $path."
-    }
-  }
 }
 
 function Remove-InheritedWorkflows {
