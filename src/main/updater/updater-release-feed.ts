@@ -4,7 +4,8 @@ import {
   getReleaseDownloadUrl
 } from '../updater-prerelease-feed'
 import { isMissingUpdateManifestFailure, isPrereleaseVersion } from '../updater-fallback'
-import { getReleaseLatestDownloadUrl } from '../../shared/update-feed-info'
+import { isCustomVersion } from '../../shared/release-channel'
+import { getReleaseLatestDownloadUrl, getUpdateFeedInfo } from '../../shared/update-feed-info'
 import type { CheckFailureSource } from './updater-state'
 import type { UpdateCheckVariant } from './updater-types'
 import { ReleaseFeedPreflightError } from './updater-state'
@@ -206,6 +207,17 @@ export abstract class UpdaterReleaseFeed extends UpdaterInstallExecution {
         return 'not-available'
       }
       throw new Error('Could not resolve perf update feed')
+    }
+    // Why: a fork build (or one already on a custom-stamped version) has no installable upstream
+    // fallback — a fork cuts no generic "latest" release, so reaching this branch means there is
+    // genuinely no newer build, not that one exists at the generic URL.
+    if (getUpdateFeedInfo().isCustom || isCustomVersion(currentVersion)) {
+      this.clearPrereleaseFallbackContext()
+      this.clearPublishingWindowLastGoodCheck()
+      console.info(
+        `[updater] custom release feed has no installable custom update: current=${currentVersion} includePrerelease=${includePrerelease}`
+      )
+      return 'not-available'
     }
     this.clearPrereleaseFallbackContext()
     this.clearPublishingWindowLastGoodCheck()

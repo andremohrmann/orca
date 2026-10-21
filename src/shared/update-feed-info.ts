@@ -7,6 +7,9 @@ export const DEFAULT_UPDATE_FEED_REPO = 'stablyai/orca'
 
 export type UpdateFeedInfo = {
   repo: string
+  /** True for any build substituting a non-default feed — a fork cuts no generic "latest"
+   *  release of its own, so callers must not fall back to one. */
+  isCustom: boolean
   atomUrl: string
   latestDownloadUrl: string
   releasesUrl: string
@@ -27,6 +30,7 @@ export function getUpdateFeedInfo(): UpdateFeedInfo {
   const repo = getConfiguredUpdateFeedRepo()
   return {
     repo,
+    isCustom: repo !== DEFAULT_UPDATE_FEED_REPO,
     atomUrl: `https://github.com/${repo}/releases.atom`,
     latestDownloadUrl: `https://github.com/${repo}/releases/latest/download`,
     releasesUrl: `https://github.com/${repo}/releases`

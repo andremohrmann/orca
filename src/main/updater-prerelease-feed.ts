@@ -44,12 +44,18 @@ function getReleaseAssetUrl(tag: string, assetName: string): string {
 }
 
 export function normalizeTagToVersion(tag: string): string {
-  return tag.replace(/^v/i, '')
+  return tag.replace(/^custom-windows-/i, '').replace(/^v/i, '')
 }
 
 type ReleaseFeedTag = {
   tag: string
   version: string
+}
+
+const CUSTOM_VERSION = /^\d+\.\d+\.\d+-custom\.\d{14}$/
+
+export function isCustomReleaseTag(tag: string): boolean {
+  return CUSTOM_VERSION.test(normalizeTagToVersion(tag))
 }
 
 export function isPerfPrereleaseTag(tag: string): boolean {
@@ -273,14 +279,22 @@ export async function fetchNewerReleaseTagsWithReadiness(
     return { tags: [], state: 'unavailable', unavailableReason: 'feed' }
   }
 
+  // Why: a custom Windows build's tags share this repo's feed with ordinary stable/RC releases.
+  // Once either side is custom, cross-channel comparison is meaningless, so pin to the other
+  // custom builds rather than letting a same-day stable tag outrank an older custom one on semver.
+  const channelTags =
+    updateFeedInfo.isCustom || isCustomReleaseTag(currentVersion)
+      ? tags.filter(({ tag }) => isCustomReleaseTag(tag))
+      : tags
+
   // Why: perf builds are explicit opt-in; regular prerelease checks should
   // stay on the main RC/stable series even though perf tags are semver-newer.
   const candidates =
     options.releaseFilter === 'perf'
-      ? tags.filter(({ tag }) => isPerfPrereleaseTag(tag))
+      ? channelTags.filter(({ tag }) => isPerfPrereleaseTag(tag))
       : includePrerelease
-        ? tags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
-        : tags.filter(({ version }) => !isPrereleaseVersion(version))
+        ? channelTags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
+        : channelTags.filter(({ version }) => !isPrereleaseVersion(version))
   const newestNewerIndex = candidates.findIndex(
     ({ version }) => compareVersions(version, currentVersion) > 0
   )

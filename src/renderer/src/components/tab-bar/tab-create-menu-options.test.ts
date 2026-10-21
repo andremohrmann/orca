@@ -21,6 +21,12 @@ describe('tab create menu options', () => {
     simulatorIsGoTo: false
   })
 
+  it('finds the Warp tab launcher', () => {
+    expect(findMatchingTabCreateMenuOptions('warp', defaultOptions)).toEqual([
+      expect.objectContaining({ kind: 'new-warp', label: 'Warp' })
+    ])
+  })
+
   it('matches mobile emulator aliases to the simulator menu action', () => {
     expect(
       findMatchingTabCreateMenuOptions('mobile emulator', defaultOptions).map(
@@ -65,6 +71,7 @@ describe('tab create menu options', () => {
 
     expect(options.map((option) => option.kind)).toEqual([
       'new-terminal',
+      'new-warp',
       'new-markdown',
       'open-markdown'
     ])

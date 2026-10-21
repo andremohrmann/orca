@@ -63,6 +63,7 @@ export default function AgentDashboardSidebarEntry(): React.JSX.Element {
   const dashboardBucketCounts = useAgentBucketCounts()
   const showIdle = useAppStore((s) => s.settings?.experimentalAgentDashboardShowIdle === true)
   const openAsPopout = useAppStore((s) => resolveAgentDashboardMode(s.settings) === 'popout')
+  const defaultView = useAppStore((s) => s.settings?.experimentalAgentDashboardDefaultView)
   const drawerOpen = useAppStore((s) => s.agentDashboardDrawerOpen)
   const setAgentDashboardDrawerOpen = useAppStore((s) => s.setAgentDashboardDrawerOpen)
 
@@ -72,7 +73,7 @@ export default function AgentDashboardSidebarEntry(): React.JSX.Element {
       data-contextual-tour-target="agents-sidebar"
       onClick={() => {
         if (openAsPopout) {
-          void window.api.dashboard.openPopout()
+          void window.api.dashboard.openPopout(defaultView)
         } else {
           setAgentDashboardDrawerOpen(!drawerOpen)
         }

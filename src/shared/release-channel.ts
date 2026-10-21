@@ -122,7 +122,7 @@ export function getReleaseRepoForChannel(channel: ReleaseChannel): string {
 }
 
 export function normalizeTagToVersion(tag: string): string {
-  return tag.replace(/^v/i, '')
+  return tag.replace(/^custom-windows-/i, '').replace(/^v/i, '')
 }
 
 /** `1.4.160-hourly.202607281400` — a timestamp identifier keeps every build
@@ -144,6 +144,10 @@ const DAILY_VERSION = /^\d+\.\d+\.\d+-daily\.(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})
  * collide on the tag and fail the second build eight minutes in.
  */
 const ADHOC_VERSION = /^\d+\.\d+\.\d+-adhoc\.(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/
+
+/** `1.4.215-custom.20261021121720` — the fork's Windows build stamp, tagged
+ *  `custom-windows-<version>` on GitHub (stripped by normalizeTagToVersion above). */
+const CUSTOM_VERSION = /^\d+\.\d+\.\d+-custom\.\d{14}$/
 
 /**
  * Both patterns are anchored on the whole version: an unanchored tail match also
@@ -181,6 +185,10 @@ export function isDailyVersion(version: string): boolean {
 
 export function isAdhocVersion(version: string): boolean {
   return ADHOC_VERSION.test(normalizeTagToVersion(version))
+}
+
+export function isCustomVersion(version: string): boolean {
+  return CUSTOM_VERSION.test(normalizeTagToVersion(version))
 }
 
 /** Returns the build's UTC timestamp, or null when the version isn't hourly. */
@@ -236,6 +244,9 @@ export function getVersionChannel(version: string): ReleaseChannel | null {
 export function getReleaseNotesUrlForVersion(version: string | null): string {
   const channel = version ? getVersionChannel(version) : null
   const repo = channel ? getReleaseRepoForChannel(channel) : UPDATE_FEED_REPO
+  if (version && isCustomVersion(version)) {
+    return `https://github.com/${repo}/releases/tag/custom-windows-${normalizeTagToVersion(version)}`
+  }
   return version
     ? `https://github.com/${repo}/releases/tag/v${normalizeTagToVersion(version)}`
     : `https://github.com/${repo}/releases`

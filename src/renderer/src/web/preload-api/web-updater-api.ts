@@ -1,4 +1,5 @@
 import type { PreloadApi } from '../../../../preload/api-types'
+import { getUpdateFeedInfo } from '../../../../shared/update-feed-info'
 import { translate } from '@/i18n/i18n'
 import { noopUnsubscribe } from './web-storage'
 
@@ -9,6 +10,7 @@ export function createUpdaterApi(): NonNullable<Partial<PreloadApi>['updater']> 
   const desktopOnlyMessage = 'Linux package install recovery is only available in the desktop app.'
   return {
     getVersion: () => Promise.resolve('web'),
+    getFeedInfo: () => Promise.resolve(getUpdateFeedInfo()),
     getStatus: () => Promise.resolve({ state: 'idle' } as never),
     check: () => Promise.resolve(),
     download: () => Promise.resolve(),

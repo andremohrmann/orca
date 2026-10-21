@@ -1,7 +1,11 @@
 import type { AgentType, AgentWorkingMode } from './agent-status-types'
 import type { ExecutionHostId } from './execution-host'
+import type { ProviderRateLimits } from './rate-limit-types'
 import type { RepoIcon } from './repo-icon'
+import type { StatusBarUsageMode } from './status-bar-usage-mode'
 import type { TuiAgent } from './tui-agent'
+import type { UsagePercentageDisplay } from './usage-percentage-display'
+import type { WorkspaceStatus } from './worktree/types'
 
 /**
  * Serializable contract for the pop-out agent dashboard. The main renderer owns
@@ -148,6 +152,8 @@ export type DashboardCard = {
    *  the main renderer owns the store these derive from, so they ride the
    *  snapshot to reach the pop-out. */
   terminalInput?: DashboardCardTerminalInput
+  /** Path/link facts the preview needs to resolve terminal file and URL clicks. */
+  terminalLinks?: DashboardCardTerminalLinks
 }
 
 /**
@@ -174,6 +180,15 @@ export type DashboardCardTerminalInput = {
   kittyKeyboardAdvertised: boolean
 }
 
+export type DashboardCardTerminalLinks = {
+  worktreeId: string
+  worktreePath: string
+  startupCwd: string
+  runtimeEnvironmentId?: string | null
+  terminalHomePath?: string | null
+  wslDistro?: string | null
+}
+
 export type DashboardFilterOption = {
   id: string
   label: string
@@ -183,6 +198,12 @@ export type DashboardFilterOption = {
 export type DashboardFilterOptions = {
   projects: DashboardFilterOption[]
   workspaceStatuses: DashboardFilterOption[]
+}
+
+export type DashboardUsageSnapshot = {
+  providers: ProviderRateLimits[]
+  usagePercentageDisplay?: UsagePercentageDisplay
+  statusBarUsageMode?: StatusBarUsageMode
 }
 
 export type DashboardSnapshot = {
@@ -202,6 +223,9 @@ export type DashboardSnapshot = {
    *  is republished several times a second. Optional so a pop-out running
    *  pre-upgrade code still accepts the payload. */
   repoIconsByRepoId?: Record<string, RepoIcon | null>
+  /** Status-bar usage meters mirrored into dashboard windows. Optional so
+   *  older snapshot producers keep rendering in mixed-version sessions. */
+  usage?: DashboardUsageSnapshot
 }
 
 export const EMPTY_DASHBOARD_SNAPSHOT: DashboardSnapshot = {
@@ -233,4 +257,14 @@ export type DashboardSpawnAgentArgs = {
  *  teardown sequence, so the pop-out only names the target. */
 export type DashboardSleepWorkspaceArgs = {
   worktreeId: string
+}
+
+export type DashboardAssignWorkspaceStatusArgs = {
+  worktreeId: string
+  status: WorkspaceStatus
+}
+
+export type DashboardRenameWorkspaceArgs = {
+  worktreeId: string
+  displayName: string
 }

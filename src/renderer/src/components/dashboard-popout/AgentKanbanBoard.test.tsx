@@ -118,12 +118,12 @@ describe('AgentKanbanBoard', () => {
     expect(headers.map((h) => h.textContent)).toEqual(['Needs You', 'Working', 'Done'])
   })
 
-  it('hides the agent map from dashboard chrome', () => {
+  it('shows the dashboard view selector', () => {
     renderBoard([])
 
-    expect(screen.queryByRole('button', { name: 'Agent Map' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Dashboard' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: 'Dashboard view' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Live view' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Dashboard view' })).toBeInTheDocument()
     expect(screen.getByText('Needs You')).toBeInTheDocument()
   })
 
@@ -342,8 +342,7 @@ describe('AgentKanbanBoard', () => {
     expect(screen.getByTestId('card').dataset.unseen).toBe('true')
 
     fireEvent.click(screen.getByTestId('card'))
-    // Only the click is a user read; it may claim the edges the card already surfaced.
-    expect(ackAgent.mock.calls).toEqual([['pk-ack', 'explicit']])
+    expect(ackAgent).toHaveBeenCalledWith('pk-ack', 'explicit')
     ackAgent.mockClear()
 
     // The ack round-trips through the main window; the next snapshot mutes it.
@@ -371,6 +370,6 @@ describe('AgentKanbanBoard', () => {
         }}
       />
     )
-    expect(ackAgent.mock.calls).toEqual([['pk-ack', 'view']])
+    expect(ackAgent).toHaveBeenCalledWith('pk-ack', 'view')
   })
 })

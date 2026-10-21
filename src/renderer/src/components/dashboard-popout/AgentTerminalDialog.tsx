@@ -77,6 +77,7 @@ function AgentTerminalFrame({
         <AgentTerminalPreview
           ptyId={card.ptyId}
           terminalInput={card.terminalInput ?? null}
+          terminalLinks={card.terminalLinks ?? null}
           className={previewClassName}
         />
       ) : (

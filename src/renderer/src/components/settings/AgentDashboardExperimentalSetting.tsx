@@ -2,9 +2,23 @@ import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { translate } from '@/i18n/i18n'
 import { Label } from '../ui/label'
 import { SearchableSetting } from './SearchableSetting'
-import { SettingsSegmentedControl, SettingsSwitch } from './SettingsFormControls'
+import {
+  NumberField,
+  SettingsRow,
+  SettingsSegmentedControl,
+  SettingsSwitch,
+  SettingsSwitchRow
+} from './SettingsFormControls'
 import { getExperimentalSearchEntry } from './experimental-search'
 import { canOpenAgentDashboardPopout } from '../dashboard/agent-dashboard-open-mode'
+import {
+  normalizeAgentDashboardLiveLayout,
+  type AgentDashboardLiveLayout
+} from '../../../../shared/agent-dashboard-live-layout'
+import {
+  normalizeAgentDashboardView,
+  type AgentDashboardView
+} from '../../../../shared/agent-dashboard-view'
 
 type AgentDashboardExperimentalSettingProps = {
   settings: GlobalSettings
@@ -17,6 +31,19 @@ export function AgentDashboardExperimentalSetting({
 }: AgentDashboardExperimentalSettingProps): React.JSX.Element {
   const enabled = settings.experimentalAgentDashboardPopout === true
   const mode = settings.experimentalAgentDashboardMode ?? 'in-window'
+  const defaultView = normalizeAgentDashboardView(settings.experimentalAgentDashboardDefaultView)
+  const openLiveOnStartup = settings.experimentalAgentDashboardOpenLiveOnStartup === true
+  const liveLayout = normalizeAgentDashboardLiveLayout(
+    settings.experimentalAgentDashboardLiveLayout
+  )
+  const updateLiveLayout = (updates: Partial<AgentDashboardLiveLayout>): void => {
+    updateSettings({
+      experimentalAgentDashboardLiveLayout: normalizeAgentDashboardLiveLayout({
+        ...liveLayout,
+        ...updates
+      })
+    })
+  }
 
   return (
     <SearchableSetting
@@ -58,47 +85,127 @@ export function AgentDashboardExperimentalSetting({
       </div>
       {enabled && canOpenAgentDashboardPopout() ? (
         <div className="ml-4 space-y-3 border-l border-border pl-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 shrink space-y-0.5">
-              <Label>
-                {translate(
-                  'auto.components.settings.ExperimentalPane.agentDashboard.modeLabel',
-                  'Open as'
+          <SettingsRow
+            label={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.modeLabel',
+              'Open as'
+            )}
+            description={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.modeCopy',
+              'Show the dashboard as an in-window board beside the sidebar or a separate pop-out window.'
+            )}
+            control={
+              <SettingsSegmentedControl
+                value={mode}
+                onChange={(next) => updateSettings({ experimentalAgentDashboardMode: next })}
+                ariaLabel={translate(
+                  'auto.components.settings.ExperimentalPane.agentDashboard.modeAriaLabel',
+                  'Agent Dashboard open mode'
                 )}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {translate(
-                  'auto.components.settings.ExperimentalPane.agentDashboard.modeCopy',
-                  'Show the dashboard as an in-window board beside the sidebar or a separate pop-out window.'
+                size="sm"
+                options={[
+                  {
+                    value: 'in-window',
+                    label: translate(
+                      'auto.components.settings.ExperimentalPane.agentDashboard.modeInWindow',
+                      'In-window'
+                    )
+                  },
+                  {
+                    value: 'popout',
+                    label: translate(
+                      'auto.components.settings.ExperimentalPane.agentDashboard.modePopout',
+                      'Pop-out'
+                    )
+                  }
+                ]}
+              />
+            }
+          />
+          <SettingsRow
+            label={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.defaultViewLabel',
+              'Default view'
+            )}
+            description={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.defaultViewCopy',
+              'Choose which Agent Dashboard view opens when you use the sidebar entry.'
+            )}
+            control={
+              <SettingsSegmentedControl<AgentDashboardView>
+                value={defaultView}
+                onChange={(next) => updateSettings({ experimentalAgentDashboardDefaultView: next })}
+                ariaLabel={translate(
+                  'auto.components.settings.ExperimentalPane.agentDashboard.defaultViewAriaLabel',
+                  'Default Agent Dashboard view'
                 )}
-              </p>
-            </div>
-            <SettingsSegmentedControl
-              value={mode}
-              onChange={(next) => updateSettings({ experimentalAgentDashboardMode: next })}
-              ariaLabel={translate(
-                'auto.components.settings.ExperimentalPane.agentDashboard.modeAriaLabel',
-                'Agent Dashboard open mode'
-              )}
-              size="sm"
-              options={[
-                {
-                  value: 'in-window',
-                  label: translate(
-                    'auto.components.settings.ExperimentalPane.agentDashboard.modeInWindow',
-                    'In-window'
-                  )
-                },
-                {
-                  value: 'popout',
-                  label: translate(
-                    'auto.components.settings.ExperimentalPane.agentDashboard.modePopout',
-                    'Pop-out'
-                  )
-                }
-              ]}
-            />
-          </div>
+                size="sm"
+                options={[
+                  {
+                    value: 'board',
+                    label: translate('dashboardPopout.view.board', 'Dashboard')
+                  },
+                  {
+                    value: 'live',
+                    label: translate('dashboardPopout.view.live', 'Live view')
+                  }
+                ]}
+              />
+            }
+          />
+          <SettingsSwitchRow
+            label={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.openLiveOnStartupLabel',
+              'Open Live view on startup'
+            )}
+            description={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.openLiveOnStartupCopy',
+              'Open the Agent Dashboard directly to Live view when Orca starts.'
+            )}
+            checked={openLiveOnStartup}
+            onChange={() =>
+              updateSettings({
+                experimentalAgentDashboardOpenLiveOnStartup: !openLiveOnStartup
+              })
+            }
+            ariaLabel={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.openLiveOnStartupLabel',
+              'Open Live view on startup'
+            )}
+          />
+          <SettingsSwitchRow
+            label={translate('dashboardPopout.live.hideChildAgents', 'Hide child-agent terminals')}
+            description={translate(
+              'dashboardPopout.live.hideChildAgentsDescription',
+              'Hide terminals of agents spawned by another agent from Live view. The agents keep running.'
+            )}
+            checked={liveLayout.hideChildAgents === true}
+            onChange={() => updateLiveLayout({ hideChildAgents: !liveLayout.hideChildAgents })}
+            ariaLabel={translate(
+              'dashboardPopout.live.hideChildAgents',
+              'Hide child-agent terminals'
+            )}
+          />
+          <NumberField
+            label={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterLabel',
+              'Auto-minimize inactive Live windows'
+            )}
+            description={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterCopy',
+              'Minimize Live view windows after this many minutes without agent activity. Use 0 to keep every window visible.'
+            )}
+            value={liveLayout.autoMinimizeAfterMinutes ?? 0}
+            defaultValue={0}
+            min={0}
+            max={1440}
+            step={1}
+            suffix={translate(
+              'auto.components.settings.ExperimentalPane.agentDashboard.autoMinimizeLiveAfterSuffix',
+              'min'
+            )}
+            onChange={(autoMinimizeAfterMinutes) => updateLiveLayout({ autoMinimizeAfterMinutes })}
+          />
         </div>
       ) : null}
     </SearchableSetting>

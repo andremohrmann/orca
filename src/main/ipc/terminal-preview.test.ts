@@ -340,6 +340,7 @@ describe('registerTerminalPreviewHandlers', () => {
       handlers.get('terminalPreview:input')!(eventFor(sender), { ptyId: 'p1', data: 'x' })
     ).resolves.toBe(false)
     handlers.get('terminalPreview:ack')!(eventFor(sender), { ptyId: 'p1', bytes: 1 })
+    await handlers.get('terminalPreview:releaseFit')!(eventFor(sender), { ptyId: 'p1' })
     handlers.get('terminalPreview:unsubscribe')!(eventFor(sender), { ptyId: 'p1' })
 
     expect(runtime.serializeTerminalBuffer).not.toHaveBeenCalled()
@@ -451,6 +452,25 @@ describe('registerTerminalPreviewHandlers', () => {
 
     handlers.get('terminalPreview:unsubscribe')!(eventFor(sender), { ptyId: 'p1' })
     expect(runtime.unregisterRemoteDesktopViewer).toHaveBeenCalledTimes(1)
+  })
+
+  it('releases the fit claim without disconnecting preview output', async () => {
+    const runtime = makeRuntime()
+    registerTerminalPreviewHandlers(runtime as never)
+    const sender = makeSender()
+
+    await handlers.get('terminalPreview:connect')!(eventFor(sender), { ptyId: 'p1' })
+    await handlers.get('terminalPreview:fit')!(eventFor(sender), {
+      ptyId: 'p1',
+      cols: 132,
+      rows: 40
+    })
+    await handlers.get('terminalPreview:releaseFit')!(eventFor(sender), { ptyId: 'p1' })
+
+    expect(runtime.unregisterRemoteDesktopViewer).toHaveBeenCalledWith('p1', 'dashboard-popout:1')
+    expect(runtime.unsubscribe).not.toHaveBeenCalled()
+    expect(runtime.unsubscribeResize).not.toHaveBeenCalled()
+    expect(runtime.releaseRawView).not.toHaveBeenCalled()
   })
 
   it('does not let an older failed fit release a newer claim', async () => {

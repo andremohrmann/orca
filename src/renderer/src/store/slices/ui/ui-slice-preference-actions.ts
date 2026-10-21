@@ -240,7 +240,12 @@ export function createUiPreferenceActions(set: UISliceSet, get: UISliceGet): Par
       }),
 
     agentDashboardDrawerOpen: false,
-    setAgentDashboardDrawerOpen: (open) => set({ agentDashboardDrawerOpen: open }),
+    agentDashboardDrawerInitialView: null,
+    setAgentDashboardDrawerOpen: (open, initialView) =>
+      set({
+        agentDashboardDrawerOpen: open,
+        agentDashboardDrawerInitialView: open ? (initialView ?? null) : null
+      }),
     statusBarVisible: true,
     setStatusBarVisible: (v) => {
       window.api.ui.set({ statusBarVisible: v }).catch(console.error)

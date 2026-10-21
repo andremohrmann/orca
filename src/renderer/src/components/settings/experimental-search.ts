@@ -83,6 +83,26 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
           'board'
         ),
         ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.live',
+          'live view'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.hideChildAgents',
+          'hide child agents spawned terminals'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.autoMinimize',
+          'auto minimize'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.inactive',
+          'inactive'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.agentDashboard.startup',
+          'startup'
+        ),
+        ...translateSearchKeyword(
           'auto.components.settings.experimental.search.agentDashboard.inWindow',
           'in-window'
         ),

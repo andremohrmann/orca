@@ -6,6 +6,7 @@ const LIVE_TAIL_SUBSCRIPTION_TIMEOUT_MS = 10_000
 
 export type RuntimeTerminalDataSubscriptionOptions = {
   startAtLiveTail?: boolean
+  onInputReady?: (sendInput: (data: string) => boolean) => void
   onSnapshot?: (data: string, meta?: { pendingEscapeTailAnsi?: string }) => void
   onEnd?: () => void
   onError?: (message: string) => void
@@ -101,7 +102,6 @@ export async function subscribeToRuntimeTerminalData(
       }
     }
   })
-
   if (liveTailReady) {
     let timeout: ReturnType<typeof setTimeout> | null = setTimeout(
       () => rejectPendingLiveTail('Timed out waiting for remote terminal live output.'),
@@ -112,6 +112,7 @@ export async function subscribeToRuntimeTerminalData(
       // before the command whose output they classify, including over SSH.
       await liveTailReady
     } catch (error) {
+      options?.onInputReady?.(() => false)
       stream.close()
       throw error
     } finally {
@@ -122,5 +123,9 @@ export async function subscribeToRuntimeTerminalData(
     }
   }
 
-  return () => stream.close()
+  options?.onInputReady?.(stream.sendInput)
+  return () => {
+    options?.onInputReady?.(() => false)
+    stream.close()
+  }
 }

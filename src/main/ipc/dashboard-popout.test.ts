@@ -7,11 +7,13 @@ const {
   createPopoutMock,
   closePopoutMock,
   getPopoutMock,
+  getPopoutOpacityMock,
   isPopoutRendererMock,
   isTrustedUIRendererMock,
   getTrustedWindowMock,
   sendToTrustedMock,
-  safelyRevealMock
+  safelyRevealMock,
+  setPopoutOpacityMock
 } = vi.hoisted(() => {
   const map = new Map<string, (...args: unknown[]) => unknown>()
   return {
@@ -24,11 +26,16 @@ const {
     createPopoutMock: vi.fn(),
     closePopoutMock: vi.fn(),
     getPopoutMock: vi.fn((): unknown => null),
+    getPopoutOpacityMock: vi.fn(() => ({ opacity: 0.8, supported: true })),
     isPopoutRendererMock: vi.fn((_sender: unknown) => false),
     isTrustedUIRendererMock: vi.fn((_sender: unknown) => false),
     getTrustedWindowMock: vi.fn((): unknown => null),
     sendToTrustedMock: vi.fn(),
-    safelyRevealMock: vi.fn()
+    safelyRevealMock: vi.fn(),
+    setPopoutOpacityMock: vi.fn((_store: unknown, opacity: number) => ({
+      opacity,
+      supported: true
+    }))
   }
 })
 
@@ -37,8 +44,10 @@ vi.mock('../window/dashboard-popout-window', () => ({
   createOrFocusDashboardPopout: createPopoutMock,
   closeDashboardPopout: closePopoutMock,
   getDashboardPopoutWindow: getPopoutMock,
+  getDashboardPopoutOpacityState: getPopoutOpacityMock,
   isDashboardPopoutRenderer: isPopoutRendererMock,
-  onDashboardPopoutOpenChanged: vi.fn()
+  onDashboardPopoutOpenChanged: vi.fn(),
+  setDashboardPopoutOpacity: setPopoutOpacityMock
 }))
 vi.mock('../window/focus-existing-window', () => ({ safelyRevealWindow: safelyRevealMock }))
 vi.mock('./ui', () => ({
@@ -132,9 +141,18 @@ describe('registerDashboardPopoutHandlers', () => {
 
     store.getSettings.mockReturnValue({ experimentalAgentDashboardPopout: true })
     handlers.get('dashboardPopout:open')!({ sender: mainSender } as never)
-    expect(createPopoutMock).toHaveBeenCalledWith(store, {
+    expect(createPopoutMock).toHaveBeenCalledWith(store, undefined, {
       getKeybindings: expect.any(Function)
     })
+
+    handlers.get('dashboardPopout:open')!({ sender: mainSender } as never, 'live')
+    expect(createPopoutMock).toHaveBeenLastCalledWith(store, 'live', {
+      getKeybindings: expect.any(Function)
+    })
+
+    createPopoutMock.mockClear()
+    handlers.get('dashboardPopout:open')!({ sender: mainSender } as never, 'invalid')
+    expect(createPopoutMock).not.toHaveBeenCalled()
   })
 
   it('auto-closes the popout when the feature is disabled', () => {
@@ -235,6 +253,25 @@ describe('registerDashboardPopoutHandlers', () => {
     expect(handlers.get('dashboard:getPopoutOpen')!({ sender: mainSender } as never)).toBe(true)
   })
 
+  it('reads and changes opacity only for the live popout renderer', () => {
+    expect(handlers.get('dashboardPopout:getOpacity')!({ sender: untrustedSender } as never)).toBe(
+      null
+    )
+    expect(handlers.get('dashboardPopout:getOpacity')!({ sender: popoutSender } as never)).toEqual({
+      opacity: 0.8,
+      supported: true
+    })
+
+    handlers.get('dashboardPopout:setOpacity')!({ sender: untrustedSender } as never, 0.7)
+    handlers.get('dashboardPopout:setOpacity')!({ sender: popoutSender } as never, Number.NaN)
+    expect(setPopoutOpacityMock).not.toHaveBeenCalled()
+
+    expect(
+      handlers.get('dashboardPopout:setOpacity')!({ sender: popoutSender } as never, 0.7)
+    ).toEqual({ opacity: 0.7, supported: true })
+    expect(setPopoutOpacityMock).toHaveBeenCalledWith(store, 0.7)
+  })
+
   it('relays valid seen acknowledgements from only the popout', () => {
     handlers.get('dashboardPopout:ackAgent')!({ sender: untrustedSender } as never, {
       paneKey: 'tab1:leaf1'
@@ -279,6 +316,19 @@ describe('registerDashboardPopoutHandlers', () => {
 
     handlers.get('dashboardPopout:sleepWorkspace')!({ sender: popoutSender } as never, args)
     expect(sendToTrustedMock).toHaveBeenCalledWith('ui:sleepDashboardWorkspace', args)
+  })
+
+  it('relays only valid workspace renames from the popout', () => {
+    const args = { worktreeId: 'worktree-1', displayName: 'Renamed workspace' }
+    handlers.get('dashboardPopout:renameWorkspace')!({ sender: untrustedSender } as never, args)
+    handlers.get('dashboardPopout:renameWorkspace')!({ sender: popoutSender } as never, {
+      ...args,
+      displayName: ''
+    })
+    expect(sendToTrustedMock).not.toHaveBeenCalled()
+
+    handlers.get('dashboardPopout:renameWorkspace')!({ sender: popoutSender } as never, args)
+    expect(sendToTrustedMock).toHaveBeenCalledWith('ui:renameDashboardWorkspace', args)
   })
 
   it('reveals an agent in only the trusted main window', () => {

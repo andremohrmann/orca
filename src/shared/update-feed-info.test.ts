@@ -18,11 +18,16 @@ describe('update feed info', () => {
     const repo = getConfiguredUpdateFeedRepo()
     expect(getUpdateFeedInfo()).toEqual({
       repo,
+      isCustom: repo !== DEFAULT_UPDATE_FEED_REPO,
       atomUrl: `https://github.com/${repo}/releases.atom`,
       latestDownloadUrl: `https://github.com/${repo}/releases/latest/download`,
       releasesUrl: `https://github.com/${repo}/releases`
     })
     expect(getReleaseDownloadBaseUrl()).toBe(`https://github.com/${repo}/releases/download`)
     expect(getReleaseLatestDownloadUrl()).toBe(getUpdateFeedInfo().latestDownloadUrl)
+  })
+
+  it('flags isCustom only when the feed repo differs from upstream', () => {
+    expect(getUpdateFeedInfo().isCustom).toBe(false)
   })
 })

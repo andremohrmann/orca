@@ -1,4 +1,5 @@
 import { isRemoteRuntimePtyId } from '../../../../../shared/remote-runtime-pty-id'
+import { getFitOverrideForPty, onOverrideChange } from '@/lib/pane-manager/mobile-fit-overrides'
 import { useAppStore } from '@/store'
 import { ambiguousWorkspaceOwnerMessage } from '@/lib/duplicate-paired-servers'
 import { createIpcPtyTransport } from '../pty-transport'
@@ -6,7 +7,6 @@ import { createRemoteRuntimePtyTransport } from '../remote-runtime-pty-transport
 import { toAgentLaunchPreferences } from '../../../../../shared/agent-launch-preferences'
 import { createUnresolvedOwnerPtyTransport } from '../unresolved-owner-pty-transport'
 import { recordTerminalTabParkedOnUnresolvedHost } from '@/lib/parked-terminal-host-hydration'
-import { getFitOverrideForPty, onOverrideChange } from '@/lib/pane-manager/mobile-fit-overrides'
 import { isPtyLocked } from '@/lib/pane-manager/mobile-driver-state'
 import { isPaneReplaying } from '../replay-guard'
 import { registerUndeliverableWriteHandler } from '@/lib/pane-manager/terminal-write-pipeline-health'
@@ -180,7 +180,11 @@ export function installPtyInputRecovery(session: ConnectPanePtySession): void {
   }
   session.armVisibleRemoteViewportClaim = (): void => {
     const ptyId = session.transport.getPtyId()
-    if (!ptyId || !isRemoteRuntimePtyId(ptyId)) {
+    // Live View also holds local and SSH terminals; window focus must reclaim those grids before input.
+    if (
+      !ptyId ||
+      (!isRemoteRuntimePtyId(ptyId) && getFitOverrideForPty(ptyId)?.mode !== 'remote-desktop-fit')
+    ) {
       session.visibleRemoteViewportClaimPtyId = null
       session.pendingVisibleRemoteViewportClaim = false
       return

@@ -3,6 +3,7 @@ import {
   TerminalStreamOpcode,
   decodeTerminalStreamFrame,
   decodeTerminalStreamJson,
+  decodeTerminalStreamText,
   encodeTerminalStreamFrame,
   encodeTerminalStreamJson,
   encodeTerminalStreamText
@@ -238,6 +239,35 @@ describe('remote runtime terminal data subscriptions', () => {
     )
     expect(watcher).toHaveBeenCalledWith('live')
     dispose()
+  })
+
+  it('exposes input on the subscribed remote terminal stream', async () => {
+    let sendInput: (data: string) => boolean = () => false
+    const dispose = await subscribeToRuntimeTerminalData(
+      'remote:env-1@@terminal-1',
+      'preview-1',
+      vi.fn(),
+      {
+        onInputReady: (send) => {
+          sendInput = send
+        }
+      }
+    )
+    await vi.waitFor(() => expect(sendBinary).toHaveBeenCalled())
+    const subscribeFrame = decodeTerminalStreamFrame(sendBinary.mock.calls[0][0])
+    const subscribePayload =
+      subscribeFrame && decodeTerminalStreamJson<{ streamId: number }>(subscribeFrame.payload)
+
+    expect(sendInput('answer\r')).toBe(true)
+    const inputFrame = sendBinary.mock.calls
+      .slice(1)
+      .map((call) => decodeTerminalStreamFrame(call[0]))
+      .find((frame) => frame?.opcode === TerminalStreamOpcode.Input)
+    expect(inputFrame?.streamId).toBe(subscribePayload!.streamId)
+    expect(inputFrame && decodeTerminalStreamText(inputFrame.payload)).toBe('answer\r')
+
+    dispose()
+    expect(sendInput('ignored')).toBe(false)
   })
 
   it('keeps the shared terminal multiplexer until the last watcher closes', async () => {

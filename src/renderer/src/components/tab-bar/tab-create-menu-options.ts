@@ -8,6 +8,7 @@ export type TabCreateMenuOptionKind =
   | 'new-browser'
   | 'new-markdown'
   | 'new-simulator'
+  | 'new-warp'
   | 'new-terminal'
   | 'new-terminal-shell'
   | 'open-markdown'
@@ -28,6 +29,13 @@ export type TabCreateMenuOptionsContext = {
   simulatorIsGoTo: boolean
   terminalOnly: boolean
   windowsShellEntries?: readonly { label: string; shell: BuiltInWindowsTerminalShell }[]
+}
+
+export const WARP_TAB_CREATE_OPTION: TabCreateMenuOption = {
+  id: 'new-warp',
+  kind: 'new-warp',
+  label: 'Warp',
+  keywords: ['warp', 'warp cli', 'warp.dev']
 }
 
 export const TAB_CREATE_MENU_QUERY_MAX_BYTES = 2 * 1024
@@ -98,6 +106,8 @@ export function buildTabCreateMenuOptions(
       ]
     })
   }
+
+  options.push(WARP_TAB_CREATE_OPTION)
 
   if (context.hasNewBrowser) {
     const label = translate('auto.components.tab.bar.TabBar.4833fb2cbe', 'New Browser Tab')

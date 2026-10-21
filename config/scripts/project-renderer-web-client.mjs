@@ -20,6 +20,61 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const selectedFiles = new Set(['web-index.html'])
 const visitedEntries = new Set()
 const PDFJS_VIEWER_ASSET_DIRS = ['cmaps', 'standard_fonts', 'wasm']
+const TRANSIENT_FILE_LOCK_ERRORS = new Set(['EBUSY', 'EPERM'])
+
+function sleep(ms) {
+  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms))
+}
+
+async function readFileWithTransientLockRetry(path) {
+  let lastError = null
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      return readFileSync(path, 'utf8')
+    } catch (error) {
+      if (!error || typeof error !== 'object' || !TRANSIENT_FILE_LOCK_ERRORS.has(error.code)) {
+        throw error
+      }
+      lastError = error
+      await sleep(50 * (attempt + 1))
+    }
+  }
+  throw lastError
+}
+
+async function removeWithTransientLockRetry(path) {
+  let lastError = null
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      rmSync(path, { force: true, recursive: true })
+      return
+    } catch (error) {
+      if (!error || typeof error !== 'object' || !TRANSIENT_FILE_LOCK_ERRORS.has(error.code)) {
+        throw error
+      }
+      lastError = error
+      await sleep(75 * (attempt + 1))
+    }
+  }
+  throw lastError
+}
+
+async function renameWithTransientLockRetry(source, destination) {
+  let lastError = null
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      renameSync(source, destination)
+      return
+    } catch (error) {
+      if (!error || typeof error !== 'object' || !TRANSIENT_FILE_LOCK_ERRORS.has(error.code)) {
+        throw error
+      }
+      lastError = error
+      await sleep(75 * (attempt + 1))
+    }
+  }
+  throw lastError
+}
 const TEXT_REFERENCE_OUTPUT = /\.(?:css|html|m?js|svg)$/
 
 function assertEntryIsolation() {
@@ -151,7 +206,7 @@ async function minifyWebOutput() {
       .map(async (outputPath) => {
         const targetPath = join(stagingOutput, outputPath)
         const loader = outputPath.endsWith('.css') ? 'css' : 'js'
-        const result = await transform(readFileSync(targetPath, 'utf8'), {
+        const result = await transform(await readFileWithTransientLockRetry(targetPath), {
           legalComments: 'none',
           loader,
           // Vite asset scripts already have short names; keep them stable across asset hash changes.
@@ -179,15 +234,15 @@ try {
   }
   await minifyWebOutput()
 
-  rmSync(webOutput, { force: true, recursive: true })
-  renameSync(stagingOutput, webOutput)
+  await removeWithTransientLockRetry(webOutput)
+  await renameWithTransientLockRetry(stagingOutput, webOutput)
   // The installed browser client shares renderer bytes; only its selected files may be served.
   writeFileSync(
     join(rendererOutput, '.orca-web-client-files.json'),
     JSON.stringify([...selectedFiles].sort())
   )
 } finally {
-  rmSync(stagingOutput, { force: true, recursive: true })
+  await removeWithTransientLockRetry(stagingOutput)
 }
 
 const outputBytes = [...selectedFiles].reduce(

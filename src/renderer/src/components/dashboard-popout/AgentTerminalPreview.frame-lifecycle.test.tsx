@@ -196,7 +196,9 @@ it('releases every frame after 64 actual preview unmounts', async () => {
   for (const instance of harness.instances) {
     expect(instance.dispose).toHaveBeenCalledOnce()
   }
-  expect(fit).not.toHaveBeenCalled()
+  // Why called, not suppressed: connecting claims the grid immediately (gridClaim.requestNow()),
+  // independent of the frame/timer cleanup this test actually covers.
+  expect(fit).toHaveBeenCalledTimes(64)
   expect(frames.size).toBe(0)
   expect(cancelFrame).toHaveBeenCalledTimes(64)
   expect(cancelFrame).toHaveBeenCalledWith(0)
@@ -241,7 +243,12 @@ it('retains the replacement frame on the same DOM and ignores retired parsed wri
   expect(replacement?.container).toBe(old?.container)
   expect(replacement?.container?.style.transform).toBe('scale(0.625)')
   expect(replacement?.container?.style.transformOrigin).toBe('top left')
-  expect(fit).toHaveBeenCalledExactlyOnceWith('pty-1', 50, 15)
+  // Why two calls, not one: the outgoing terminal claims its own grid immediately on connect
+  // (60, 15) before the font-size change replaces it; the replacement claims its own (50, 15).
+  expect(fit.mock.calls).toEqual([
+    ['pty-1', 60, 15],
+    ['pty-1', 50, 15]
+  ])
   expect(frames.size).toBe(0)
   expect([pending, afterOldWrites]).toEqual([1, 1])
 })

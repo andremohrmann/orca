@@ -27,6 +27,7 @@ const terminalHarness = vi.hoisted(() => ({
     scrollToTop: ReturnType<typeof vi.fn>
     scrollToBottom: ReturnType<typeof vi.fn>
     selectAll: ReturnType<typeof vi.fn>
+    registerLinkProvider: ReturnType<typeof vi.fn>
     modes: { bracketedPasteMode: boolean }
     selectionText: string
     customKeyHandler: ((event: KeyboardEvent) => boolean) | null
@@ -50,6 +51,10 @@ const imeHarness = vi.hoisted(() => ({
   }[],
   trackers: [] as { dispose: ReturnType<typeof vi.fn> }[],
   claimResult: false
+}))
+
+const runtimeStreamHarness = vi.hoisted(() => ({
+  sendInput: vi.fn(() => true)
 }))
 
 vi.mock('@xterm/xterm', () => ({
@@ -87,6 +92,7 @@ vi.mock('@xterm/xterm', () => ({
     scrollToTop = vi.fn()
     scrollToBottom = vi.fn()
     selectAll = vi.fn()
+    registerLinkProvider = vi.fn(() => ({ dispose: vi.fn() }))
     getSelection = vi.fn(() => this.selectionText)
     hasSelection = vi.fn(() => this.selectionText !== '')
     attachCustomKeyEventHandler = vi.fn((handler: (event: KeyboardEvent) => boolean) => {
@@ -147,6 +153,19 @@ vi.mock('@/store', () => {
   useAppStore.getState = (): typeof storeState => storeState
   return { useAppStore }
 })
+vi.mock('@/runtime/remote-runtime-terminal-multiplexer', () => ({
+  getRemoteRuntimeTerminalMultiplexer: () => ({
+    subscribeTerminal: async ({ callbacks }) => {
+      callbacks.onSnapshot('', { cols: 80, rows: 24, seq: 1 })
+      callbacks.onSubscribed?.()
+      return {
+        sendInput: runtimeStreamHarness.sendInput,
+        claimViewport: () => true,
+        close: vi.fn()
+      }
+    }
+  })
+}))
 
 // Paste encoding is under test here; owner routing is covered by AgentTerminalPreview.test.tsx.
 vi.mock('./terminal-preview-api', () => ({
@@ -162,6 +181,7 @@ describe('AgentTerminalPreview clipboard routes', () => {
   const unsubscribe = vi.fn(async () => {})
   const connect = vi.fn()
   const readClipboardText = vi.fn(async () => 'clip-text')
+  const saveClipboardImageAsTempFile = vi.fn(async () => null as string | null)
   const writeClipboardText = vi.fn(async () => {})
   const writeTerminalClipboardText = vi.fn(async () => {})
   const performNativeSelectionAction = vi.fn()
@@ -189,6 +209,7 @@ describe('AgentTerminalPreview clipboard routes', () => {
       replay: []
     })
     readClipboardText.mockResolvedValue('clip-text')
+    saveClipboardImageAsTempFile.mockResolvedValue(null)
     Object.assign(window, {
       api: {
         terminalPreview: {
@@ -201,6 +222,7 @@ describe('AgentTerminalPreview clipboard routes', () => {
         },
         ui: {
           readClipboardText,
+          saveClipboardImageAsTempFile,
           writeClipboardText,
           writeTerminalClipboardText,
           performNativeSelectionAction
@@ -255,7 +277,7 @@ describe('AgentTerminalPreview clipboard routes', () => {
     })
 
     await waitFor(() =>
-      expect(input).toHaveBeenCalledWith('remote:windows-box@@pty-1', '\x1b\rsecond line')
+      expect(runtimeStreamHarness.sendInput).toHaveBeenCalledWith('\x1b\rsecond line')
     )
     expect(terminal.input).toHaveBeenCalledWith('\x1b\rsecond line')
     expect(terminal.paste).not.toHaveBeenCalled()
@@ -365,6 +387,122 @@ describe('AgentTerminalPreview clipboard routes', () => {
       false
     )
     expect(readClipboardText).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves and bracket-pastes a clipboard screenshot on plain Ctrl+V', async () => {
+    platformState.value = 'win32'
+    readClipboardText.mockResolvedValueOnce('')
+    saveClipboardImageAsTempFile.mockResolvedValueOnce('C:\\Temp\\orca-paste-image.png')
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="pty-1"
+        terminalLinks={{
+          worktreeId: 'worktree-1',
+          worktreePath: 'C:\\repo',
+          startupCwd: 'C:\\repo'
+        }}
+      />
+    )
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+    await waitFor(() => expect(terminal.customKeyHandler).not.toBeNull())
+    focusInsidePreview(view.container)
+
+    terminal.customKeyHandler!(
+      new KeyboardEvent('keydown', {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+        cancelable: true
+      })
+    )
+
+    const expected = `${BRACKETED_PASTE_START}C:\\Temp\\orca-paste-image.png${BRACKETED_PASTE_END}`
+    await waitFor(() => expect(input).toHaveBeenCalledWith('pty-1', expected))
+    expect(saveClipboardImageAsTempFile).toHaveBeenCalledWith({
+      connectionId: null,
+      runtimeEnvironmentId: null
+    })
+    expect(terminal.input).toHaveBeenCalledWith(expected)
+  })
+
+  it('saves a clipboard screenshot on the SSH terminal owner before pasting its path', async () => {
+    platformState.value = 'win32'
+    readClipboardText.mockResolvedValueOnce('')
+    saveClipboardImageAsTempFile.mockResolvedValueOnce('/tmp/orca-paste-image.png')
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="ssh:server%20one@@pty-1"
+        terminalLinks={{
+          worktreeId: 'worktree-1',
+          worktreePath: '/srv/repo',
+          startupCwd: '/srv/repo'
+        }}
+      />
+    )
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+    await waitFor(() => expect(terminal.customKeyHandler).not.toBeNull())
+    focusInsidePreview(view.container)
+
+    terminal.customKeyHandler!(
+      new KeyboardEvent('keydown', {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+        cancelable: true
+      })
+    )
+
+    await waitFor(() =>
+      expect(saveClipboardImageAsTempFile).toHaveBeenCalledWith({
+        connectionId: 'server one',
+        runtimeEnvironmentId: null
+      })
+    )
+    expect(terminal.input).toHaveBeenCalledWith(
+      `${BRACKETED_PASTE_START}/tmp/orca-paste-image.png${BRACKETED_PASTE_END}`
+    )
+  })
+
+  it('saves a clipboard screenshot on the remote runtime terminal owner', async () => {
+    platformState.value = 'win32'
+    readClipboardText.mockResolvedValueOnce('')
+    saveClipboardImageAsTempFile.mockResolvedValueOnce('/tmp/orca-paste-image.png')
+    const view = render(
+      <AgentTerminalPreview
+        ptyId="remote:oracle-1@@terminal-1"
+        terminalLinks={{
+          worktreeId: 'worktree-1',
+          worktreePath: '/srv/repo',
+          startupCwd: '/srv/repo',
+          runtimeEnvironmentId: 'oracle-1'
+        }}
+      />
+    )
+    await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+    await waitFor(() => expect(terminal.customKeyHandler).not.toBeNull())
+    focusInsidePreview(view.container)
+
+    terminal.customKeyHandler!(
+      new KeyboardEvent('keydown', {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+        cancelable: true
+      })
+    )
+
+    await waitFor(() =>
+      expect(saveClipboardImageAsTempFile).toHaveBeenCalledWith({
+        connectionId: null,
+        runtimeEnvironmentId: 'oracle-1'
+      })
+    )
+    expect(terminal.input).toHaveBeenCalledWith(
+      `${BRACKETED_PASTE_START}/tmp/orca-paste-image.png${BRACKETED_PASTE_END}`
+    )
   })
 
   it('handles the shifted paste chord on Linux', async () => {

@@ -2,6 +2,7 @@ import { app, ipcMain } from 'electron'
 import type { BrowserWindow, IpcMainInvokeEvent } from 'electron'
 import type { ReleaseBuildListResult, UpdateCheckOptions } from '../../shared/update-status-types'
 import { RELEASE_CHANNELS, type ReleaseChannel } from '../../shared/release-channel'
+import { getUpdateFeedInfo } from '../../shared/update-feed-info'
 import { isTrustedUIRenderer } from '../ipc/ui'
 import type { Store } from '../persistence'
 import { logStartupMilestone } from '../startup/startup-diagnostics'
@@ -138,9 +139,11 @@ export function registerUpdaterHandlers(_store: Store): void {
   ipcMain.removeHandler('updater:getLinuxPackageInstallInstructions')
   ipcMain.removeHandler('updater:showLinuxPackage')
   ipcMain.removeHandler('updater:listBuilds')
+  ipcMain.removeHandler('updater:getFeedInfo')
 
   ipcMain.handle('updater:getStatus', () => getUpdateStatus())
   ipcMain.handle('updater:getVersion', () => app.getVersion())
+  ipcMain.handle('updater:getFeedInfo', () => getUpdateFeedInfo())
   ipcMain.handle('updater:check', (_event, options?: UpdateCheckOptions) => {
     ensureAutoUpdaterConfigured()
     return checkForUpdatesFromMenu(options)
