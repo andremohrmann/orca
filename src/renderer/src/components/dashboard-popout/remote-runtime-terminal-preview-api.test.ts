@@ -191,4 +191,11 @@ describe('remoteRuntimeTerminalPreviewApi', () => {
     expect(sub.stream.close).toHaveBeenCalledTimes(1)
     await expect(api.input(PTY, 'x')).resolves.toBe(false)
   })
+
+  it('resolves releaseFit without disconnecting or sending a wire message', async () => {
+    const { sub } = await openPreview()
+    await expect(api.releaseFit(PTY)).resolves.toBeUndefined()
+    expect(sub.stream.close).not.toHaveBeenCalled()
+    await expect(api.input(PTY, 'x')).resolves.toBe(true)
+  })
 })

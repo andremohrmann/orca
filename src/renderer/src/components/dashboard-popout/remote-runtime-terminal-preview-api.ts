@@ -8,24 +8,25 @@ import type {
 import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime-pty-id'
 import type {
   TerminalPreviewConnectResult,
-  TerminalPreviewDataPayload,
-  TerminalPreviewReplayChunk
+  TerminalPreviewDataPayload
 } from '../../../../shared/terminal-preview'
+import {
+  outputAfterSnapshot,
+  releaseGate,
+  snapshotResult
+} from './remote-runtime-terminal-preview-snapshot'
 
 type TerminalPreviewApi = typeof window.api.terminalPreview
 
 const CONNECT_TIMEOUT_MS = 15_000
 const SNAPSHOT_RETRY_ATTEMPTS = 3
 const SNAPSHOT_RETRY_DELAY_MS = 150
-const FALLBACK_COLS = 80
-const FALLBACK_ROWS = 24
 const UNAVAILABLE: TerminalPreviewConnectResult = { snapshot: null, replay: [] }
 
-type SnapshotMeta = Parameters<RemoteRuntimeMultiplexedTerminalCallbacks['onSnapshot']>[1]
-type OutputMeta = Parameters<RemoteRuntimeMultiplexedTerminalCallbacks['onData']>[1]
+export type OutputMeta = Parameters<RemoteRuntimeMultiplexedTerminalCallbacks['onData']>[1]
 type HeldChunk = { data: string; meta: OutputMeta; release: () => void }
 
-type PreviewSession = {
+export type PreviewSession = {
   stream: RemoteRuntimeMultiplexedTerminal | null
   /** The pending first connect; a refresh issued before it lands shares it. */
   opening: Promise<TerminalPreviewConnectResult> | null
@@ -48,71 +49,6 @@ function emit(payload: TerminalPreviewDataPayload): void {
   for (const listener of listeners) {
     listener(payload)
   }
-}
-
-function snapshotResult(
-  session: PreviewSession,
-  data: string,
-  meta: SnapshotMeta,
-  replay: TerminalPreviewReplayChunk[]
-): TerminalPreviewConnectResult {
-  session.grid =
-    typeof meta?.cols === 'number' && typeof meta.rows === 'number'
-      ? { cols: meta.cols, rows: meta.rows }
-      : null
-  return {
-    snapshot: {
-      data,
-      // Why: hosts that omit dims serialized at the PTY grid; the box fit and claim correct it.
-      cols: meta?.cols ?? FALLBACK_COLS,
-      rows: meta?.rows ?? FALLBACK_ROWS,
-      seq: meta?.seq,
-      pendingEscapeTailAnsi: meta?.pendingEscapeTailAnsi,
-      kittyKeyboardFlags: meta?.kittyKeyboardFlags
-    },
-    replay
-  }
-}
-
-/** The part of a chunk the snapshot at `snapshotSeq` does not already contain. */
-function outputAfterSnapshot(
-  data: string,
-  meta: OutputMeta,
-  snapshotSeq: number | undefined
-): string | null {
-  const seq = meta?.seq
-  const rawLength = meta?.rawLength ?? (meta?.transformed ? undefined : data.length)
-  if (snapshotSeq === undefined || seq === undefined || rawLength === undefined) {
-    return data
-  }
-  if (seq <= snapshotSeq) {
-    return null
-  }
-  const start = seq - rawLength
-  if (start >= snapshotSeq) {
-    return data
-  }
-  // A transformed span cannot be split by offset; the host drops it on the same boundary.
-  return meta?.transformed ? null : data.slice(snapshotSeq - start)
-}
-
-// Why: chunks flushed before a requested snapshot carry no proof of order without a seq.
-function releaseGate(session: PreviewSession, snapshotSeq: number | undefined) {
-  const held = session.gate ?? []
-  session.gate = null
-  session.snapshotSeq = snapshotSeq
-  const replay: TerminalPreviewReplayChunk[] = []
-  for (const chunk of held) {
-    const data =
-      chunk.meta?.seq === undefined
-        ? null
-        : outputAfterSnapshot(chunk.data, chunk.meta, snapshotSeq)
-    if (data) {
-      replay.push({ data, mode: 'live' })
-    }
-    chunk.release()
-  }
-  return replay
 }
 
 function releaseCredits(session: PreviewSession): void {
@@ -308,6 +244,11 @@ export const remoteRuntimeTerminalPreviewApi: TerminalPreviewApi = {
     const claimed = sessions.get(ptyId)?.stream?.claimViewport(cols, rows) ?? false
     return Promise.resolve(claimed ? { cols, rows } : null)
   },
+  // Why a no-op rather than a wire message: TerminalStreamOpcode has no "unclaim", only
+  // ClaimViewport, and the only other way to drop a held size — reconnecting — would violate
+  // this call's "without disconnecting the output stream" contract. The host keeps the
+  // last-claimed size until another fit() (from this viewer or another) supersedes it.
+  releaseFit: () => Promise.resolve(),
   // Why in order: the preview acknowledges chunks as xterm parses them, which is emit order.
   ack: (ptyId) => {
     sessions.get(ptyId)?.credits.shift()?.()
