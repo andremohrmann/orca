@@ -56,6 +56,7 @@ describe('custom Windows updater merge safety', () => {
     for (const path of [
       'config/update-feed-defaults.json',
       'config/dev-app-update.yml',
+      'config/build-plugins/startup-diagnostics-banner.ts',
       'electron.vite.config.ts',
       'src/shared/update-feed-info.ts',
       'src/shared/release-channel.ts',

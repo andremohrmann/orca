@@ -23,6 +23,7 @@ $customWorkflowAllowlist = @(
 $customUpdateFeedPaths = @(
   'config/update-feed-defaults.json',
   'config/dev-app-update.yml',
+  'config/build-plugins/startup-diagnostics-banner.ts',
   'electron.vite.config.ts',
   'src/types/build-constants.d.ts',
   'src/shared/update-feed-info.ts',
