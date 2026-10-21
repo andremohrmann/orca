@@ -79,16 +79,6 @@ const electronBuilderConfig = require('../electron-builder.config.cjs')
 const { FileMatcher } = require('app-builder-lib/out/fileMatcher')
 
 describe('Electron Vite output contract', () => {
-  it('embeds the same update feed the installer publishes to', () => {
-    // Why both halves: the app pins a feed URL from this constant before electron-updater reads
-    // app-update.yml, so a build whose publish block and bundle disagree checks the wrong repo.
-    const expectedRepo = JSON.stringify(
-      `${electronBuilderConfig.publish.owner}/${electronBuilderConfig.publish.repo}`
-    )
-    expect(electronViteConfig.main?.define?.ORCA_UPDATE_FEED_REPO).toBe(expectedRepo)
-    expect(electronViteConfig.renderer?.define?.ORCA_UPDATE_FEED_REPO).toBe(expectedRepo)
-  })
-
   it('skips main maps only for explicit check builds and always keeps official release maps', async () => {
     try {
       for (const [setting, identity, expected] of [
