@@ -142,7 +142,8 @@ export function PlainSshTerminalView({
       answersQueries: true,
       getSettings: () => settingsRef.current,
       getMacOptionAsAlt: () => macOptionAsAltRef.current,
-      getTerminalInput: () => null
+      getTerminalInput: () => null,
+      getTerminalLinks: () => null
     })
     if (!standalone) {
       onPhaseRef.current({

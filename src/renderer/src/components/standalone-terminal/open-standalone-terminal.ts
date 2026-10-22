@@ -8,7 +8,10 @@
 import { Terminal, type ITerminalInitOnlyOptions, type ITerminalOptions } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
+import type {
+  DashboardCardTerminalInput,
+  DashboardCardTerminalLinks
+} from '../../../../shared/dashboard-snapshot'
 import type { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { useAppStore } from '@/store'
@@ -40,6 +43,7 @@ export type StandaloneTerminalArgs = {
   getSettings: () => GlobalSettings | null
   getMacOptionAsAlt: () => MacOptionAsAlt
   getTerminalInput: () => DashboardCardTerminalInput | null
+  getTerminalLinks: () => DashboardCardTerminalLinks | null
 }
 
 export type StandaloneTerminal = {
@@ -66,7 +70,8 @@ export function openStandaloneTerminal(args: StandaloneTerminalArgs): Standalone
   let replayDepth = 0
 
   const disposeCompatibility = installPreviewTerminalCompatibility(terminal, {
-    getSettings: args.getSettings
+    getSettings: args.getSettings,
+    getTerminalLinks: args.getTerminalLinks
   })
   const disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
 
@@ -92,10 +97,11 @@ export function openStandaloneTerminal(args: StandaloneTerminalArgs): Standalone
   })
   const pasteClipboardText = createPreviewClipboardPaster({
     ptyId: args.sessionKey,
-    writeInput: args.sendInput,
+    writePty: args.sendInput,
     container,
     getTerminal: () => (disposed ? null : terminal),
     getTerminalInput: args.getTerminalInput,
+    getTerminalLinks: args.getTerminalLinks,
     isDisposed: () => disposed
   })
   const disposeKeyHandler = installPreviewTerminalKeyHandler({

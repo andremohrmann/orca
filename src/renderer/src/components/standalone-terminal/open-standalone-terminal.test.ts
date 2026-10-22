@@ -57,7 +57,8 @@ function open(answersQueries: boolean): ReturnType<typeof vi.fn> {
     answersQueries,
     getSettings: () => null,
     getMacOptionAsAlt: () => 'false',
-    getTerminalInput: () => null
+    getTerminalInput: () => null,
+    getTerminalLinks: () => null
   })
   return sendInput
 }
