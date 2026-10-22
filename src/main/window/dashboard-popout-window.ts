@@ -1,6 +1,5 @@
 import { app, BrowserWindow, nativeTheme, type WebContents, type Event } from 'electron'
 import { join } from 'node:path'
-import { is } from '@electron-toolkit/utils'
 import type { Store } from '../persistence'
 import { isBackgroundLaunch, showWindowWithoutStealingFocus } from './foreground-activation-policy'
 import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
@@ -139,7 +138,7 @@ function loadDashboardPopout(window: BrowserWindow, view: string): void {
   const search = `view=${encodeURIComponent(view)}`
   // Why: mirror loadMainWindow's dev/prod branch — the dev server serves the
   // second HTML entry, prod loads the emitted file.
-  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(`${process.env.ELECTRON_RENDERER_URL}/popout.html?${search}`)
   } else {
     void window.loadFile(join(__dirname, '../renderer/popout.html'), { search })
