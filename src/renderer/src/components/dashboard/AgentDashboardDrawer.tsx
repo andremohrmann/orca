@@ -15,6 +15,7 @@ import {
 } from '../sidebar/workspace-chrome-metrics'
 import { AgentDashboardSettingsMenu } from './AgentDashboardSettingsMenu'
 import { useLiveDashboardSnapshot } from './useLiveDashboardSnapshot'
+import { useAgentDashboardTelemetry } from '../dashboard-popout/use-agent-dashboard-telemetry'
 import { translate } from '@/i18n/i18n'
 import { normalizeAgentDashboardView } from '../../../../shared/agent-dashboard-view'
 
@@ -46,6 +47,7 @@ function AgentDashboardDrawerBody({
       s.agentDashboardDrawerInitialView ?? s.settings?.experimentalAgentDashboardDefaultView
     )
   )
+  useAgentDashboardTelemetry('in_window')
 
   // In-window ack/reveal act on the local store directly — the pop-out's IPC
   // relay is gated to the pop-out renderer and would reject calls from here.

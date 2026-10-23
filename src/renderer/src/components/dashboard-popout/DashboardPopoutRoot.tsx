@@ -8,6 +8,7 @@ import {
   normalizeAgentDashboardView,
   type AgentDashboardView
 } from '../../../../shared/agent-dashboard-view'
+import { useAgentDashboardTelemetry } from './use-agent-dashboard-telemetry'
 
 type DashboardPopoutRootProps = {
   /** The layout requested via popout.html?view=<name>. */
@@ -23,6 +24,7 @@ export function DashboardPopoutRoot(_props: DashboardPopoutRootProps): React.JSX
   // Edit-menu IPC into the ownership events the terminal preview claims.
   useAppMenuPaste()
   useAppMenuSelectionActions()
+  useAgentDashboardTelemetry('popout')
   const snapshot = useDashboardSnapshot()
   const [view, setView] = useState<AgentDashboardView>(() =>
     normalizeAgentDashboardView(_props.view)

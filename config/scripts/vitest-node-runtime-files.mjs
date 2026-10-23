@@ -113,6 +113,7 @@ const NODE_RUNTIME_INCLUDE = [
   'src/main/ai-vault-search/session-search-fts5-contract.test.ts',
   'src/main/foreign-sqlite-readers/**/*.test.ts',
   'src/main/browser/*cookie*.test.ts',
+  'src/main/browser/cookies/sources/browser-cookie-validation.test.ts',
   // Playwright's CDP transport needs Node's WebSocket implementation.
   'src/main/browser/browser-popup-adapter-compatibility.electron.test.ts',
   'src/main/browser/popup-origin-chrome.electron.test.ts',
@@ -144,6 +145,7 @@ const NODE_RUNTIME_INCLUDE = [
   'src/main/native-chat/structured-chat-naming.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-outgrown-child.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-permission-mode.test.ts',
+  'src/main/native-chat/agent-session-wire/structured-agent-session-queued-legacy-import.test.ts',
   'src/main/runtime/agent-session-conversation-name-store.test.ts',
   'src/main/runtime/structured-session-mail-redrive-wiring.test.ts',
   'src/main/runtime/rpc/ws-transport.test.ts',
