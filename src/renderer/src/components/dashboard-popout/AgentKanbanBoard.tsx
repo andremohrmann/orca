@@ -27,16 +27,12 @@ import { AgentLiveGrid } from './AgentLiveGrid'
 import { DashboardUsageBar } from './DashboardUsageBar'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 
-/** Ack an agent in the pop-out window: relayed over IPC to the main renderer.
- *  ?. shields dialog-opening from dev-HMR preload skew (renderer updates hot,
- *  the preload only on app restart) — acks just no-op until restart. */
+/** Relay acknowledgments to the main renderer; optional calls tolerate dev-HMR preload skew until restart. */
 function ackAgentViaPopoutRelay(paneKey: string, intent: AgentSubjectReadIntent): void {
   void window.api.dashboard.ackAgent?.(paneKey, intent)
 }
 
-/** Reveal an agent from the pop-out window: raise the main window and route it
- *  to the agent's pane via IPC. Same `?.` HMR-skew guard as the ack relay —
- *  both channels ship together, so a stale preload lacks both. */
+/** Reveal via main-window IPC; optional calls tolerate the same dev-HMR preload skew as acknowledgments. */
 function revealAgentViaPopoutRelay(args: AgentRevealArgs): void {
   void window.api.dashboard.revealAgent?.(args)
 }
@@ -55,25 +51,20 @@ type AgentKanbanBoardProps = {
   /** Sizing for the outermost container. The pop-out fills the window
    *  (h-screen w-screen); the in-window drawer fills its host (h-full w-full). */
   containerClassName?: string
-  /** Marks an agent as seen. Defaults to the pop-out IPC relay; the in-window
-   *  host acks the store directly. */
+  /** Default to the pop-out IPC relay; in-window hosts acknowledge directly in the store. */
   onAckAgent?: (paneKey: string, intent: AgentSubjectReadIntent) => void
-  /** Focuses the agent's pane. Defaults to the pop-out IPC relay; the in-window
-   *  host activates the worktree/pane locally and closes the overlay. */
+  /** Default to the pop-out IPC relay; in-window hosts activate locally and close their overlay. */
   onRevealAgent?: (args: AgentRevealArgs) => void
   onAssignWorkspaceStatus?: (args: DashboardAssignWorkspaceStatusArgs) => void
   onRenameWorkspace?: (args: DashboardRenameWorkspaceArgs) => void
   /** When provided, renders a close control in the header (in-window mode). The
    *  pop-out relies on its native window controls, so it omits this. */
   onClose?: () => void
-  /** Header controls rendered before the close button. The in-window host
-   *  passes its settings menu; the pop-out renderer has no store to drive it. */
+  /** In-window settings controls; the pop-out renderer has no store to drive them. */
   headerActions?: React.ReactNode
 }
 
-/** The agent board: status columns fed by a snapshot. Shared by the pop-out
- *  window and the in-window drawer — the two differ only in sizing and
- *  how ack/reveal are routed. */
+/** Share snapshot-fed status columns across pop-out and in-window hosts with injected routing and sizing. */
 export function AgentKanbanBoard({
   snapshot,
   initialView = 'board',
@@ -140,11 +131,7 @@ export function AgentKanbanBoard({
     return () => document.removeEventListener('keydown', handleSearchShortcut)
   }, [])
 
-  // The open terminal dialog survives bucket moves: only the paneKey is
-  // remembered, and the card data is re-resolved from each fresh snapshot.
-  // The opened card is kept as a fallback so the dialog also survives the
-  // card vanishing entirely (pane closed) — the user dismisses it explicitly.
-  // Its live routing is cleared because daemon PTY ids can be reused.
+  // Resolve open dialogs by paneKey across bucket moves; retain vanished cards until dismissal but clear routing because PTY IDs can be reused.
   const [openedCard, setOpenedCard] = useState<DashboardCard | null>(null)
   const dialogCard = useMemo(() => {
     if (!openedCard) {
@@ -205,9 +192,7 @@ export function AgentKanbanBoard({
   }, [dialogCard?.paneKey, dialogCard?.unseen, onAckAgent])
 
   return (
-    // Why: the pop-out is its own React root with no app-level provider, and the
-    // card's repo tooltip needs one in both hosts. Nesting inside the main
-    // window's provider is harmless.
+    // Pop-outs have no app provider; supply the card tooltip provider in either host.
     <TooltipProvider delayDuration={300}>
       <div
         className={cn('relative flex flex-col bg-background text-foreground', containerClassName)}

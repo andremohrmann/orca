@@ -2,9 +2,7 @@ import type {
   DashboardAssignWorkspaceStatusArgs,
   DashboardRenameWorkspaceArgs,
   DashboardRevealAgentArgs,
-  DashboardSleepWorkspaceArgs,
-  DashboardSnapshot,
-  DashboardSpawnAgentArgs
+  DashboardSnapshot
 } from '../../shared/dashboard-snapshot'
 import type { AgentDashboardView } from '../../shared/agent-dashboard-view'
 import type { DashboardPopoutOpacityState } from '../../shared/dashboard-popout-opacity'
@@ -22,8 +20,6 @@ export type DashboardApi = {
   onRevealAgent: (callback: (args: DashboardRevealAgentArgs) => void) => () => void
   /** `explicit` only for a click on the card; watching an open dialog is a view. */
   onAckAgent: (callback: (paneKey: string, intent: 'view' | 'explicit') => void) => () => void
-  onSpawnAgent: (callback: (args: DashboardSpawnAgentArgs) => void) => () => void
-  onSleepWorkspace: (callback: (args: DashboardSleepWorkspaceArgs) => void) => () => void
   onAssignWorkspaceStatus: (
     callback: (args: DashboardAssignWorkspaceStatusArgs) => void
   ) => () => void
@@ -35,8 +31,6 @@ export type DashboardApi = {
   setPopoutOpacity: (opacity: number) => Promise<DashboardPopoutOpacityState | null>
   revealAgent: (args: DashboardRevealAgentArgs) => Promise<void>
   ackAgent: (paneKey: string, intent: 'view' | 'explicit') => Promise<void>
-  spawnAgent: (args: DashboardSpawnAgentArgs) => Promise<void>
-  sleepWorkspace: (args: DashboardSleepWorkspaceArgs) => Promise<void>
   assignWorkspaceStatus: (args: DashboardAssignWorkspaceStatusArgs) => Promise<void>
   renameWorkspace: (args: DashboardRenameWorkspaceArgs) => Promise<void>
 }
@@ -47,7 +41,7 @@ export type TerminalPreviewApi = {
     opts?: { scrollbackRows?: number }
   ) => Promise<TerminalPreviewConnectResult>
   input: (ptyId: string, data: string) => Promise<boolean>
-  /** Claim the PTY grid for the preview dialog; resolves to the size actually in effect. */
+  /** Claims the PTY grid; returns the size actually in effect. */
   fit: (ptyId: string, cols: number, rows: number) => Promise<{ cols: number; rows: number } | null>
   /** Release the preview dialog's PTY grid claim without disconnecting its output stream. */
   releaseFit: (ptyId: string) => Promise<void>
