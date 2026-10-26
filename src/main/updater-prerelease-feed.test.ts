@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installNetRequestFetchAdapter } from './updater-net-request.fixture'
 
 const ORIGINAL_PLATFORM = process.platform
+const ORIGINAL_ARCH = process.arch
 
 const { netFetchMock, netRequestMock } = vi.hoisted(() => ({
   netFetchMock: vi.fn(),
@@ -50,7 +51,7 @@ function respondWithAtom(
       })
     }
 
-    const manifestMatch = url.match(/\/releases\/download\/([^/]+)\/latest(?:-[a-z]+)?\.yml$/)
+    const manifestMatch = url.match(/\/releases\/download\/([^/]+)\/latest(?:-[a-z0-9-]+)?\.yml$/)
     if (manifestMatch) {
       const tag = decodeURIComponent(manifestMatch[1])
       if (unavailableManifests.has(tag)) {
@@ -87,6 +88,10 @@ function setPlatformForTest(platform: NodeJS.Platform): void {
   Object.defineProperty(process, 'platform', { value: platform })
 }
 
+function setArchForTest(arch: NodeJS.Architecture): void {
+  Object.defineProperty(process, 'arch', { value: arch })
+}
+
 describe('fetchNewerReleaseTag', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -98,6 +103,7 @@ describe('fetchNewerReleaseTag', () => {
 
   afterEach(() => {
     setPlatformForTest(ORIGINAL_PLATFORM)
+    setArchForTest(ORIGINAL_ARCH)
   })
 
   it('normalizes custom Windows release tags', async () => {
@@ -171,13 +177,15 @@ describe('fetchNewerReleaseTag', () => {
   })
 
   it.each([
-    ['darwin', 'latest-mac.yml'],
-    ['linux', 'latest-linux.yml'],
-    ['win32', 'latest.yml']
-  ] satisfies [NodeJS.Platform, string][])(
-    'probes the %s platform manifest',
-    async (platform, manifestName) => {
+    ['darwin', 'arm64', 'latest-mac.yml'],
+    ['linux', 'x64', 'latest-linux.yml'],
+    ['linux', 'arm64', 'latest-linux-arm64.yml'],
+    ['win32', 'x64', 'latest.yml']
+  ] satisfies [NodeJS.Platform, NodeJS.Architecture, string][])(
+    'probes the %s %s platform manifest',
+    async (platform, arch, manifestName) => {
       setPlatformForTest(platform)
+      setArchForTest(arch)
       const manifestUrls: string[] = []
       const assetUrls: string[] = []
 

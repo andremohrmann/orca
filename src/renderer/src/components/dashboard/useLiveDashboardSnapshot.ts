@@ -2,6 +2,7 @@ import { watchSnapshotInputs } from './useDashboardPopoutBridge'
 import { createDashboardChatProgramHolds } from './dashboard-chat-program-acquisition'
 import { useEffect, useMemo, useRef } from 'react'
 import { useAppStore } from '@/store'
+import { useStructuredChatTabNames } from '@/runtime/structured-chat-name-observation'
 import type { DashboardSnapshot } from '../../../../shared/dashboard-snapshot'
 import { buildDashboardSnapshot } from './build-dashboard-snapshot'
 import { useChatProgramFactsVersion } from '@/lib/host-chat-program-acquisition'
@@ -62,6 +63,7 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
   // Why: freshness can flip a bucket without any backing map changing; the epoch
   // ticks on the freshness boundary so the memo re-derives stale-decayed cards.
   const agentStatusEpoch = useAppStore((s) => s.agentStatusEpoch)
+  const chatNames = useStructuredChatTabNames()
   // Why: launch options read only this view, so any route input change rebuilds them.
   const launchRouteStore = useAppStore(selectAgentLaunchRouteView)
   useEffect(() => {
@@ -81,6 +83,7 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
     () =>
       buildDashboardSnapshot(
         {
+          chatNames,
           repos,
           worktreesByRepo,
           tabsByWorktree,
@@ -162,6 +165,7 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
       statusBarItems,
       usagePercentageDisplay,
       statusBarUsageMode,
+      chatNames,
       chatProgramFactsVersion,
       launchRouteStore,
       agentStatusEpoch

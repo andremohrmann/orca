@@ -2,7 +2,7 @@ import { markdownParserAliases } from './config/build-plugins/markdown-parser-ex
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { defineConfig, type UserConfig } from 'electron-vite'
-import type { Plugin } from 'vite'
+import type { Plugin, Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { createBootstrapFatalExitBanner } from './config/build-plugins/bootstrap-fatal-exit-banner'
@@ -11,7 +11,6 @@ import { createProcessHostDevRebuildPlugin } from './config/build-plugins/proces
 import { createViteCacheRetentionPlugin } from './config/build-plugins/vite-cache-retention'
 import { MAIN_BUILD_ENTRY_POINTS } from './config/build-plugins/main-build-entry-points'
 import { createPlainNodeEntryGuardPlugin } from './config/build-plugins/plain-node-entry-guard'
-import { createStartupDiagnosticsBanner } from './config/build-plugins/startup-diagnostics-banner'
 import updateFeedDefaults from './config/update-feed-defaults.json' with { type: 'json' }
 import { createDevServeConfig } from './config/build-plugins/dev-serve-config'
 import { resolveBuildSourceCommit } from './config/scripts/build-source-commit.mjs'
@@ -80,25 +79,128 @@ function createDarkBuildMarkerPlugin(): Plugin {
 // Pin official skill installs to the bundled commit on every channel; main installs, renderer prints the command.
 const ORCA_BUILD_COMMIT_LITERAL = JSON.stringify(resolveBuildSourceCommit())
 
-function createMainBootstrapPlugin() {
-  return {
-    name: 'orca-main-bootstrap',
-    generateBundle(_options, bundle) {
-      const mainChunk = bundle['index.js']
-      if (!mainChunk || mainChunk.type !== 'chunk') {
-        return
-      }
-      if (!mainChunk.moduleIds.some((id) => resolve(id) === MAIN_BUILD_ENTRY_POINTS.index)) {
-        throw new Error('Main startup must stay in index.js so __dirname resolves app assets')
-      }
-
-      // Source guards run after Rollup’s require prelude, too late to handle missing bootstrap dependencies.
-      mainChunk.code =
-        createBootstrapFatalExitBanner() +
-        createStartupDiagnosticsBanner(mainChunk.fileName) +
-        mainChunk.code
+function createStartupDiagnosticsBanner(chunkName: string): string {
+  return `
+;(() => {
+  const env = typeof process !== 'undefined' ? process.env : undefined
+  const mode = env?.ORCA_STARTUP_DIAGNOSTICS
+  if (mode !== '1' && mode !== 'trace') {
+    return
+  }
+  const safeJson = (value) => {
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return '"<unserializable>"'
     }
   }
+  let diagnosticFileDescriptor
+  let closeSync, openSync, writeSync
+  try {
+    const fs = require('node:fs')
+    closeSync = fs.closeSync
+    openSync = fs.openSync
+    writeSync = fs.writeSync
+  } catch {
+    closeSync = undefined
+    openSync = undefined
+    writeSync = undefined
+  }
+  const diagnosticFile = env?.ORCA_STARTUP_DIAGNOSTICS_FILE
+  if (typeof diagnosticFile === 'string' && diagnosticFile.length > 0 && typeof openSync === 'function') {
+    try {
+      diagnosticFileDescriptor = openSync(diagnosticFile, 'a', 0o600)
+    } catch {
+      diagnosticFileDescriptor = undefined
+    }
+  }
+  const writeLine = (message) => {
+    try {
+      const line = message.endsWith('\\n') ? message : message + '\\n'
+      if (typeof writeSync === 'function') {
+        writeSync(2, line)
+        if (typeof diagnosticFileDescriptor === 'number') {
+          writeSync(diagnosticFileDescriptor, line)
+        }
+      }
+    } catch {
+      // Diagnostics must never affect startup.
+    }
+  }
+  const chunkName = ${JSON.stringify(chunkName)}
+  writeLine('[bootstrap] bundle-enter chunk=' + safeJson(chunkName) + ' pid=' + process.pid + ' ppid=' + process.ppid + ' execPath=' + safeJson(process.execPath) + ' argv=' + safeJson(process.argv) + ' electronRunAsNode=' + safeJson(env?.ELECTRON_RUN_AS_NODE ?? null))
+  if (!globalThis.__ORCA_BOOTSTRAP_EXIT_LOG_INSTALLED__) {
+    globalThis.__ORCA_BOOTSTRAP_EXIT_LOG_INSTALLED__ = true
+    process.once('exit', (code) => {
+      writeLine('[bootstrap] process-exit code=' + code)
+      if (typeof closeSync === 'function' && typeof diagnosticFileDescriptor === 'number') {
+        try {
+          closeSync(diagnosticFileDescriptor)
+        } catch {
+          // Diagnostics must never affect shutdown.
+        }
+      }
+    })
+    process.on('uncaughtExceptionMonitor', (error, origin) => {
+      const message = error && typeof error === 'object' && 'stack' in error ? error.stack : error
+      writeLine('[bootstrap] uncaught-exception origin=' + safeJson(origin) + ' error=' + safeJson(String(message)))
+    })
+    process.on('unhandledRejection', (reason) => {
+      const message = reason && typeof reason === 'object' && 'stack' in reason ? reason.stack : reason
+      writeLine('[bootstrap] unhandled-rejection error=' + safeJson(String(message)))
+    })
+  }
+  if (mode === 'trace' && !globalThis.__ORCA_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__) {
+    globalThis.__ORCA_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__ = true
+    try {
+      const Module = require('node:module')
+      const originalLoad = Module._load
+      const parsedTraceLimit = Number(env?.ORCA_STARTUP_DIAGNOSTICS_TRACE_LIMIT ?? 20000)
+      const traceLimit = Number.isFinite(parsedTraceLimit) && parsedTraceLimit > 0 ? parsedTraceLimit : 20000
+      let traceLineCount = 0
+      let traceLimitReported = false
+      const writeTraceLine = (message) => {
+        if (traceLineCount >= traceLimit) {
+          if (!traceLimitReported) {
+            traceLimitReported = true
+            writeLine('[bootstrap] require-trace-limit-reached limit=' + safeJson(traceLimit))
+          }
+          return
+        }
+        traceLineCount += 1
+        writeLine(message)
+      }
+      Module._load = function (request, parent, isMain) {
+        const parentName = parent && parent.filename ? parent.filename : null
+        writeTraceLine('[bootstrap] require-start request=' + safeJson(request) + ' parent=' + safeJson(parentName) + ' isMain=' + safeJson(Boolean(isMain)))
+        try {
+          const result = Reflect.apply(originalLoad, this, arguments)
+          writeTraceLine('[bootstrap] require-ok request=' + safeJson(request))
+          return result
+        } catch (error) {
+          const message = error && typeof error === 'object' && 'stack' in error ? error.stack : error
+          writeTraceLine('[bootstrap] require-error request=' + safeJson(request) + ' error=' + safeJson(String(message)))
+          throw error
+        }
+      }
+    } catch (error) {
+      writeLine('[bootstrap] require-trace-install-error error=' + safeJson(String(error)))
+    }
+  }
+})();
+`
+}
+
+// postBanner lands after minification and Rolldown shifts index.js.map past it, keeping crash traces on the right line.
+function createMainBootstrapPostBanner(chunk: Rollup.RenderedChunk): string {
+  if (chunk.fileName !== 'index.js') {
+    return ''
+  }
+  if (!chunk.moduleIds.some((id) => resolve(id) === MAIN_BUILD_ENTRY_POINTS.index)) {
+    throw new Error('Main startup must stay in index.js so __dirname resolves app assets')
+  }
+  // Source guards run after Rollup’s require prelude, too late to handle missing bootstrap dependencies.
+  return createBootstrapFatalExitBanner() + createStartupDiagnosticsBanner(chunk.fileName)
 }
 
 // Dev-only unminified main bundle exposes function names in V8 profiles; releases and pnpm build never read this flag.
@@ -127,12 +229,14 @@ export const electronViteConfig: UserConfig = {
         preserveEntrySignatures: 'exports-only',
         // Electron and sidecar launchers require stable CommonJS paths despite Rolldown’s SSR ESM default.
         output: {
+          // V8 stores a whole script as UTF-16 when any char is above U+00FF; escaping keeps sources one-byte (half the memory).
+          charset: 'ascii',
           format: 'cjs',
           entryFileNames: '[name].js',
-          chunkFileNames: 'chunks/[name]-[hash].js'
+          chunkFileNames: 'chunks/[name]-[hash].js',
+          postBanner: createMainBootstrapPostBanner
         },
         plugins: [
-          createMainBootstrapPlugin(),
           createPlainNodeEntryGuardPlugin(),
           createProcessHostDevRebuildPlugin(),
           createDarkBuildMarkerPlugin()
@@ -161,6 +265,10 @@ export const electronViteConfig: UserConfig = {
     build: {
       externalizeDeps: {
         exclude: ['zod']
+      },
+      rollupOptions: {
+        // Unminified preload keeps dependency JSDoc whose em dashes would force two-byte storage in every renderer.
+        output: { charset: 'ascii', comments: { legal: true, annotation: true, jsdoc: false } }
       }
     }
   },
@@ -186,7 +294,10 @@ export const electronViteConfig: UserConfig = {
       createViteCacheRetentionPlugin()
     ],
     worker: {
-      format: 'es'
+      format: 'es',
+      rollupOptions: {
+        output: { charset: 'ascii' }
+      }
     },
     build: {
       manifest: true,
@@ -198,6 +309,7 @@ export const electronViteConfig: UserConfig = {
       rollupOptions: {
         // Shared chunks must not import HTML entries that mount another React root.
         preserveEntrySignatures: 'strict',
+        output: { charset: 'ascii' },
         input: {
           index: resolve('src/renderer/index.html'),
           popout: resolve('src/renderer/popout.html'),
