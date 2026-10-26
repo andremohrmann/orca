@@ -9,6 +9,7 @@ import {
 } from '@/components/terminal-pane/terminal-link-handlers'
 import { openHttpLinkAtBufferPosition } from '@/components/terminal-pane/terminal-url-link-hit-testing'
 import { getTerminalBufferPositionForMouseEvent } from '@/components/terminal-pane/terminal-mouse-buffer-position'
+import type { TerminalPathExistsCache } from '@/components/terminal-pane/terminal-path-exists-cache'
 import type { DashboardCardTerminalLinks } from '../../../../shared/dashboard-snapshot'
 
 type PreviewTerminalLinksDeps = {
@@ -22,7 +23,7 @@ function isPreviewLinkActivation(event: MouseEvent): boolean {
 function previewLinkDeps(
   terminal: Terminal,
   links: DashboardCardTerminalLinks,
-  pathExistsCache: Map<string, boolean>
+  pathExistsCache: TerminalPathExistsCache
 ): LinkHandlerDeps {
   return {
     worktreeId: links.worktreeId,
@@ -107,7 +108,7 @@ export function installPreviewTerminalLinks(
   // and kills the renderer — guard before any provider registers.
   installGuardedLinkProviderRegistration(terminal)
   const disposables: IDisposable[] = []
-  const pathExistsCache = new Map<string, boolean>()
+  const pathExistsCache: TerminalPathExistsCache = new Map()
   const linkTooltip = document.createElement('div')
   linkTooltip.className = 'pane-link-tooltip xterm-hover'
   linkTooltip.style.display = 'none'
