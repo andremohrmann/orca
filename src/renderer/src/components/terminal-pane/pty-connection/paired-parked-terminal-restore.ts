@@ -9,7 +9,7 @@ import {
 // Why re-exported rather than imported directly by callers: this module already re-exports
 // isSessionOwnedByWorktree below for the same reason — upstream centralized the prefix/encoding
 // logic in shared/remote-runtime-pty-id.ts after this file first defined its own copy.
-export { isRemoteRuntimePtyId } from '../../../../../shared/remote-runtime-pty-id'
+export { isRemoteRuntimePtyId } from '../../../../../shared/remote-runtime/remote-runtime-pty-id'
 
 export function canRestorePairedParkedTerminal(ptyId: string): boolean {
   const environmentId = getRemoteRuntimePtyEnvironmentId(ptyId)

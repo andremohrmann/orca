@@ -2,7 +2,7 @@ import { getRemoteRuntimeTerminalMultiplexer } from '@/runtime/remote-runtime-te
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import { getRuntimeEnvironmentRevision } from '@/runtime/runtime-environment-revision'
 import type { RemoteRuntimeMultiplexedTerminal } from '@/runtime/remote-runtime-terminal-multiplexer-types'
-import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime-pty-id'
+import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime/remote-runtime-pty-id'
 import type { TerminalPreviewSnapshot } from '../../../../shared/terminal-preview'
 
 type Grid = { cols: number; rows: number }

@@ -13,5 +13,6 @@ export type AgentTerminalPreviewProps = {
   scaleToFit?: boolean
   autoFocus?: boolean
   onClosedActivate?: () => void
+  onRequestClose?: () => void
   className?: string
 }

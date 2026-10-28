@@ -42,7 +42,7 @@ describe('AgentTerminalPreviewFrame', () => {
     )
 
     fireEvent.pointerDown(view.container.firstElementChild!)
-    fireEvent.click(view.getByRole('button', { name: /No live terminal/ }))
+    fireEvent.click(view.getByRole('button', { name: /No preview available/ }))
 
     expect(terminalRef.current.focus).not.toHaveBeenCalled()
     expect(onClosedActivate).toHaveBeenCalledOnce()

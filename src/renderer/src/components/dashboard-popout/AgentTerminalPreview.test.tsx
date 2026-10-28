@@ -792,7 +792,7 @@ describe('AgentTerminalPreview', () => {
     expect(terminalHarness.instances).toHaveLength(1)
     expect(terminal.dispose).not.toHaveBeenCalled()
     expect(terminal.reset).not.toHaveBeenCalled()
-    expect(view.queryByText(/No live terminal/)).not.toBeInTheDocument()
+    expect(view.queryByText(/No preview available/)).not.toBeInTheDocument()
 
     await act(async () => {
       resolveRefresh({
@@ -804,7 +804,7 @@ describe('AgentTerminalPreview', () => {
     expect(terminal.resize).toHaveBeenCalledWith(100, 30)
     expect(terminalHarness.instances).toHaveLength(1)
     expect(terminal.dispose).not.toHaveBeenCalled()
-    expect(view.queryByText(/No live terminal/)).not.toBeInTheDocument()
+    expect(view.queryByText(/No preview available/)).not.toBeInTheDocument()
   })
 
   it('disposes a stale terminal when resync confirms the pty is gone', async () => {
@@ -820,7 +820,7 @@ describe('AgentTerminalPreview', () => {
 
     act(() => emitData?.({ type: 'resync', ptyId: 'pty-1' }))
 
-    await waitFor(() => expect(view.getByText(/No live terminal/)).toBeInTheDocument())
+    await waitFor(() => expect(view.getByText(/No preview available/)).toBeInTheDocument())
     expect(terminal.dispose).toHaveBeenCalledTimes(1)
     expect(terminalHarness.userInputDispose).toHaveBeenCalledTimes(1)
     expect(unsubscribe).toHaveBeenCalledWith('pty-1')
@@ -831,7 +831,7 @@ describe('AgentTerminalPreview', () => {
     const view = render(<AgentTerminalPreview ptyId="ssh:devbox@@pty-3" />)
 
     await waitFor(() => expect(view.getByText(/remote session/)).toBeInTheDocument())
-    expect(view.queryByText(/pane has closed/)).not.toBeInTheDocument()
+    expect(view.queryByText(/No preview available/)).not.toBeInTheDocument()
   })
 
   it('connects a replacement pty after the previous pty was gone', async () => {
@@ -840,12 +840,12 @@ describe('AgentTerminalPreview', () => {
       replay: []
     })
     const view = render(<AgentTerminalPreview ptyId="pty-gone" />)
-    await waitFor(() => expect(view.getByText(/No live terminal/)).toBeInTheDocument())
+    await waitFor(() => expect(view.getByText(/No preview available/)).toBeInTheDocument())
 
     view.rerender(<AgentTerminalPreview ptyId="pty-live" />)
 
     await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
     expect(connect).toHaveBeenLastCalledWith('pty-live', { scrollbackRows: 1000 })
-    expect(view.queryByText(/No live terminal/)).not.toBeInTheDocument()
+    expect(view.queryByText(/No preview available/)).not.toBeInTheDocument()
   })
 })

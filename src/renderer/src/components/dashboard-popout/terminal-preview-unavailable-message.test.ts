@@ -2,16 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
 
 describe('terminalPreviewUnavailableMessage', () => {
-  it('claims the pane closed only for a pty the client could have observed', () => {
-    expect(terminalPreviewUnavailableMessage({ ptyId: 'pty-1' })).toMatch(/pane has closed/)
-    expect(terminalPreviewUnavailableMessage({ hostKind: 'local' })).toMatch(/pane has closed/)
+  it('reports the generic no-preview message only for a pty the client could have observed', () => {
+    const local = terminalPreviewUnavailableMessage({ ptyId: 'pty-1' })
+    expect(local).toMatch(/no preview available/i)
+    expect(local).not.toMatch(/remote session/)
+    expect(terminalPreviewUnavailableMessage({ hostKind: 'local' })).toBe(local)
   })
 
-  it('reports an unobservable remote preview instead of asserting the pane exited', () => {
+  it('reports an unobservable remote preview instead of the generic no-preview message', () => {
     // Missing remote snapshots prove loss of observation, not pane exit; see docs/reference/ssh-execution-boundary.md.
     const fromPtyId = terminalPreviewUnavailableMessage({ ptyId: 'ssh:devbox@@pty-3' })
     expect(fromPtyId).toMatch(/remote session/)
-    expect(fromPtyId).not.toMatch(/pane has closed/)
+    expect(fromPtyId).not.toBe(terminalPreviewUnavailableMessage({ ptyId: 'pty-1' }))
     expect(terminalPreviewUnavailableMessage({ hostKind: 'ssh' })).toBe(fromPtyId)
     expect(terminalPreviewUnavailableMessage({ ptyId: 'remote:other-server@@pty-3' })).toBe(
       fromPtyId

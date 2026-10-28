@@ -257,9 +257,9 @@ describe('AgentTerminalPreview fit resync', () => {
     const view = render(
       <AgentTerminalPreview ptyId="pty-restore" onClosedActivate={onClosedActivate} />
     )
-    await vi.waitFor(() => expect(view.getByRole('button', { name: /No live terminal/ })))
+    await vi.waitFor(() => expect(view.getByRole('button', { name: /No preview available/ })))
 
-    fireEvent.click(view.getByRole('button', { name: /No live terminal/ }))
+    fireEvent.click(view.getByRole('button', { name: /No preview available/ }))
     await vi.waitFor(() => expect(connect).toHaveBeenCalledTimes(2))
     expect(onClosedActivate).toHaveBeenCalledTimes(1)
 
@@ -267,7 +267,7 @@ describe('AgentTerminalPreview fit resync', () => {
 
     await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
     await vi.waitFor(() =>
-      expect(view.queryByRole('button', { name: /No live terminal/ })).not.toBeInTheDocument()
+      expect(view.queryByRole('button', { name: /No preview available/ })).not.toBeInTheDocument()
     )
     expect(connect).toHaveBeenCalledTimes(3)
   })

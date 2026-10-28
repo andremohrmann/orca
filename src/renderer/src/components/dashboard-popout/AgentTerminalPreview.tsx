@@ -47,6 +47,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     scaleToFit = true,
     autoFocus = true,
     onClosedActivate,
+    onRequestClose,
     className
   } = props
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,6 +55,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
   const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
   const { settingsRef, macOptionAsAltRef, terminalInputRef, terminalLinksRef } =
     usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
+  const onRequestCloseRef = useRef(onRequestClose)
+  onRequestCloseRef.current = onRequestClose
   const [ptyGone, setPtyGone] = useState(false),
     retryGonePtyRef = useRef<() => void>(() => undefined),
     reclaimGridRef = useRef<() => void>(() => undefined)
@@ -228,6 +231,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           pasteClipboardText: (activeElement, source) =>
             void pasteClipboardText(activeElement, source),
           sendInput: (data) => terminal?.input(data),
+          requestClose: () => onRequestCloseRef.current?.(),
           getShortcutContext: () => ({
             clientPlatform: getShortcutPlatform(),
             macOptionAsAlt: macOptionAsAltRef.current,
