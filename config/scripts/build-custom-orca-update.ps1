@@ -20,11 +20,24 @@ $customWorkflowAllowlist = @(
 # see the incident note on Merge-CustomBranch below). Everything else stays off this list on
 # purpose: upstream edits these files too, and silently discarding an upstream fix is worse than a
 # merge that stops and asks a human to reconcile it by hand.
+#
+# The four dashboard-popout entries are an exception to that caution, not a relaxation of it:
+# upstream rebuilt AgentTerminalPreview on a simpler, non-shared architecture (no grid-focus
+# handoff, no remote-session support, no SSH/worktree link resolution) that our Live View grid
+# needs and upstream's own popout does not. Every conflict between the two versions since this
+# fork started has resolved to "keep ours" — never once "take theirs" — so taking --ours here
+# removes a daily guaranteed-same-answer conflict rather than skipping real reconciliation. If
+# upstream ever ships a fix inside these specific files (not just alongside them), it will not
+# surface here; recheck this list if that file's upstream history starts looking unusually active.
 $customContentConflictAllowlist = @(
   'config/update-feed-defaults.json',
   'config/dev-app-update.yml',
   'src/shared/update-feed-info.ts',
-  'src/shared/update-feed-info.test.ts'
+  'src/shared/update-feed-info.test.ts',
+  'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.tsx',
+  'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
+  'src/renderer/src/components/dashboard-popout/preview-terminal-links.ts',
+  'src/renderer/src/components/dashboard-popout/preview-terminal-paste.ts'
 )
 
 function Invoke-Native {
@@ -79,6 +92,10 @@ function Merge-CustomBranch {
     [string]$BranchName,
     [string]$UpstreamRef
   )
+  # .gitattributes names this driver for global-settings-base.ts, but the driver command itself
+  # lives in local git config (never checked in, since it's a path git must trust), so every
+  # fresh checkout — including CI's — has to register it before merging.
+  & git config merge.global-settings-base.driver 'node config/scripts/merge-global-settings-base.mjs %O %A %B'
   $remoteParts = $UpstreamRef.Split('/')
   $remoteName = if ($remoteParts.Length -gt 1) { $remoteParts[0] } else { 'origin' }
   if ($remoteParts.Length -gt 1) {

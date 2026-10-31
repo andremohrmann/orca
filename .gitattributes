@@ -78,3 +78,8 @@
 /resources/skills/*.json linguist-generated=true text eol=lf
 # Vitest writes snapshots with LF, so checkout bytes must match on every host.
 **/__snapshots__/*.snap text eol=lf
+
+# Fork-only: both sides touch this file's import list and intersection members on nearly every
+# upstream merge for the same non-conflicting reason (adding a settings group). Union-merge it
+# instead of stopping on a conflict every day; see config/scripts/merge-global-settings-base.mjs.
+/src/shared/global-settings-base.ts merge=global-settings-base
