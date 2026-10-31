@@ -124,6 +124,7 @@ async function chatAtRest(repoConfig: {
     agentReadsProjectModelConfig,
     workspaceMayOverrideDefaultModel
   })
+  await rig.restart({ modelCatalog })
   if (repoConfig.complete) {
     await modelCatalog.read({
       agent: 'codex',
@@ -132,7 +133,6 @@ async function chatAtRest(repoConfig: {
       waitForListing: true
     })
   }
-  await rig.restart({ modelCatalog })
   setStructuredAgentSessionHost(rig.host)
   rig.adapter.acquire.mockClear()
   return modelCatalog
@@ -142,11 +142,7 @@ beforeEach(async () => {
   rig = await createRestTestRig({ idleSweep: { intervalMs: 3_600_000 } })
   setStructuredAgentSessionHost(rig.host)
   const runtime = new OrcaRuntimeService()
-  vi.spyOn(runtime, 'getClientSettings').mockImplementation(
-    () =>
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the RPC gate reads only this one setting.
-      ({ experimentalNativeChat: true }) as ReturnType<OrcaRuntimeService['getClientSettings']>
-  )
+
   dispatcher = new RpcDispatcher({ runtime, methods: STRUCTURED_AGENT_SESSION_METHODS })
 })
 
@@ -193,10 +189,7 @@ describe('options at rest in a repo with no config of its own', () => {
     expect(current).toMatchObject({ ok: true })
     expect(current).not.toHaveProperty('result.current.model')
     expect(current).not.toHaveProperty('result.current.effort')
-    expect(await catalog.read({ agent: 'codex', savedOnly: true })).toMatchObject({
-      models: [{ id: 'gpt-5.5', isDefault: false }],
-      listingNamesConfiguredModel: false
-    })
+    expect(await catalog.read({ agent: 'codex', savedOnly: true })).toEqual({ origin: 'unknown' })
     expect(rig.store.getRecord(SESSION)!.options).toEqual({})
   })
 })

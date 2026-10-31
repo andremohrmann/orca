@@ -3,10 +3,12 @@ import type { BrowserWindow, IpcMainInvokeEvent } from 'electron'
 import type { ReleaseBuildListResult, UpdateCheckOptions } from '../../shared/update-status-types'
 import { RELEASE_CHANNELS, type ReleaseChannel } from '../../shared/release-channel'
 import { getUpdateFeedInfo } from '../../shared/update-feed-info'
-import { isTrustedUIRenderer } from '../ipc/ui'
+import { getTrustedUIRendererWindow, isTrustedUIRenderer } from '../ipc/ui'
 import type { Store } from '../persistence'
 import { logStartupMilestone } from '../startup/startup-diagnostics'
 import { applyProxyToElectronUpdaterSession } from '../updater/electron-updater-proxy-session'
+import { updaterErrorMessage } from '../updater/updater-coded-error'
+import { updaterCodedMessage } from '../../shared/updater-failure-copy'
 import {
   checkForUpdatesFromMenu,
   dismissAvailableUpdate,
@@ -40,6 +42,7 @@ type UpdaterSetupHooks = {
 
 function buildUpdaterSetupOptions(store: Store, options?: UpdaterSetupHooks): UpdaterSetupOptions {
   return {
+    getMainWindow: getTrustedUIRendererWindow,
     getLastUpdateCheckAt: () => store.getUI().lastUpdateCheckAt,
     onBeforeQuit: async () => {
       try {
@@ -177,7 +180,7 @@ export function registerUpdaterHandlers(_store: Store): void {
       options?: { force?: boolean }
     ): Promise<ReleaseBuildListResult> => {
       if (!RELEASE_CHANNELS.includes(channel)) {
-        return { ok: false, channel, message: `Unknown release channel "${channel}".` }
+        return { ok: false, channel, ...updaterCodedMessage('unknownReleaseChannel', { channel }) }
       }
       try {
         return {
@@ -187,7 +190,7 @@ export function registerUpdaterHandlers(_store: Store): void {
         }
       } catch (error) {
         // Return expected network/rate-limit failures as data for the build picker.
-        return { ok: false, channel, message: String((error as Error)?.message ?? error) }
+        return { ok: false, channel, ...updaterErrorMessage(error) }
       }
     }
   )

@@ -19,15 +19,19 @@ import { MobileNativeChatRowOverlaysHost } from './native-chat/transcript/Mobile
 import { nativeChatAskRequiresTerminal } from '../../../src/shared/native-chat-agent-support'
 import { tuiAgentDisplayName } from '../../../src/shared/tui-agent-display-names'
 import { MobileNativeChatNoticeContext } from './mobile-native-chat-notice-context'
+import type { MobileNativeChatImageSource } from './native-chat/visual/mobile-native-chat-image-preview'
 
 type Props = {
   controller: MobileNativeChatController
+  imageSource?: MobileNativeChatImageSource
   activeSessionTabId?: string | null
   onOpenFile: (pathText: string) => void
   images: MobileNativeChatImageAttachments
   structuredComposer?: MobileNativeChatStructuredComposer | null
   onMicPress: (() => void) | undefined
   micActive: boolean
+  micStarting: boolean
+  micProcessing: boolean
   dictationMode: string | undefined
   onMicPressIn: () => void
   onMicPressOut: () => void
@@ -46,12 +50,15 @@ type Props = {
 // Keep the terminal subscription and streaming gate above view toggles; the chat list unmounts below this boundary.
 export function MobileNativeChatOverlay({
   controller,
+  imageSource,
   activeSessionTabId,
   onOpenFile,
   images,
   structuredComposer = null,
   onMicPress,
   micActive,
+  micStarting,
+  micProcessing,
   dictationMode,
   onMicPressIn,
   onMicPressOut,
@@ -89,7 +96,8 @@ export function MobileNativeChatOverlay({
       onResume: queued.resume,
       sessionKey: queued.sessionKey,
       // Hold steering while Stop ends the turn; use the session’s single display-status decision.
-      steerHeld: controller.nativeChatTurnIndicator?.stopping === true
+      steerHeld: controller.nativeChatTurnIndicator?.stopping === true,
+      agentWorking: controller.nativeChatTurnActive
     },
     backgroundTasks: controller.nativeChatBackgroundTasks
   })
@@ -133,6 +141,8 @@ export function MobileNativeChatOverlay({
       onError: (message: string) => controller.reportQueuedEditError?.(message),
       onMicPress,
       micActive,
+      micStarting,
+      micProcessing,
       dictationMode,
       onMicPressIn,
       onMicPressOut
@@ -147,6 +157,8 @@ export function MobileNativeChatOverlay({
       controller.reportQueuedEditError,
       onMicPress,
       micActive,
+      micStarting,
+      micProcessing,
       dictationMode,
       onMicPressIn,
       onMicPressOut
@@ -162,7 +174,7 @@ export function MobileNativeChatOverlay({
   return (
     <MobileNativeChatRowOverlaysHost
       conversation={{ surfaceId: sendSurfaceId, sessionId }}
-      imageClient={controller.nativeChatVisualSource?.client}
+      imageSource={imageSource}
     >
       <MobileQueuedMessageComposerContext.Provider value={queuedComposerContext}>
         <View style={styles.overlay}>
@@ -177,9 +189,11 @@ export function MobileNativeChatOverlay({
                     error={session.error}
                     readFailedFinally={session.readFailedFinally === true}
                     agent={controller.nativeChatAgent}
+                    sessionLive={controller.nativeChatSessionLive}
                     agentWorking={controller.nativeChatTurnActive}
                     awaitingInput={controller.nativeChatAwaitingInput}
                     canStop={controller.nativeChatCanStop}
+                    sendFollowUp={controller.nativeChatSendFollowUp}
                     structuredActivityUi={controller.nativeChatStructured}
                     turnIndicator={controller.nativeChatTurnIndicator}
                     workingStartedAt={controller.nativeChatWorkingStartedAt}
@@ -235,6 +249,8 @@ export function MobileNativeChatOverlay({
                     isAttaching={images.isAttaching}
                     onMicPress={onMicPress}
                     micActive={micActive}
+                    micStarting={micStarting}
+                    micProcessing={micProcessing}
                     dictationMode={dictationMode}
                     onMicPressIn={onMicPressIn}
                     onMicPressOut={onMicPressOut}
