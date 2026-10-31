@@ -121,6 +121,7 @@ describe('tab create menu options', () => {
     )
     expect(options.map((option) => option.kind)).toEqual([
       'new-terminal',
+      'new-warp',
       'new-markdown',
       'new-plugin-file',
       'open-markdown'

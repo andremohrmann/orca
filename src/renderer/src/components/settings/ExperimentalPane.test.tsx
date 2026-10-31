@@ -237,35 +237,12 @@ describe('ExperimentalPane', () => {
     expect(markup).toContain('aria-checked="true"')
   })
 
-  it('offers one Chat UI switch and no default-view selector', async () => {
-    const updateSettings = vi.fn()
-    const { root, container } = await renderExperimentalPane({
-      updateSettings,
-      settings: getDefaultSettings('/tmp')
-    })
-    expect(container.textContent).toContain('Chat UI')
-    expect(container.textContent).not.toContain('Default view')
-    expect(container.textContent).not.toContain('Use updated structured native chat')
-    const switchControl = container.querySelector<HTMLButtonElement>(
-      '#experimental-native-chat button[aria-label="Toggle Chat UI"]'
-    )
-    expect(switchControl).not.toBeNull()
-    await act(async () => {
-      switchControl?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    expect(updateSettings).toHaveBeenCalledWith({ experimentalNativeChat: true })
-    root.unmount()
-  })
-
-  it('keeps the Chat page settings off Experimental while Chat UI is on', async () => {
+  it('does not render the Chat UI switch after graduation from Experimental', async () => {
     const { root, container } = await renderExperimentalPane({
       updateSettings: vi.fn(),
-      settings: { ...getDefaultSettings('/tmp'), experimentalNativeChat: true }
+      settings: getDefaultSettings('/tmp')
     })
-    expect(container.textContent).toContain('Chat UI')
-    expect(container.textContent).not.toContain('Resume working chats automatically')
-    expect(container.textContent).not.toContain('Queue follow-ups')
-    expect(container.textContent).not.toContain('Use your shell environment')
+    expect(container.textContent).not.toContain('Chat UI')
     root.unmount()
   })
 
