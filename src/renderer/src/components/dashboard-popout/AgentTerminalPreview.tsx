@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
-import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
+import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
 import { replayPreviewConnectionSnapshot } from './preview-terminal-snapshot-replay'
 import { previewAdvertisesKittyKeyboard } from './preview-terminal-options'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
@@ -13,7 +13,7 @@ import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler
 import { createPreviewGridFocusHandoff } from './preview-grid-focus-handoff'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/terminal-native-copy-gutter'
-import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
+import type { TerminalPreviewDataPayload } from '../../../../shared/terminal/replay/terminal-preview'
 import {
   PREVIEW_SCROLLBACK_ROWS,
   clearPreviewTerminalTimer,
@@ -48,13 +48,28 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     autoFocus = true,
     onClosedActivate,
     onRequestClose,
+    linkSource,
+    onBrowserForeground,
     className
   } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
-  const { settingsRef, macOptionAsAltRef, terminalInputRef, terminalLinksRef } =
-    usePreviewTerminalRuntimeRefs({ settings, macOptionAsAlt, terminalInput, terminalLinks })
+  const {
+    settingsRef,
+    macOptionAsAltRef,
+    terminalInputRef,
+    terminalLinksRef,
+    linkSourceRef,
+    onBrowserForegroundRef
+  } = usePreviewTerminalRuntimeRefs({
+    settings,
+    macOptionAsAlt,
+    terminalInput,
+    terminalLinks,
+    linkSource,
+    onBrowserForeground
+  })
   const onRequestCloseRef = useRef(onRequestClose)
   onRequestCloseRef.current = onRequestClose
   const [ptyGone, setPtyGone] = useState(false),
@@ -211,7 +226,9 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         terminalRef.current = terminal
         disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
           getSettings: () => settingsRef.current,
-          getTerminalLinks: () => terminalLinksRef.current
+          getTerminalLinks: () => terminalLinksRef.current,
+          getLinkSource: () => linkSourceRef.current,
+          onBrowserForeground: () => onBrowserForegroundRef.current?.()
         })
         disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
         userInputDisposable = installPreviewTerminalInputRouting({

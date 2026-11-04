@@ -95,6 +95,7 @@ function AgentDashboardDrawerBody({
       onRevealAgent={handleRevealAgent}
       onAssignWorkspaceStatus={handleAssignWorkspaceStatus}
       onRenameWorkspace={handleRenameWorkspace}
+      onBrowserForeground={onFocusHandoff}
       onClose={onClose}
       headerActions={
         <AgentDashboardSettingsMenu

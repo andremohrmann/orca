@@ -60,6 +60,7 @@ type AgentKanbanBoardProps = {
   /** When provided, renders a close control in the header (in-window mode). The
    *  pop-out relies on its native window controls, so it omits this. */
   onClose?: () => void
+  onBrowserForeground?: () => void
   /** In-window settings controls; the pop-out renderer has no store to drive them. */
   headerActions?: React.ReactNode
 }
@@ -72,6 +73,7 @@ export function AgentKanbanBoard({
   onAckAgent = ackAgentViaPopoutRelay,
   onRevealAgent = revealAgentViaPopoutRelay,
   onClose,
+  onBrowserForeground,
   headerActions,
   onAssignWorkspaceStatus = assignWorkspaceStatusViaPopoutRelay,
   onRenameWorkspace = renameWorkspaceViaPopoutRelay
@@ -307,6 +309,7 @@ export function AgentKanbanBoard({
           card={dialogCard}
           onOpenChange={handleDialogOpenChange}
           onReveal={onRevealAgent}
+          onBrowserForeground={onBrowserForeground}
         />
         <DashboardUsageBar usage={snapshot.usage} />
       </div>

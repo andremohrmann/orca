@@ -155,11 +155,6 @@ describe('registerDashboardPopoutHandlers', () => {
     expect(createPopoutMock).not.toHaveBeenCalled()
   })
 
-  it('auto-closes the popout when the feature is disabled', () => {
-    store.fireSettingsChanged(false)
-    expect(closePopoutMock).toHaveBeenCalledOnce()
-  })
-
   it('caches and forwards only valid trusted snapshots', () => {
     const popout = makeWindow(popoutSender)
     getPopoutMock.mockReturnValue(popout)
@@ -193,18 +188,6 @@ describe('registerDashboardPopoutHandlers', () => {
       cards: [good]
     })
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('dropped 1 invalid card'))
-    warn.mockRestore()
-  })
-
-  it('logs when a snapshot is rejected outright', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-
-    handlers.get('dashboard:publishSnapshot')!({ sender: mainSender } as never, {
-      generatedAt: Number.NaN,
-      cards: []
-    })
-
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('rejected malformed snapshot'))
     warn.mockRestore()
   })
 

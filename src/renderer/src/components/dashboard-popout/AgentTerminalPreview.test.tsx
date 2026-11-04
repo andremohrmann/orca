@@ -10,7 +10,7 @@ import {
 import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START
-} from '@/components/terminal-pane/terminal-bracketed-paste'
+} from '../../../../shared/terminal/input/terminal-bracketed-paste-text'
 import { dispatchAppMenuPasteEvent } from '@/lib/app-menu-paste'
 import { dispatchAppMenuSelectionAction } from '@/lib/app-menu-selection-actions'
 import {
@@ -21,7 +21,7 @@ import {
   terminalHarness
 } from './agent-terminal-preview-test-harness'
 import type { TerminalPreviewApi } from '../../../../preload/api/dashboard-api'
-import type { TerminalPreviewConnectResult } from '../../../../shared/terminal-preview'
+import type { TerminalPreviewConnectResult } from '../../../../shared/terminal/replay/terminal-preview'
 
 import { AgentTerminalPreview } from './AgentTerminalPreview'
 

@@ -1,7 +1,7 @@
 import type Database from '../../sqlite/sync-database'
 import { insertJournalRow } from './journal-row-table'
 import type { JournalHostDatabase } from './journal-host-database'
-import type { AgentJournalCursor } from '../../../shared/agent-session-journal-types'
+import type { AgentJournalCursor } from '../../../shared/agent-session/journal/agent-session-journal-identity'
 import type { JournalRow } from './journal-row-schema'
 import { assertJournalFence, assertJournalWritable } from './journal-write-guards'
 import type { JournalWriteBody } from './journal-write-queue'
@@ -48,9 +48,10 @@ export type JournalRowWriterDeps = {
   highestFence: () => number
   nextSequence: () => number
   prepare?: (db: Database.Database, rows: readonly JournalRow[], savedAt: number) => () => void
-  commit: (rows: readonly JournalRow[], savedAt: number) => void
+  commit: (rows: readonly JournalRow[], savedAt: number, inputChanged?: boolean) => void
   /** Streamed-text-only revisions may skip per-commit fsync; settlement makes them durable. */
   streamedTextRevision?: (row: JournalRow) => boolean
+  outputRevision?: (row: JournalRow) => boolean
 }
 
 export class JournalRowWriter {
@@ -67,6 +68,7 @@ export class JournalRowWriter {
       assertJournalFence(row.fence, this.deps.highestFence())
       const receipt = typeof prepareReceipt === 'function' ? prepareReceipt([row]) : prepareReceipt
       const streamed = !receipt && this.streamed([row])
+      const inputChanged = Boolean(receipt) || !this.outputOnly([row])
       this.deps.database().transaction(
         (db) => {
           if (!this.deps.prepare) {
@@ -80,7 +82,7 @@ export class JournalRowWriter {
         (adopt) => adopt?.()
       )
       receipt?.committed()
-      this.deps.commit([row], savedAt)
+      this.deps.commit([row], savedAt, inputChanged)
       return row
     })
   }
@@ -112,6 +114,7 @@ export class JournalRowWriter {
     }
     const receipt = typeof prepareReceipt === 'function' ? prepareReceipt(rows) : prepareReceipt
     const streamed = !receipt && this.streamed(rows)
+    const inputChanged = Boolean(receipt) || !this.outputOnly(rows)
     this.deps.database().transaction(
       (db) => {
         if (!this.deps.prepare) {
@@ -127,7 +130,7 @@ export class JournalRowWriter {
       (adopt) => adopt?.()
     )
     receipt?.committed()
-    this.deps.commit(rows, ts)
+    this.deps.commit(rows, ts, inputChanged)
     return rows
   }
 
@@ -140,6 +143,10 @@ export class JournalRowWriter {
       epoch: row.epoch,
       sequence: row.seq
     }))
+  }
+
+  private outputOnly(rows: readonly JournalRow[]): boolean {
+    return this.deps.outputRevision !== undefined && rows.every(this.deps.outputRevision)
   }
 
   private streamed(rows: readonly JournalRow[]): boolean {

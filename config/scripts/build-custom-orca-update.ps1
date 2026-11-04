@@ -386,7 +386,7 @@ if (!$SkipValidation) {
     'src/renderer/src/components/terminal-pane/use-terminal-pane-global-effects-window-focus-recovery.test.ts',
     'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
     'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
-    'src/renderer/src/components/settings/AgentDashboardExperimentalSetting.test.tsx',
+    'src/renderer/src/components/dashboard/AgentDashboardExperimentalSetting.test.tsx',
     'src/renderer/src/components/tab-bar/tab-create-menu-options.test.ts',
     'src/renderer/src/lib/run-quick-command-in-new-tab.test.ts',
     'src/renderer/src/lib/launch-warp-tab.test.ts',

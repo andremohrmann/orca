@@ -1,4 +1,4 @@
-import type { IDisposable, Terminal } from '@xterm/xterm'
+import type { IBufferRange, IDisposable, ILinkHandler, Terminal } from '@xterm/xterm'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { installGuardedLinkProviderRegistration } from '@/lib/pane-manager/terminal-link-provider-guard'
 import {
@@ -10,10 +10,29 @@ import {
 import { openHttpLinkAtBufferPosition } from '@/components/terminal-pane/terminal-url-link-hit-testing'
 import { getTerminalBufferPositionForMouseEvent } from '@/components/terminal-pane/terminal-mouse-buffer-position'
 import type { TerminalPathExistsCache } from '@/components/terminal-pane/terminal-path-exists-cache'
+import { TERMINAL_HTTP_URL_REGEX } from '../../../../shared/terminal/links/terminal-http-url-extraction'
 import type { DashboardCardTerminalLinks } from '../../../../shared/dashboard-snapshot'
+import {
+  dashboardPreviewHttpActions,
+  type DashboardPreviewLinkSource
+} from './dashboard-preview-http-actions'
+
+export type PreviewTerminalLinkHandler = Omit<ILinkHandler, 'activate' | 'leave'> & {
+  activate(event: MouseEvent, uri: string, range?: IBufferRange): void
+  leave?(event: MouseEvent, uri: string, range?: IBufferRange): void
+}
+
+export type PreviewTerminalLinkHandlers =
+  | PreviewTerminalLinkHandler
+  | ((defaults: PreviewTerminalLinkHandler) => PreviewTerminalLinkHandler)
 
 type PreviewTerminalLinksDeps = {
   getTerminalLinks: () => DashboardCardTerminalLinks | null | undefined
+  /** When present, HTTP link clicks route through smart browser-tab foregrounding instead of always opening a new system-browser window. */
+  getLinkSource?: () => DashboardPreviewLinkSource | null | undefined
+  onBrowserForeground?: () => void
+  /** Overrides the default activate/hover/leave triple, e.g. for the LinkActionPopover hover UI. */
+  linkHandlers?: PreviewTerminalLinkHandlers
 }
 
 function isPreviewLinkActivation(event: MouseEvent): boolean {
@@ -122,30 +141,61 @@ export function installPreviewTerminalLinks(
     return callback(links)
   }
 
-  terminal.loadAddon(
-    new WebLinksAddon((event, uri) => {
-      if (!isPreviewLinkActivation(event)) {
-        return
-      }
-      event.preventDefault()
-      const openedLogicalUrl = withLinks((links) => {
-        const position = getTerminalBufferPositionForMouseEvent(terminal, event)
-        return position
-          ? openHttpLinkAtBufferPosition(terminal.buffer.active, position, terminal.cols, {
-              worktreeId: links.worktreeId,
-              sourceOwner: links.runtimeEnvironmentId
-                ? { kind: 'runtime', runtimeEnvironmentId: links.runtimeEnvironmentId }
-                : { kind: 'local' },
-              forceDestination: 'system'
-            })
-          : false
-      })
-      if (!openedLogicalUrl) {
+  const activate = (event: MouseEvent, uri: string): void => {
+    if (!isPreviewLinkActivation(event)) {
+      return
+    }
+    event.preventDefault()
+    const openedLogicalUrl = withLinks((links) => {
+      const position = getTerminalBufferPositionForMouseEvent(terminal, event)
+      return position
+        ? openHttpLinkAtBufferPosition(terminal.buffer.active, position, terminal.cols, {
+            worktreeId: links.worktreeId,
+            sourceOwner: links.runtimeEnvironmentId
+              ? { kind: 'runtime', runtimeEnvironmentId: links.runtimeEnvironmentId }
+              : { kind: 'local' },
+            forceDestination: 'system'
+          })
+        : false
+    })
+    if (!openedLogicalUrl) {
+      const source = deps?.getLinkSource?.()
+      const smartActions = source
+        ? dashboardPreviewHttpActions(source, uri, deps?.onBrowserForeground)
+        : null
+      if (smartActions) {
+        smartActions.open(undefined)
+      } else {
         void window.api.shell.openUrl(uri).catch(() => undefined)
       }
-      terminal.clearSelection()
+    }
+    terminal.clearSelection()
+  }
+  // Why: the preview has no pane tooltip; the native title still shows the destination before a click.
+  const hover = (_event: MouseEvent, uri: string): void => {
+    terminal.element?.setAttribute('title', uri)
+  }
+  const leave = (): void => {
+    terminal.element?.removeAttribute('title')
+  }
+  const resolvedHandlers =
+    typeof deps?.linkHandlers === 'function'
+      ? deps.linkHandlers({ activate, hover, leave })
+      : deps?.linkHandlers
+  terminal.loadAddon(
+    new WebLinksAddon(resolvedHandlers?.activate ?? activate, {
+      hover: resolvedHandlers?.hover ?? hover,
+      leave: resolvedHandlers?.leave ?? leave,
+      urlRegex: TERMINAL_HTTP_URL_REGEX
     })
   )
+  // Why: without a linkHandler xterm's OSC 8 default confirm()s and window.open()s, which Electron blocks (#34229).
+  // Guarded: some hosts (older xterm builds, test harnesses) construct a Terminal whose `options`
+  // isn't ready synchronously after open() — skipping the assignment there just keeps the old
+  // (Electron-blocked) OSC 8 default instead of crashing terminal setup.
+  if (terminal.options) {
+    terminal.options.linkHandler = resolvedHandlers ?? { activate, hover, leave }
+  }
   const links = deps?.getTerminalLinks()
   if (links) {
     const linkDeps = previewLinkDeps(terminal, links, pathExistsCache)

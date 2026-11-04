@@ -1,6 +1,6 @@
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalPreviewApi } from '../../../../preload/api/dashboard-api'
-import { clampTerminalViewport } from '../../../../shared/terminal-viewport'
+import { clampTerminalViewport } from '../../../../shared/terminal/viewport/terminal-viewport'
 
 const FIT_REQUEST_DEBOUNCE_MS = 200
 /**

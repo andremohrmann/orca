@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import { AgentIcon } from '@/lib/agent-catalog'
-import { agentTypeToIconAgent } from '@/lib/agent-status'
+import { agentTypeToIconAgent } from '../../../../shared/agent-status/presentation/agent-type-icon-agent'
 import { translate } from '@/i18n/i18n'
 import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
 

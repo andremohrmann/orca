@@ -1,10 +1,10 @@
-import type { agentVerdictDisplayMark } from './agent-main-agent-verdict'
-import type { AgentType, AgentWorkingMode } from './agent-status-types'
+import type { agentVerdictDisplayMark } from './agent-status/lifecycle/agent-main-agent-verdict'
+import type { AgentType, AgentWorkingMode } from './agent-status/contracts/agent-status-types'
 import type { ExecutionHostId } from './execution-host'
 import type { ProviderRateLimits } from './rate-limit-types'
 import type { RepoIcon } from './repo-icon'
 import type { StatusBarUsageMode } from './status-bar-usage-mode'
-import type { TuiAgent } from './tui-agent'
+import type { TuiAgent } from './agent-launch/catalog/tui-agent'
 import type { UsagePercentageDisplay } from './usage-percentage-display'
 import type { WorkspaceStatus } from './worktree/types'
 

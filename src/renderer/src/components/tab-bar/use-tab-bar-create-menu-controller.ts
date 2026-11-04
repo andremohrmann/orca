@@ -1,17 +1,15 @@
 import type { TabBarCreateMenuController } from './tab-bar-create-menu-contract'
 export type { TabBarCreateMenuController } from './tab-bar-create-menu-contract'
-import { useAgentLaunchPickerInventory } from '../agent/use-agent-launch-picker-inventory'
-import type { AgentPickerEntry } from '../../../../shared/agent-launch-picker'
+import { useAgentLaunchPickerInventorySource } from '../agent/use-agent-launch-picker-inventory'
+import type { AgentPickerEntry } from '../../../../shared/agent-launch/picker/agent-launch-picker'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { launchWarpTab } from '@/lib/launch-warp-tab'
 import type { WindowsTerminalCapabilities } from '@/lib/windows-terminal-capabilities'
-import { useAppStore } from '../../store'
 import { useTabAgentMenuLaunch } from './QuickLaunchButton'
 import { requestNativeChatComposerFocus } from '@/components/native-chat/use-native-chat-composer-reveal-focus'
 import { useNewTabAgentMenuRows } from './use-new-tab-agent-menu-rows'
 import type { AgentDetectionTarget } from '@/hooks/useDetectedAgents'
 import type { TabAgentLaunchOption } from './tab-agent-launch-options'
-import { buildAgentPickerLaunchOptions } from './tab-agent-launch-options'
 import { buildTabCreateMenuOptions, type TabCreateMenuOption } from './tab-create-menu-options'
 import { resolveWindowsShellLaunchTarget } from './windows-shell-launch'
 import { createNewTabMenuTerminalFocusController } from './new-tab-menu-terminal-focus'
@@ -75,14 +73,13 @@ export function useTabBarCreateMenuController({
     { wakeOnOpen: true }
   )
   const [selectedPickerAgent, selectPickerAgent] = useState<AgentPickerEntry['agent']>()
-  const agentPickerEntries = useAgentLaunchPickerInventory(
+  // Why: subscribed inside the open menu only; catalog reads landing here would re-render the tab bar.
+  const agentPickerInventory = useAgentLaunchPickerInventorySource(
     worktreeId,
     agentMenu,
     newTabMenuOpen && showAgentLaunchItems,
     selectedPickerAgent
   )
-  const commandOverrides = useAppStore((state) => state.settings?.agentCmdOverrides)
-  const agentLaunchOptions = buildAgentPickerLaunchOptions(agentPickerEntries, commandOverrides)
   const pendingNewTabMenuFocusRef = useRef<{ focus: () => void; synchronous?: true } | null>(null)
   const pendingNewTabMenuFocusAnimationRef = useRef<number | null>(null)
   const pendingNewTabMenuFocusRetryRef = useRef<number | null>(null)
@@ -186,14 +183,13 @@ export function useTabBarCreateMenuController({
     onFocusChat: (tabId) =>
       queueFocusAfterNewTabMenuClose(() => requestNativeChatComposerFocus(tabId), true)
   })
-  const launchAgentFromNewTabEntry = (option: TabAgentLaunchOption): void => {
+  const launchAgentFromNewTabEntry = (option: TabAgentLaunchOption) => {
     if (option.row) {
-      if (option.setup) {
-        launchAgentRow(option.row, option.setup, option.pickerEntry)
-      } else {
-        launchAgentRow(option.row)
-      }
+      return option.setup
+        ? launchAgentRow(option.row, option.setup, option.pickerEntry)
+        : launchAgentRow(option.row)
     }
+    return false
   }
   const menuFocusUnmountRef = useRef<((node: HTMLDivElement | null) => void) | null>(null)
   if (menuFocusUnmountRef.current === null) {
@@ -222,8 +218,7 @@ export function useTabBarCreateMenuController({
   }, [newTabMenuOpen])
   return {
     agentMenu,
-    agentLaunchOptions,
-    agentPickerEntries,
+    agentPickerInventory,
     selectPickerAgent,
     launchAgentRow,
     newTabMenuOpen,

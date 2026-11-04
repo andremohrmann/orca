@@ -78,8 +78,17 @@
 /resources/skills/*.json linguist-generated=true text eol=lf
 # Vitest writes snapshots with LF, so checkout bytes must match on every host.
 **/__snapshots__/*.snap text eol=lf
+# Generated, minified bundles (config/scripts/build-plugin-declarative-runtime.mjs).
+/resources/plugins/declarative/orca-test*.mjs linguist-generated=true -diff
 
 # Fork-only: both sides touch this file's import list and intersection members on nearly every
 # upstream merge for the same non-conflicting reason (adding a settings group). Union-merge it
 # instead of stopping on a conflict every day; see config/scripts/merge-global-settings-base.mjs.
 /src/shared/global-settings-base.ts merge=global-settings-base
+
+# Fork-only: both sides append new attribute lines near the end of this very file on an upstream
+# merge, and a plain conflict here used to resolve to "take theirs" by default, which silently
+# dropped the merge=global-settings-base line above (and would do the same to this line). git's
+# built-in union driver needs no config, unlike the named driver above, and both sides' lines are
+# independent rules anyway, so keeping both is always correct — there is no "wrong side" to pick.
+/.gitattributes merge=union

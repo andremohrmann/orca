@@ -2,7 +2,7 @@ import type { RemoteRuntimeMultiplexedTerminalCallbacks } from '@/runtime/remote
 import type {
   TerminalPreviewConnectResult,
   TerminalPreviewReplayChunk
-} from '../../../../shared/terminal-preview'
+} from '../../../../shared/terminal/replay/terminal-preview'
 import type { OutputMeta, PreviewSession } from './remote-runtime-terminal-preview-api'
 
 type SnapshotMeta = Parameters<RemoteRuntimeMultiplexedTerminalCallbacks['onSnapshot']>[1]

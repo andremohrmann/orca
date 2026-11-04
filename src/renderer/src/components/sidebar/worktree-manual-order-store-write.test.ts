@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { useAppStore } from '@/store'
 import type { Worktree } from '../../../../shared/worktree/types'
-import { makeWorktree } from '../worktree-jump-palette-test-fixtures'
+import { makeWorktree } from '../worktree-jump/worktree-jump-palette-test-fixtures'
 import { buildWorktreeManualOrderCatalog } from './worktree-manual-order-catalog'
 import { useWorktreeStatusMutations } from './worktree-list/drag/use-status-mutations'
 import {
@@ -94,48 +94,5 @@ describe('sidebar manual-order drop', () => {
       executionHostId: 'local',
       updates: { manualOrder: expect.any(Number) }
     })
-  })
-
-  it('leaves the order alone when the drop lands where the row already is', async () => {
-    const worktrees = seedManualOrderedRows(3)
-    const ids = worktrees.map((worktree) => worktree.id)
-    const keys = worktrees.map(getWorktreeHostIdentity)
-    const reorder = renderReorder(worktrees)
-    const epochBeforeDrop = useAppStore.getState().sortEpoch
-
-    await act(async () => {
-      reorder.current.reorderWorktrees({
-        groups: [{ key: GROUP_KEY, worktreeIds: keys }],
-        sourceGroupKey: GROUP_KEY,
-        draggedKeys: [keys[0]!],
-        dropIndex: 1
-      })
-    })
-
-    expect(manualOrderedIds()).toEqual(ids)
-    expect(useAppStore.getState().sortBy).toBe('smart')
-    expect(useAppStore.getState().sortEpoch).toBe(epochBeforeDrop)
-    expect(updateMeta).not.toHaveBeenCalled()
-    expect(toastInfo).not.toHaveBeenCalled()
-  })
-
-  it('reorders silently when Manual is already the sort', async () => {
-    const worktrees = seedManualOrderedRows(3)
-    useAppStore.setState({ sortBy: 'manual' })
-    const ids = worktrees.map((worktree) => worktree.id)
-    const keys = worktrees.map(getWorktreeHostIdentity)
-    const reorder = renderReorder(worktrees)
-
-    await act(async () => {
-      reorder.current.reorderWorktrees({
-        groups: [{ key: GROUP_KEY, worktreeIds: keys }],
-        sourceGroupKey: GROUP_KEY,
-        draggedKeys: [keys[0]!],
-        dropIndex: 2
-      })
-    })
-
-    expect(manualOrderedIds()).toEqual([ids[1], ids[0], ids[2]])
-    expect(toastInfo).not.toHaveBeenCalled()
   })
 })

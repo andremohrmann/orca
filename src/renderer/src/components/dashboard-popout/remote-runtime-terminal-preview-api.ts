@@ -9,7 +9,7 @@ import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime/remot
 import type {
   TerminalPreviewConnectResult,
   TerminalPreviewDataPayload
-} from '../../../../shared/terminal-preview'
+} from '../../../../shared/terminal/replay/terminal-preview'
 import {
   outputAfterSnapshot,
   releaseGate,
