@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
-import { getWorkspaceStatusVisualMeta } from '@/components/sidebar/workspace-status'
+import { getWorkspaceStatusVisualMeta } from '@/components/sidebar/workspace-status/presentation/workspace-status'
 
 export function DashboardWorkspaceStatusButton({
   statuses,
