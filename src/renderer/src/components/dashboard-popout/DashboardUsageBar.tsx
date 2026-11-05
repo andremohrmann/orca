@@ -8,12 +8,15 @@ import {
   type UsagePercentageDisplay
 } from '../../../../shared/usage-percentage-display'
 import { normalizeStatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
-import { formatRateLimitWindowChipLabel, formatWindowLabel } from '@/lib/window-label-formatter'
+import {
+  formatRateLimitWindowChipLabel,
+  formatWindowLabel
+} from '../../../../shared/rate-limit-window-label'
+import { getProviderDisplayName } from '../../../../shared/usage-provider-windows'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
 import {
   barColor,
-  getProviderDisplayName,
   getProviderUsageStatusLabel,
   getWindowSections,
   ProviderIcon

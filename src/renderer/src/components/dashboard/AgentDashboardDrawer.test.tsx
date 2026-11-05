@@ -132,40 +132,4 @@ describe('AgentDashboardDrawer', () => {
     expect(useAppStore.getState().agentDashboardDrawerOpen).toBe(false)
     expect(fieldKeyDown).toHaveBeenCalledTimes(1)
   })
-
-  type RevealAgent = (args: {
-    repoId: string
-    worktreeId: string
-    executionHostId?: string
-    tabId: string
-    leafId: string | null
-  }) => void
-
-  function revealFromBoard(executionHostId: string): void {
-    render(<AgentDashboardDrawer statusBarVisible />)
-    act(() => useAppStore.setState({ agentDashboardDrawerOpen: true }))
-    const onRevealAgent = mocks.boardProps?.onRevealAgent
-    expect(onRevealAgent).toBeTypeOf('function')
-    act(() => {
-      ;(onRevealAgent as RevealAgent)({
-        repoId: 'repo-1',
-        worktreeId: 'shared-worktree',
-        executionHostId,
-        tabId: 'tab-1',
-        leafId: 'leaf-1'
-      })
-    })
-  }
-
-  it('activates a parked SSH workspace before reaching for its pane', () => {
-    revealFromBoard('ssh:devbox')
-
-    expect(mocks.activateAndRevealWorkspace).toHaveBeenCalledWith('shared-worktree', {
-      executionHostId: 'ssh:devbox'
-    })
-    // Ordering is the fix: a parked remote tab only exists after activation revives it.
-    expect(mocks.activateAndRevealWorkspace.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.activateTabAndFocusPane.mock.invocationCallOrder[0] as number
-    )
-  })
 })

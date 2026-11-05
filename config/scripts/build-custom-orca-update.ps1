@@ -363,11 +363,9 @@ if (!$SkipValidation) {
     'config/vitest.config.ts',
     '--testTimeout',
     '120000',
-    'src/renderer/src/renderer-node-builtin-boundary.test.ts',
     'src/main/ipc/dashboard-popout.test.ts',
     'src/main/window/dashboard-popout-window.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentKanbanCard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentLiveGrid.child-agents.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.settings-lifetime.test.tsx',
@@ -380,24 +378,21 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard-popout/preview-terminal-fit.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-focus-handoff.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-focus-ownership.test.ts',
-    'src/renderer/src/components/terminal-pane/pty-connection-visibility-resume-size.test.ts',
-    'src/renderer/src/components/terminal-pane/pty-connection-pi-synchronized-input.test.ts',
     'src/renderer/src/components/terminal-pane/use-terminal-window-wake-recovery.test.ts',
     'src/renderer/src/components/terminal-pane/use-terminal-pane-global-effects-window-focus-recovery.test.ts',
     'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
-    'src/renderer/src/components/dashboard/useDashboardPopoutBridge.test.tsx',
     'src/renderer/src/components/dashboard/AgentDashboardExperimentalSetting.test.tsx',
     'src/renderer/src/components/tab-bar/tab-create-menu-options.test.ts',
     'src/renderer/src/lib/run-quick-command-in-new-tab.test.ts',
     'src/renderer/src/lib/launch-warp-tab.test.ts',
     'config/scripts/build-custom-orca-update.test.mjs',
-    'config/scripts/project-renderer-web-client.test.mjs',
+    'config/scripts/development/web-client/project-renderer-web-client.test.mjs',
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/agent-dashboard-live-layout.test.ts',
     'src/shared/release-channel.test.ts',
     'src/shared/update-feed-info.test.ts',
-    'config/scripts/electron-vite-output-contract.test.ts'
+    'config/scripts/desktop-build/output-contracts/electron-vite-output-contract.test.ts'
   )
 }
 

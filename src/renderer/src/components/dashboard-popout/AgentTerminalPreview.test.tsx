@@ -588,10 +588,7 @@ describe('AgentTerminalPreview', () => {
     expect(terminal.input).not.toHaveBeenCalled()
   })
 
-  // Why: a snapshot carries the TUI's one-time kitty push and the post-snapshot
-  // replay redelivers it. Applying replays with stack semantics would leave the
-  // TUI's single pop on a stale frame, so a plain shell keeps getting
-  // kitty-encoded Option chords.
+  // Snapshot replay can redeliver a kitty push; it must not leave stale flags after the TUI’s single pop.
   it('does not let a redelivered kitty push outlive the TUI pop', async () => {
     connect.mockResolvedValueOnce({
       snapshot: { data: '\x1b[>1u', cols: 80, rows: 24, seq: 1 },
@@ -847,5 +844,29 @@ describe('AgentTerminalPreview', () => {
     await waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
     expect(connect).toHaveBeenLastCalledWith('pty-live', { scrollbackRows: 1000 })
     expect(view.queryByText(/No preview available/)).not.toBeInTheDocument()
+  })
+
+  it('delays repeated capture after an overflow and cancels the retry on unmount', async () => {
+    vi.useFakeTimers()
+    connect.mockResolvedValue({
+      snapshot: { data: 'screen', cols: 80, rows: 24, seq: 1 },
+      replay: [],
+      resyncRequired: true
+    })
+    const view = render(<AgentTerminalPreview ptyId="pty-1" />)
+    await vi.waitFor(() => expect(terminalHarness.instances).toHaveLength(1))
+    const terminal = terminalHarness.instances[0]!
+    expect(connect).toHaveBeenCalledTimes(1)
+
+    act(() => terminal.writeCallbacks.splice(0).forEach((callback) => callback()))
+    await vi.advanceTimersByTimeAsync(149)
+    expect(connect).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(connect).toHaveBeenCalledTimes(2)
+
+    act(() => terminal.writeCallbacks.splice(0).forEach((callback) => callback()))
+    view.unmount()
+    await vi.advanceTimersByTimeAsync(150)
+    expect(connect).toHaveBeenCalledTimes(2)
   })
 })
