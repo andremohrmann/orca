@@ -239,6 +239,20 @@ function Resolve-DeletedWorkflowMergeConflicts {
       (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 3\s')
     }
   )
+  $upstreamDeletedConflicts = @(
+    $conflicts | Where-Object {
+      $customContentConflictAllowlist -notcontains $_ -and
+      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 2\s') -and
+      !(git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 3\s')
+    }
+  )
+  if ($upstreamDeletedConflicts.Count -gt 0) {
+    Write-Host "`n==> Accept upstream deletions for non-custom files"
+    & git rm -f -- $upstreamDeletedConflicts | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+  }
   foreach ($path in $upstreamContentConflicts) {
     Write-Host "`n==> Accept upstream content for non-custom file $path"
     & git checkout --theirs -- $path | Out-Host

@@ -1,5 +1,7 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const SCRIPT = readFileSync(resolve(import.meta.dirname, 'build-custom-orca-update.ps1'), 'utf8')
@@ -17,6 +19,71 @@ const PACKAGED_STARTUP_SMOKE = readFileSync(
 )
 
 describe('custom Windows updater merge safety', () => {
+  it.skipIf(process.platform !== 'win32').each([false, true])(
+    'resolves upstream deletions while guarding preserved files (preserved=%s)',
+    (preserved) => {
+      const directory = mkdtempSync(join(tmpdir(), 'orca-merge-deletion-'))
+      const git = (...args) => {
+        const result = spawnSync('git', args, {
+          cwd: directory,
+          encoding: 'utf8',
+          windowsHide: true
+        })
+        expect(result.status, result.stderr).toBe(0)
+        return result.stdout.trim()
+      }
+      try {
+        git('init')
+        git('config', 'user.name', 'Merge test')
+        git('config', 'user.email', 'merge-test@example.invalid')
+        writeFileSync(join(directory, 'preview.test.ts'), 'base\n')
+        git('add', '.')
+        git('commit', '-m', 'base')
+        git('checkout', '-b', 'upstream')
+        git('rm', 'preview.test.ts')
+        git('commit', '-m', 'delete upstream test')
+        git('checkout', '-b', 'custom', 'HEAD~1')
+        writeFileSync(join(directory, 'preview.test.ts'), 'custom change\n')
+        git('commit', '-am', 'modify custom test')
+        const merge = spawnSync('git', ['merge', '--no-commit', 'upstream'], {
+          cwd: directory,
+          encoding: 'utf8',
+          windowsHide: true
+        })
+        expect(merge.status).toBe(1)
+        expect(git('diff', '--name-only', '--diff-filter=U')).toBe('preview.test.ts')
+        const resolver = SCRIPT.match(
+          /function Resolve-DeletedWorkflowMergeConflicts \{[\s\S]+?\r?\n\}(?=\r?\n\r?\nfunction Set-CustomBuildVersion)/
+        )?.[0]
+        expect(resolver).toBeTypeOf('string')
+        const scriptPath = join(directory, 'resolve.ps1')
+        writeFileSync(
+          scriptPath,
+          `$customContentConflictAllowlist = @(${preserved ? "'preview.test.ts'" : ''})
+${resolver}
+if (Resolve-DeletedWorkflowMergeConflicts) { exit 0 } else { exit 1 }
+`
+        )
+        const result = spawnSync(
+          process.platform === 'win32' ? 'powershell.exe' : 'pwsh',
+          ['-NoProfile', '-NonInteractive', '-File', scriptPath],
+          { cwd: directory, encoding: 'utf8', windowsHide: true }
+        )
+        expect(result.error).toBeUndefined()
+        expect(result.status, result.stdout + result.stderr).toBe(preserved ? 1 : 0)
+        expect(git('diff', '--name-only', '--diff-filter=U')).toBe(
+          preserved ? 'preview.test.ts' : ''
+        )
+        if (!preserved) {
+          expect(git('ls-files', '--', 'preview.test.ts')).toBe('')
+        }
+      } finally {
+        rmSync(directory, { recursive: true, force: true })
+      }
+    },
+    30000
+  )
+
   it('does not mix native command output into the conflict-resolution result', () => {
     const resolver = SCRIPT.match(
       /function Resolve-DeletedWorkflowMergeConflicts \{([\s\S]+?)\r?\n\}\r?\n\r?\nfunction Set-CustomBuildVersion/
