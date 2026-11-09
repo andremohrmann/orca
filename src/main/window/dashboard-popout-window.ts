@@ -19,7 +19,10 @@ import {
   type AgentDashboardView
 } from '../../shared/agent-dashboard-view'
 import type { DashboardPopoutOpacityState } from '../../shared/dashboard-popout-opacity'
-import { persistDashboardPopoutOpacity } from './dashboard-popout-opacity-state'
+import {
+  getDashboardPopoutOpacityState,
+  persistDashboardPopoutOpacity
+} from './dashboard-popout-opacity-state'
 import { wslHostsWindowArguments } from '../wsl/host-lifecycle/wsl-host-gate'
 
 const MIN_WIDTH = 480
@@ -211,8 +214,9 @@ export function createOrFocusDashboardPopout(
       ...(wslArguments.length > 0 ? { additionalArguments: wslArguments } : {})
     }
   })
-  if (dashboardPopoutOpacitySupported()) {
-    window.setOpacity(normalizeDashboardPopoutOpacity(store?.getUI().dashboardPopoutOpacity))
+  const opacityState = getDashboardPopoutOpacityState(store)
+  if (opacityState.supported) {
+    window.setOpacity(opacityState.opacity)
   }
   installPrivilegedWindowNavigationPolicy(window.webContents)
   // Isolated sessions do not inherit the main session's deny-by-default permission policy.

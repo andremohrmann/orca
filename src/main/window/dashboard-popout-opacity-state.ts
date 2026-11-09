@@ -9,10 +9,10 @@ function dashboardPopoutOpacitySupported(): boolean {
   return process.platform === 'win32' || process.platform === 'darwin'
 }
 
-export function getDashboardPopoutOpacityState(store: Store): DashboardPopoutOpacityState {
+export function getDashboardPopoutOpacityState(store: Store | null): DashboardPopoutOpacityState {
   const supported = dashboardPopoutOpacitySupported()
   return {
-    opacity: supported ? normalizeDashboardPopoutOpacity(store.getUI().dashboardPopoutOpacity) : 1,
+    opacity: supported ? normalizeDashboardPopoutOpacity(store?.getUI().dashboardPopoutOpacity) : 1,
     supported
   }
 }

@@ -147,23 +147,6 @@ function Merge-CustomBranch {
       throw 'Merge stopped. Resolve the reported conflicts, commit the merge, then rerun this script.'
     }
   }
-  foreach ($path in $customContentConflictAllowlist) {
-    $headPath = @(git ls-tree -r --name-only HEAD -- $path)
-    if ($LASTEXITCODE -eq 0) {
-      if ($headPath.Count -eq 0) {
-        continue
-      }
-      Write-Host "`n==> Restore custom-owned file $path"
-      & git checkout HEAD -- $path | Out-Host
-      if ($LASTEXITCODE -ne 0) {
-        throw "Could not restore custom-owned file $path."
-      }
-      & git add -f -- $path | Out-Host
-      if ($LASTEXITCODE -ne 0) {
-        throw "Could not stage restored custom-owned file $path."
-      }
-    }
-  }
   Remove-InheritedWorkflows
   Invoke-Native 'Commit upstream merge' git @(
     '-c',
