@@ -3,7 +3,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '@/store'
-import { useWorktreeRuntimeTarget } from './use-worktree-runtime-target'
+import { useWorktreeRuntimeTarget } from './rpc/targets/use-worktree-runtime-target'
 
 const initialState = useAppStore.getInitialState()
 

@@ -1,7 +1,7 @@
-import { getRemoteRuntimeTerminalMultiplexer } from '@/runtime/remote-runtime-terminal-multiplexer'
-import { createBrowserUuid } from '@/lib/browser-uuid'
-import { getRuntimeEnvironmentRevision } from '@/runtime/runtime-environment-revision'
-import type { RemoteRuntimeMultiplexedTerminal } from '@/runtime/remote-runtime-terminal-multiplexer-types'
+import { getRemoteRuntimeTerminalMultiplexer } from '@/runtime/hosted-terminals/streams/registry/remote-runtime-terminal-multiplexer-registry'
+import { createNonSecureContextUuid } from '../../../../shared/non-secure-context-uuid'
+import { getRuntimeEnvironmentRevision } from '@/runtime/rpc/environment-revisions/runtime-environment-revision'
+import type { RemoteRuntimeMultiplexedTerminal } from '@/runtime/hosted-terminals/streams/remote-terminal-stream-contracts'
 import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime/remote-runtime-pty-id'
 import type { TerminalPreviewSnapshot } from '../../../../shared/terminal/replay/terminal-preview'
 
@@ -76,7 +76,7 @@ export function createPreviewRemoteTerminalSession(args: {
     try {
       const next = await getRemoteRuntimeTerminalMultiplexer(environmentId).subscribeTerminal({
         terminal: owner.handle,
-        client: { id: `dashboard-preview:${createBrowserUuid()}`, type: 'desktop' },
+        client: { id: `dashboard-preview:${createNonSecureContextUuid()}`, type: 'desktop' },
         viewport: desiredGrid ?? undefined,
         callbacks: {
           onData: (data) => {

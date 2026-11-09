@@ -18,10 +18,8 @@ import {
   normalizeAgentDashboardView,
   type AgentDashboardView
 } from '../../shared/agent-dashboard-view'
-import {
-  normalizeDashboardPopoutOpacity,
-  type DashboardPopoutOpacityState
-} from '../../shared/dashboard-popout-opacity'
+import type { DashboardPopoutOpacityState } from '../../shared/dashboard-popout-opacity'
+import { persistDashboardPopoutOpacity } from './dashboard-popout-opacity-state'
 import { wslHostsWindowArguments } from '../wsl/host-lifecycle/wsl-host-gate'
 
 const MIN_WIDTH = 480
@@ -46,33 +44,13 @@ export function isDashboardPopoutRenderer(sender: WebContents): boolean {
   return getDashboardPopoutWindow()?.webContents === sender
 }
 
-function dashboardPopoutOpacitySupported(): boolean {
-  return process.platform === 'win32' || process.platform === 'darwin'
-}
-
-export function getDashboardPopoutOpacityState(store: Store): DashboardPopoutOpacityState {
-  const supported = dashboardPopoutOpacitySupported()
-  return {
-    opacity: supported ? normalizeDashboardPopoutOpacity(store.getUI().dashboardPopoutOpacity) : 1,
-    supported
-  }
-}
+export { getDashboardPopoutOpacityState } from './dashboard-popout-opacity-state'
 
 export function setDashboardPopoutOpacity(
   store: Store,
   requestedOpacity: number
 ): DashboardPopoutOpacityState {
-  const supported = dashboardPopoutOpacitySupported()
-  const state = {
-    opacity: supported ? normalizeDashboardPopoutOpacity(requestedOpacity) : 1,
-    supported
-  }
-  if (!state.supported) {
-    return state
-  }
-  getDashboardPopoutWindow()?.setOpacity(state.opacity)
-  store.updateUI({ dashboardPopoutOpacity: state.opacity })
-  return state
+  return persistDashboardPopoutOpacity(store, requestedOpacity, getDashboardPopoutWindow())
 }
 
 function zoomDashboardPopout(window: BrowserWindow, direction: UIZoomDirection): void {

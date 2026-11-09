@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
-import { subscribeToTerminalUserInput } from '@/components/terminal-pane/terminal-user-input-signal'
+import { subscribeToTerminalUserInput } from '@/components/terminal-pane/input/terminal-user-input-signal'
 
 export function installPreviewTerminalInputRouting(args: {
   terminal: Terminal

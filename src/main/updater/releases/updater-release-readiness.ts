@@ -107,16 +107,12 @@ async function getGitHubReleaseAssetReadiness(assetUrl: string): Promise<Release
   return response.statusCode === 404 ? 'not-ready' : ready ? 'ready' : 'unavailable'
 }
 
-const GITHUB_RELEASE_DOWNLOAD_RE = new RegExp(
-  `^${escapeRegExp(RELEASES_DOWNLOAD_BASE)}/`,
-  'i'
-)
+const GITHUB_RELEASE_DOWNLOAD_RE = new RegExp(`^${escapeRegExp(RELEASES_DOWNLOAD_BASE)}/`, 'i')
 
 async function getReleaseAssetReadiness(tag: string, assetName: string): Promise<ReleaseReadiness> {
   const isRelativeAsset = !/^https?:\/\//i.test(assetName)
   const isGitHubReleaseAsset =
-    process.platform === 'win32' &&
-    (isRelativeAsset || GITHUB_RELEASE_DOWNLOAD_RE.test(assetName))
+    process.platform === 'win32' && (isRelativeAsset || GITHUB_RELEASE_DOWNLOAD_RE.test(assetName))
   const assetUrl = isRelativeAsset
     ? getReleaseAssetUrl(tag, assetName.split('/').findLast(Boolean) ?? assetName)
     : assetName

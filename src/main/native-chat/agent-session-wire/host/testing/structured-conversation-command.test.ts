@@ -176,16 +176,10 @@ describe('same-conversation clear', () => {
     ).toBe('succeeded')
   })
 
-  it('refuses another clear while the first is in flight', async () => {
-    const [first, second] = await Promise.all([
-      host.conversationCommand(caller, commandParams('clear')),
-      host.conversationCommand(caller, commandParams('clear'))
-    ])
-    expect(first).toMatchObject({ ok: true })
-    expect(second).toMatchObject({
-      ok: false,
-      refusal: { details: { reason: 'conversationCommandInFlight' } }
+  it('stops the old agent with a brief grace, since the divider waits on that stop', async () => {
+    await clearCommits()
+    expect(adapter.closeSession).toHaveBeenCalledWith(HOST_TEST_SESSION, undefined, {
+      grace: 'brief'
     })
-    expect(await clearRows()).toHaveLength(1)
   })
 })

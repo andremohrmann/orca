@@ -3,6 +3,7 @@ import React from 'react'
 import { SortableContext } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
+import type { Translate } from '@/i18n/use-translate'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -31,27 +32,30 @@ import { advanceAgentSessionsTourPastNewTab } from '@/components/contextual-tour
 
 const EMPTY_CLIENT_HOSTED_ROWS: readonly ClientHostedBrowserRow[] = []
 
-export function renderTabBarSurface({
-  props,
-  runtime,
-  createMenu,
-  itemProjection,
-  tabStripNavigation,
-  tabStripDragScroll,
-  activeClientHostedBrowserRowId,
-  itemActions,
-  surfaceRef
-}: {
-  props: TabBarProps
-  runtime: TabBarRuntimeModel
-  createMenu: TabBarCreateMenuController
-  itemProjection: TabBarItemProjection
-  tabStripNavigation: ReturnType<typeof useTabStripOverflowNavigation>
-  tabStripDragScroll: ReturnType<typeof useTabStripDragScrollHandlers>
-  activeClientHostedBrowserRowId: string | null
-  itemActions: TabBarItemActions
-  surfaceRef: (node: HTMLDivElement | null) => void
-}): React.JSX.Element {
+export function renderTabBarSurface(
+  {
+    props,
+    runtime,
+    createMenu,
+    itemProjection,
+    tabStripNavigation,
+    tabStripDragScroll,
+    activeClientHostedBrowserRowId,
+    itemActions,
+    surfaceRef
+  }: {
+    props: TabBarProps
+    runtime: TabBarRuntimeModel
+    createMenu: TabBarCreateMenuController
+    itemProjection: TabBarItemProjection
+    tabStripNavigation: ReturnType<typeof useTabStripOverflowNavigation>
+    tabStripDragScroll: ReturnType<typeof useTabStripDragScrollHandlers>
+    activeClientHostedBrowserRowId: string | null
+    itemActions: TabBarItemActions
+    surfaceRef: (node: HTMLDivElement | null) => void
+  },
+  t: Translate = translate
+): React.JSX.Element {
   const {
     worktreeId,
     terminalOnly = false,
@@ -123,10 +127,7 @@ export function renderTabBarSurface({
               size="icon-xs"
               className="mx-0.5 my-auto h-6 w-5 @max-[260px]/tab-strip:hidden"
               style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              aria-label={translate(
-                'auto.components.tab.bar.TabBar.7a9b4af2af',
-                'Scroll tabs left'
-              )}
+              aria-label={t('auto.components.tab.bar.TabBar.7a9b4af2af', 'Scroll tabs left')}
               aria-disabled={!tabStripOverflowState.canScrollStart}
               disabled={
                 !tabStripDragScroll.isTabDragActive && !tabStripOverflowState.canScrollStart
@@ -139,7 +140,7 @@ export function renderTabBarSurface({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={6}>
-            {translate('auto.components.tab.bar.TabBar.7a9b4af2af', 'Scroll tabs left')}
+            {t('auto.components.tab.bar.TabBar.7a9b4af2af', 'Scroll tabs left')}
           </TooltipContent>
         </Tooltip>
       ) : null}
@@ -192,10 +193,7 @@ export function renderTabBarSurface({
               size="icon-xs"
               className="mx-0.5 my-auto h-6 w-5 @max-[260px]/tab-strip:hidden"
               style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              aria-label={translate(
-                'auto.components.tab.bar.TabBar.232e075b07',
-                'Scroll tabs right'
-              )}
+              aria-label={t('auto.components.tab.bar.TabBar.232e075b07', 'Scroll tabs right')}
               aria-disabled={!tabStripOverflowState.canScrollEnd}
               disabled={!tabStripDragScroll.isTabDragActive && !tabStripOverflowState.canScrollEnd}
               onClick={() => scrollTabStrip('end')}
@@ -206,7 +204,7 @@ export function renderTabBarSurface({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={6}>
-            {translate('auto.components.tab.bar.TabBar.232e075b07', 'Scroll tabs right')}
+            {t('auto.components.tab.bar.TabBar.232e075b07', 'Scroll tabs right')}
           </TooltipContent>
         </Tooltip>
       ) : null}
@@ -220,8 +218,8 @@ export function renderTabBarSurface({
           <button
             className="ml-2 my-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-            title={translate('auto.components.tab.bar.TabBar.b1a132357f', 'New tab')}
-            aria-label={translate('auto.components.tab.bar.TabBar.b1a132357f', 'New tab')}
+            title={t('auto.components.tab.bar.TabBar.b1a132357f', 'New tab')}
+            aria-label={t('auto.components.tab.bar.TabBar.b1a132357f', 'New tab')}
             data-contextual-tour-target="tab-create-menu"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -242,6 +240,7 @@ export function renderTabBarSurface({
             <>
               <TabBarAgentPickerEntry
                 inventory={agentPickerInventory}
+                terminalPending={agentMenu.state === 'settled' && agentMenu.terminalPending}
                 worktreeId={worktreeId}
                 groupId={resolvedGroupId}
                 menuOpen={newTabMenuOpen}

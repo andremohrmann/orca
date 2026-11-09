@@ -3,13 +3,13 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { installGuardedLinkProviderRegistration } from '@/lib/pane-manager/terminal-link-provider-guard'
 import {
   createFilePathLinkProvider,
-  getTerminalFileOpenHint,
-  openFilePathLinkAtBufferPosition,
   type LinkHandlerDeps
-} from '@/components/terminal-pane/terminal-link-handlers'
-import { openHttpLinkAtBufferPosition } from '@/components/terminal-pane/terminal-url-link-hit-testing'
-import { getTerminalBufferPositionForMouseEvent } from '@/components/terminal-pane/terminal-mouse-buffer-position'
-import type { TerminalPathExistsCache } from '@/components/terminal-pane/terminal-path-exists-cache'
+} from '@/components/terminal-pane/links/files/terminal-link-handlers'
+import { getTerminalFileOpenHint } from '@/components/terminal-pane/links/terminal-link-open-hints'
+import { openFilePathLinkAtBufferPosition } from '@/components/terminal-pane/links/files/terminal-file-link-hit-testing'
+import { openHttpLinkAtBufferPosition } from '@/components/terminal-pane/links/http/terminal-url-link-hit-testing'
+import { getTerminalBufferPositionForMouseEvent } from '@/components/terminal-pane/input/pointer/terminal-mouse-buffer-position'
+import type { TerminalPathExistsCache } from '@/components/terminal-pane/links/files/terminal-path-exists-cache'
 import { TERMINAL_HTTP_URL_REGEX } from '../../../../shared/terminal/links/terminal-http-url-extraction'
 import type { DashboardCardTerminalLinks } from '../../../../shared/dashboard-snapshot'
 import {

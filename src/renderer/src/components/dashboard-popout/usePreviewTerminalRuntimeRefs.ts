@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import type { MacOptionAsAlt } from '@/components/terminal-pane/terminal-shortcut-policy'
+import type { MacOptionAsAlt } from '@/components/terminal-pane/input/keyboard/terminal-option-shortcut-policy'
 import type {
   DashboardCardTerminalInput,
   DashboardCardTerminalLinks

@@ -21,13 +21,13 @@ vi.mock('@xterm/xterm', () => ({
   }
 }))
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}))
-vi.mock('@/components/terminal-pane/terminal-user-input-signal', () => ({
+vi.mock('@/components/terminal-pane/input/terminal-user-input-signal', () => ({
   subscribeToTerminalUserInput: (_terminal: unknown, listener: () => void) => {
     signalUserInput = listener
     return { dispose: () => {} }
   }
 }))
-vi.mock('@/components/terminal-pane/terminal-native-copy-gutter', () => ({
+vi.mock('@/components/terminal-pane/clipboard/terminal-native-copy-gutter', () => ({
   installTerminalNativeCopyGutterTrim: () => ({ dispose: () => {} })
 }))
 vi.mock('../dashboard-popout/preview-terminal-compatibility', () => ({

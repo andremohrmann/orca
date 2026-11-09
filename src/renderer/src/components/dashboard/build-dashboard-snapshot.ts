@@ -1,6 +1,6 @@
 import { agentVerdictDisplayMark } from '../../../../shared/agent-status/lifecycle/agent-main-agent-verdict'
-import type { StructuredChatTabNames } from '@/runtime/structured-chat-tab-name'
-import type { AgentLaunchRouteView } from '@/lib/agent-launch-route-input'
+import type { StructuredChatTabNames } from '@/runtime/native-chat/naming/structured-chat-tab-name'
+import type { AgentLaunchRouteView } from '@/lib/agent-session/launch/routing/agent-launch-route-input'
 import type { AppState } from '@/store/types'
 import {
   DASHBOARD_MAX_MAP_WORKSPACES,
@@ -55,6 +55,7 @@ import {
   type DashboardUsageSnapshotState
 } from './dashboard-usage-snapshot'
 import { buildDashboardCardTerminalLinks } from './dashboard-card-terminal-links'
+import type { Translate } from '@/i18n/use-translate'
 
 /** Keep builder inputs as a Pick so tests need only construct the store slices read here. */
 export type DashboardSnapshotState = Pick<
@@ -101,7 +102,8 @@ export function buildDashboardSnapshot(
     rowsCache?: WorktreeAgentRowsCache
     /** Freshness token for rowsCache (agentStatusEpoch); required for the cache to be safe. */
     rowsGeneration?: unknown
-  } = {}
+  } = {},
+  t?: Translate
 ): DashboardSnapshot {
   const cards: DashboardCard[] = []
   const workspaces: DashboardWorkspace[] | undefined =
@@ -147,7 +149,7 @@ export function buildDashboardSnapshot(
       ? groupSubagentsByParentPaneKey(rows)
       : undefined
     const context = includeCardDetails
-      ? resolveDashboardCardContext(state, repo, worktree)
+      ? resolveDashboardCardContext(state, repo, worktree, t)
       : undefined
     if (workspaces && workspaces.length < DASHBOARD_MAX_MAP_WORKSPACES) {
       const hostMetadata = dashboardCardMapWorkspaceMetadata(

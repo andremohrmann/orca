@@ -74,3 +74,12 @@ export function getDelayedUpdateWakeDelayMs(
   }
   return Math.max(untilClearedMs, 0) + DELAYED_UPDATE_CLEAR_BUFFER_MS
 }
+
+export function readUpdateDelayDays(getUpdateDelayDays: (() => number) | null): number {
+  try {
+    return getUpdateDelayDays?.() ?? 0
+  } catch {
+    // A settings read failure must not block updates entirely.
+    return 0
+  }
+}

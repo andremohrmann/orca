@@ -7,8 +7,8 @@ import {
   encodeTerminalStreamJson,
   encodeTerminalStreamText
 } from '../../../../shared/terminal/stream/terminal-stream-protocol'
-import { resetRemoteRuntimeTerminalMultiplexersForTests } from '@/runtime/remote-runtime-terminal-multiplexer'
-import { replaceRuntimeEnvironmentRevisions } from '@/runtime/runtime-environment-revision'
+import { resetRemoteRuntimeTerminalMultiplexersForTests } from '@/runtime/hosted-terminals/streams/registry/remote-runtime-terminal-multiplexer-registry'
+import { replaceRuntimeEnvironmentRevisions } from '@/runtime/rpc/environment-revisions/runtime-environment-revision'
 import { createPreviewRemoteTerminalSession } from './preview-remote-terminal-session'
 
 type Callbacks = {

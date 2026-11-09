@@ -123,7 +123,6 @@ function Merge-CustomBranch {
         '-c',
         'core.editor=true',
         'commit',
-        '--no-verify',
         '-m',
         'chore(ci): remove inherited workflows'
       )
@@ -170,7 +169,6 @@ function Merge-CustomBranch {
     '-c',
     'core.editor=true',
     'commit',
-    '--no-verify',
     '--no-edit'
   )
 }
@@ -232,13 +230,6 @@ function Resolve-DeletedWorkflowMergeConflicts {
       return $false
     }
   }
-  $upstreamContentConflicts = @(
-    $conflicts | Where-Object {
-      $customContentConflictAllowlist -notcontains $_ -and
-      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 2\s') -and
-      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 3\s')
-    }
-  )
   $upstreamDeletedConflicts = @(
     $conflicts | Where-Object {
       $customContentConflictAllowlist -notcontains $_ -and
@@ -249,17 +240,6 @@ function Resolve-DeletedWorkflowMergeConflicts {
   if ($upstreamDeletedConflicts.Count -gt 0) {
     Write-Host "`n==> Accept upstream deletions for non-custom files"
     & git rm -f -- $upstreamDeletedConflicts | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-      return $false
-    }
-  }
-  foreach ($path in $upstreamContentConflicts) {
-    Write-Host "`n==> Accept upstream content for non-custom file $path"
-    & git checkout --theirs -- $path | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-      return $false
-    }
-    & git add -- $path | Out-Host
     if ($LASTEXITCODE -ne 0) {
       return $false
     }
@@ -375,6 +355,8 @@ if (!$SkipValidation) {
     'run',
     '--config',
     'config/vitest.config.ts',
+    '--maxWorkers',
+    '2',
     '--testTimeout',
     '120000',
     'src/main/ipc/dashboard-popout.test.ts',
@@ -394,7 +376,6 @@ if (!$SkipValidation) {
     'src/renderer/src/components/dashboard-popout/preview-grid-focus-ownership.test.ts',
     'src/renderer/src/components/terminal-pane/use-terminal-window-wake-recovery.test.ts',
     'src/renderer/src/components/terminal-pane/use-terminal-pane-global-effects-window-focus-recovery.test.ts',
-    'src/renderer/src/components/dashboard/AgentDashboardDrawer.test.tsx',
     'src/renderer/src/components/dashboard/AgentDashboardExperimentalSetting.test.tsx',
     'src/renderer/src/components/tab-bar/tab-create-menu-options.test.ts',
     'src/renderer/src/lib/run-quick-command-in-new-tab.test.ts',

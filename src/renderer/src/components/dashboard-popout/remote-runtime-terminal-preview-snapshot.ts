@@ -1,4 +1,4 @@
-import type { RemoteRuntimeMultiplexedTerminalCallbacks } from '@/runtime/remote-runtime-terminal-multiplexer-types'
+import type { RemoteRuntimeMultiplexedTerminalCallbacks } from '@/runtime/hosted-terminals/streams/remote-terminal-stream-contracts'
 import type {
   TerminalPreviewConnectResult,
   TerminalPreviewReplayChunk

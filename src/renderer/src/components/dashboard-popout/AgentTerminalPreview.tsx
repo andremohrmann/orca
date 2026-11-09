@@ -3,7 +3,10 @@ import type { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
-import { replayPreviewConnectionSnapshot } from './preview-terminal-snapshot-replay'
+import {
+  createPreviewReplayWriter,
+  replayPreviewConnectionSnapshot
+} from './preview-terminal-snapshot-replay'
 import { previewAdvertisesKittyKeyboard } from './preview-terminal-options'
 import { installPreviewTerminalCompatibility } from './preview-terminal-compatibility'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
@@ -11,8 +14,7 @@ import { installPreviewImeBridge, type PreviewImeBridge } from './preview-termin
 import { useAppStore } from '@/store'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { createPreviewGridFocusHandoff } from './preview-grid-focus-handoff'
-import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
-import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/terminal-native-copy-gutter'
+import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/clipboard/terminal-native-copy-gutter'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal/replay/terminal-preview'
 import {
   PREVIEW_SCROLLBACK_ROWS,
@@ -30,7 +32,7 @@ import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
 import { installPreviewTerminalInteractions } from './preview-terminal-interaction-installers'
 import { createPreviewGonePtyRetry } from './preview-terminal-gone-retry'
 import { createPreviewRemoteTerminalSession } from './preview-remote-terminal-session'
-import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
+import { isWindowsUserAgent } from '@/lib/user-agent-platform'
 const RESYNC_RETRY_DELAY_MS = 150
 type PendingLivePayload = {
   acknowledge: boolean
@@ -93,8 +95,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker({
       kittyKeyboard: previewAdvertisesKittyKeyboard(mountTerminalInput)
     })
-    let replayDepth = 0,
-      refreshInFlight = false
+    let refreshInFlight = false
     let refreshAgain = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
     let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -107,7 +108,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       getTerminal: () => terminal,
       scaleToFit,
       localResizeToFit: !scaleToFit,
-      onUnscaledOverflow: () => scheduleGridClaim()
+      onUnscaledOverflow: () => scheduleGridClaim(),
+      onBoxResize: () => scheduleGridClaim()
     })
     const goneRetry = createPreviewGonePtyRetry({
       retryDelayMs: 1_000,
@@ -134,30 +136,12 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     })
     scheduleGridClaim = gridClaim.schedule
     reclaimGridRef.current = gridClaim.reclaim
-    const boxResizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(() => {
-            boxFit.schedule()
-            gridClaim.schedule()
-          })
-    if (container.parentElement) {
-      boxResizeObserver?.observe(container.parentElement)
-    }
-    boxResizeObserver?.observe(container)
-    const writeReplayed = (chunk: string, onDone?: () => void, live = false): void => {
-      if (live) {
-        kittyKeyboardModes.scan(chunk)
-      } else {
-        kittyKeyboardModes.scanReplay(chunk)
-      }
-      replayDepth++
-      terminal?.write(chunk, () => {
-        replayDepth--
-        boxFit.schedule()
-        onDone?.()
-      })
-    }
+    const replayWriter = createPreviewReplayWriter({
+      getTerminal: () => terminal,
+      kittyKeyboardModes,
+      onParsed: boxFit.schedule
+    })
+    const writeReplayed = replayWriter.write
     const writeLive = (payload: PendingLivePayload['payload'], acknowledge = true): void => {
       clearPreviewTerminalTimer(inputRefreshTimer)
       inputRefreshTimer = null
@@ -237,7 +221,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
           requestInputRefresh:
             refreshAfterInput && !remoteSession ? requestInputRefresh : () => undefined,
           scheduleHorizontalReset: horizontalReset.schedule,
-          isReplaying: () => replayDepth > 0
+          isReplaying: replayWriter.isReplaying
         })
         imeBridge = installPreviewImeBridge(terminal, {
           getKittyKeyboardFlags: () => kittyKeyboardModes.flags
@@ -341,11 +325,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       }, 180)
     }
     retryGonePtyRef.current = remoteSession ? () => void remoteSession.start() : goneRetry.retryNow
-    const disposeAppMenuClipboard = installPreviewTerminalAppMenuClipboard({
-      container,
-      getTerminal: () => terminal,
-      pasteClipboardText
-    })
 
     const offData = remoteSession
       ? null
@@ -371,8 +350,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       reclaimGridRef.current = () => undefined
       horizontalReset.dispose()
       gridClaim.dispose()
-      boxResizeObserver?.disconnect()
-      disposeAppMenuClipboard()
       offData?.()
       userInputDisposable?.dispose()
       disposeImeNativeTextBridge()
@@ -392,6 +369,8 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     autoFocus,
     claimGrid,
     macOptionAsAltRef,
+    linkSourceRef,
+    onBrowserForegroundRef,
     ptyId,
     releaseGridOnWindowBlur,
     refreshAfterInput,

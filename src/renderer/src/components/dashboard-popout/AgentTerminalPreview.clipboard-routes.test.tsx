@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   TERMINAL_PASTE_CHUNK_MAX_BYTES,
   TERMINAL_PASTE_DIRECT_MAX_BYTES
-} from '@/components/terminal-pane/terminal-paste-limits'
-import '@/components/terminal-pane/terminal-bracketed-paste'
+} from '@/components/terminal-pane/input/paste/terminal-paste-limits'
+import '@/components/terminal-pane/input/paste/terminal-bracketed-paste'
 import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START
@@ -115,19 +115,19 @@ vi.mock(import('@/lib/pane-manager/pane-terminal-options'), async (importOrigina
   ...(await importOriginal()),
   buildDefaultTerminalOptions: () => ({})
 }))
-vi.mock('@/components/terminal-pane/terminal-user-input-signal', () => ({
+vi.mock('@/components/terminal-pane/input/terminal-user-input-signal', () => ({
   subscribeToTerminalUserInput: (_terminal: unknown, listener: () => void) => {
     terminalHarness.userInputListener = listener
     return { dispose: terminalHarness.userInputDispose }
   }
 }))
-vi.mock('@/components/terminal-pane/use-system-prefers-dark', () => ({
+vi.mock('@/hooks/theme/use-system-prefers-dark', () => ({
   useSystemPrefersDark: () => false
 }))
 vi.mock('@/lib/shortcut-platform', () => ({
   getShortcutPlatform: () => platformState.value
 }))
-vi.mock('@/components/terminal-pane/terminal-ime-native-text-forwarder', () => ({
+vi.mock('@/components/terminal-pane/input/ime/terminal-ime-native-text-forwarder', () => ({
   installTerminalImeNativeTextForwarder: (args: {
     sendInput: (data: string) => void
     getKittyKeyboardFlags?: () => number
@@ -143,7 +143,7 @@ vi.mock('@/components/terminal-pane/terminal-ime-native-text-forwarder', () => (
     return forwarder
   }
 }))
-vi.mock('@/components/terminal-pane/terminal-ime-composition-tracker', () => ({
+vi.mock('@/components/terminal-pane/input/ime/terminal-ime-composition-tracker', () => ({
   installTerminalImeCompositionTracker: () => {
     const tracker = { isActive: () => false, dispose: vi.fn() }
     imeHarness.trackers.push(tracker)
@@ -155,19 +155,22 @@ vi.mock('@/store', () => {
   useAppStore.getState = (): typeof storeState => storeState
   return { useAppStore }
 })
-vi.mock('@/runtime/remote-runtime-terminal-multiplexer', () => ({
-  getRemoteRuntimeTerminalMultiplexer: () => ({
-    subscribeTerminal: async ({ callbacks }) => {
-      callbacks.onSnapshot('', { cols: 80, rows: 24, seq: 1 })
-      callbacks.onSubscribed?.()
-      return {
-        sendInput: runtimeStreamHarness.sendInput,
-        claimViewport: () => true,
-        close: vi.fn()
+vi.mock(
+  '@/runtime/hosted-terminals/streams/registry/remote-runtime-terminal-multiplexer-registry',
+  () => ({
+    getRemoteRuntimeTerminalMultiplexer: () => ({
+      subscribeTerminal: async ({ callbacks }) => {
+        callbacks.onSnapshot('', { cols: 80, rows: 24, seq: 1 })
+        callbacks.onSubscribed?.()
+        return {
+          sendInput: runtimeStreamHarness.sendInput,
+          claimViewport: () => true,
+          close: vi.fn()
+        }
       }
-    }
+    })
   })
-}))
+)
 
 // Paste encoding is under test here; owner routing is covered by AgentTerminalPreview.test.tsx.
 vi.mock('./terminal-preview-api', () => ({

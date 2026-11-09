@@ -1,12 +1,13 @@
 import type { Terminal } from '@xterm/xterm'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
-import { executeTerminalPastePlan } from '@/components/terminal-pane/terminal-paste-executor'
-import { planTerminalPasteWithYield } from '@/components/terminal-pane/terminal-paste-coordinator'
-import type { TerminalPasteTextOptions } from '@/components/terminal-pane/terminal-paste-model'
-import { resolveTerminalPasteRuntime } from '@/components/terminal-pane/terminal-paste-runtime'
-import { pasteTerminalText } from '@/components/terminal-pane/terminal-bracketed-paste'
-import { pasteTerminalClipboard } from '@/components/terminal-pane/terminal-clipboard-paste'
-import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/runtime-terminal-stream'
+import { executeTerminalPastePlan } from '@/components/terminal-pane/input/paste/terminal-paste-executor'
+import { planTerminalPasteWithYield } from '@/components/terminal-pane/input/paste/terminal-paste-coordinator'
+import type { TerminalPasteTextOptions } from '@/components/terminal-pane/input/paste/terminal-paste-model'
+import { resolveTerminalPasteRuntime } from '@/components/terminal-pane/input/paste/terminal-paste-runtime'
+import { pasteTerminalText } from '@/components/terminal-pane/input/paste/terminal-bracketed-paste'
+import { pasteTerminalClipboard } from '@/components/terminal-pane/clipboard/terminal-clipboard-paste'
+import { isTerminalPanePasteFocusCurrent } from '@/components/terminal-pane/input/paste/terminal-paste-target-state'
+import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/hosted-terminals/identity/remote-runtime-pty-owner'
 import { parseAppSshPtyId } from '../../../../shared/ssh-pty-id'
 import type {
   DashboardCardTerminalInput,
@@ -38,8 +39,11 @@ export function createPreviewClipboardPaster(deps: {
       !deps.isDisposed() &&
       deps.getTerminal() === pasteTerminal &&
       activeElementAtDispatch !== null &&
-      document.activeElement === activeElementAtDispatch &&
-      deps.container.contains(activeElementAtDispatch)
+      isTerminalPanePasteFocusCurrent({
+        requireSameFocusedElement: true,
+        activeElementAtDispatch,
+        paneContainer: deps.container
+      })
     if (!targetIsCurrent()) {
       return
     }

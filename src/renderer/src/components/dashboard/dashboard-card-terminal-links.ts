@@ -1,5 +1,5 @@
 import type { DashboardCardTerminalLinks } from '../../../../shared/dashboard-snapshot'
-import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/runtime-terminal-stream'
+import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/hosted-terminals/identity/remote-runtime-pty-owner'
 import { parseWslUncPath } from '../../../../shared/wsl-paths'
 
 export function buildDashboardCardTerminalLinks(

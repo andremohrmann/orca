@@ -14,8 +14,9 @@ import { createProcessHostDevRebuildPlugin } from './config/build-plugins/proces
 import { createViteCacheRetentionPlugin } from './config/build-plugins/vite-cache-retention'
 import { MAIN_BUILD_ENTRY_POINTS } from './config/build-plugins/main-build-entry-points'
 import { createPlainNodeEntryGuardPlugin } from './config/build-plugins/plain-node-entry-guard'
-import updateFeedDefaults from './config/update-feed-defaults.json' with { type: 'json' }
+import { resolveUpdateFeedRepoLiteral } from './config/build-plugins/update-feed-repo'
 import { createDevServeConfig } from './config/build-plugins/dev-serve-config'
+import { reactPluginOptions } from './config/build-plugins/react-compiler'
 import { resolveBuildSourceCommit } from './config/scripts/build-identity/build-source-commit.mjs'
 
 const BUNDLED_MAIN_DEPENDENCIES = new Set([
@@ -33,6 +34,7 @@ const BUNDLED_MAIN_DEPENDENCIES = new Set([
   'unified',
   'remark-parse',
   'remark-gfm',
+  'hast-util-from-html-isomorphic',
   // Windows NSIS copies app.asar before external resources; bootstrap must not race resources/node_modules.
   'zod'
 ])
@@ -57,12 +59,7 @@ const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
 // Why substituted rather than read at runtime: the updater pins a concrete feed URL before
 // electron-updater consults app-update.yml, so a fork's installers and its update checks have to
 // name the same repo. config/update-feed-defaults.json is the shared default for both halves.
-const orcaUpdateFeedOwner = process.env.ORCA_UPDATE_OWNER || updateFeedDefaults.owner
-const orcaUpdateFeedRepo = process.env.ORCA_UPDATE_REPO || updateFeedDefaults.repo
-const ORCA_UPDATE_FEED_REPO_LITERAL =
-  orcaUpdateFeedOwner.length > 0 && orcaUpdateFeedRepo.length > 0
-    ? JSON.stringify(`${orcaUpdateFeedOwner}/${orcaUpdateFeedRepo}`)
-    : 'null'
+const ORCA_UPDATE_FEED_REPO_LITERAL = resolveUpdateFeedRepoLiteral()
 
 const darkBuildSwitches: {
   darkBuildDefines: () => Record<string, string>
@@ -296,7 +293,7 @@ export const electronViteConfig: UserConfig = {
       }
     },
     plugins: [
-      react(),
+      react(reactPluginOptions()),
       tailwindcss(),
       createPdfjsViewerAssetsPlugin(),
       createViteCacheRetentionPlugin()

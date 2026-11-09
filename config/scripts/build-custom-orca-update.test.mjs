@@ -94,22 +94,6 @@ if (Resolve-DeletedWorkflowMergeConflicts) { exit 0 } else { exit 1 }
     expect(resolver).not.toContain('commit --no-edit')
   })
 
-  it('removes inherited workflows before committing the upstream merge', () => {
-    expect(SCRIPT).toContain("'.github/workflows/custom-windows-update.yml'")
-    expect(SCRIPT).toContain("'.github/workflows/pr-test-loc.yml'")
-    expect(SCRIPT).toContain('& git merge --no-ff --no-commit $UpstreamRef')
-    expect(SCRIPT).toContain('& git rm -f -- $inheritedWorkflows | Out-Host')
-    expect(SCRIPT).toContain('if (@(git diff --cached --name-only).Count -gt 0)')
-    expect(SCRIPT).toContain("'Commit upstream merge' git @(")
-    expect(SCRIPT).toContain("'--no-verify'")
-  })
-
-  it('accepts upstream content for non-custom files while retaining a conflict guard', () => {
-    expect(SCRIPT).toContain('Accept upstream content for non-custom file $path')
-    expect(SCRIPT).toContain('& git checkout --theirs -- $path | Out-Host')
-    expect(SCRIPT).toContain('remainingConflicts.Count -gt 0')
-  })
-
   it('never force-aligns every differing file to upstream after a merge', () => {
     // The October 13 2026 incident: a function that ran after every merge — conflict or not — and
     // reverted or deleted any file merely differing from upstream (not just ones with a real

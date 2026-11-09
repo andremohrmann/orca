@@ -1,3 +1,4 @@
+import type { Terminal } from '@xterm/xterm'
 import type { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
 import { parseTerminalKittyKeyboardFlags } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-flags'
 import { buildKittyKeyboardRestore } from '../../../../shared/terminal/protocol/input-modes/terminal-mode-reset-profiles'
@@ -33,5 +34,29 @@ export function replayPreviewConnectionSnapshot(args: {
   }
   for (const chunk of args.replay) {
     args.write(chunk.data, chunk.mode === 'live')
+  }
+}
+
+export function createPreviewReplayWriter(args: {
+  getTerminal: () => Terminal | null
+  kittyKeyboardModes: TerminalKittyKeyboardModeTracker
+  onParsed: () => void
+}) {
+  let replayDepth = 0
+  return {
+    isReplaying: (): boolean => replayDepth > 0,
+    write: (chunk: string, onDone?: () => void, live = false): void => {
+      if (live) {
+        args.kittyKeyboardModes.scan(chunk)
+      } else {
+        args.kittyKeyboardModes.scanReplay(chunk)
+      }
+      replayDepth++
+      args.getTerminal()?.write(chunk, () => {
+        replayDepth--
+        args.onParsed()
+        onDone?.()
+      })
+    }
   }
 }

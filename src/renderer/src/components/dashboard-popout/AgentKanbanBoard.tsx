@@ -22,6 +22,7 @@ import {
 } from './agent-board-filtering'
 import './agent-board-transitions.css'
 import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { Button } from '@/components/ui/button'
 import { AgentLiveGrid } from './AgentLiveGrid'
 import { DashboardUsageBar } from './DashboardUsageBar'
@@ -78,6 +79,7 @@ export function AgentKanbanBoard({
   onAssignWorkspaceStatus = assignWorkspaceStatusViaPopoutRelay,
   onRenameWorkspace = renameWorkspaceViaPopoutRelay
 }: AgentKanbanBoardProps): React.JSX.Element {
+  const t = useTranslate()
   const [view, setView] = useState(initialView)
   const visibleBuckets = useMemo(
     () =>
@@ -195,14 +197,12 @@ export function AgentKanbanBoard({
 
   return (
     // Pop-outs have no app provider; supply the card tooltip provider in either host.
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider>
       <div
         className={cn('relative flex flex-col bg-background text-foreground', containerClassName)}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2.5">
-          <h1 className="text-[13px] font-semibold">
-            {translate('dashboardPopout.title', 'Agents')}
-          </h1>
+          <h1 className="text-[13px] font-semibold">{t('dashboardPopout.title', 'Agents')}</h1>
           <span className="text-[11px] text-muted-foreground">
             {translate('dashboardPopout.total', '{{count}} total', {
               count: availableCards.length
@@ -243,7 +243,7 @@ export function AgentKanbanBoard({
                 <button
                   type="button"
                   onClick={onClose}
-                  aria-label={translate('dashboardPopout.close', 'Close dashboard')}
+                  aria-label={t('dashboardPopout.close', 'Close dashboard')}
                   className="rounded-sm p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <XIcon className="size-4" />

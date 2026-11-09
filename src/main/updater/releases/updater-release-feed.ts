@@ -4,7 +4,7 @@ import {
   fetchNewerReleaseTagsWithReadiness
 } from './updater-prerelease-feed'
 import { getReleaseDownloadUrl } from './updater-release-readiness'
-import { toDelayedUpdate } from './updater-release-delay'
+import { readUpdateDelayDays, toDelayedUpdate } from './updater-release-delay'
 import { updateDelayDaysToMs } from '../../../shared/update-delay'
 import { isMissingUpdateManifestFailure, isPrereleaseVersion } from './updater-fallback'
 import { isCustomVersion } from '../../../shared/release-channel'
@@ -126,7 +126,8 @@ export abstract class UpdaterReleaseFeed extends UpdaterInstallExecution {
     const includePrerelease =
       isPerfCheck || this.includePrereleaseActive || isPrereleaseVersion(currentVersion)
     // Perf builds are explicit one-off opt-ins; "install now" consumes its bypass on this pin.
-    const delayDays = isPerfCheck || this.ignoreUpdateDelayOnce ? 0 : this.readUpdateDelayDays()
+    const delayDays =
+      isPerfCheck || this.ignoreUpdateDelayOnce ? 0 : readUpdateDelayDays(this.getUpdateDelayDays)
     this.ignoreUpdateDelayOnce = false
     const now = Date.now()
     const releaseTagsResult = await fetchNewerReleaseTagsWithReadiness(
@@ -225,9 +226,6 @@ export abstract class UpdaterReleaseFeed extends UpdaterInstallExecution {
     if (getUpdateFeedInfo().isCustom || isCustomVersion(currentVersion)) {
       this.clearPrereleaseFallbackContext()
       this.clearPublishingWindowLastGoodCheck()
-      console.info(
-        `[updater] custom release feed has no installable custom update: current=${currentVersion} includePrerelease=${includePrerelease}`
-      )
       return 'not-available'
     }
     this.clearPrereleaseFallbackContext()
@@ -258,15 +256,6 @@ export abstract class UpdaterReleaseFeed extends UpdaterInstallExecution {
     console.info(`[updater] stable fallback feed pinned: current=${currentVersion} → ${url}`)
     autoUpdater.setFeedURL({ provider: 'generic', url })
     return 'ready'
-  }
-
-  private readUpdateDelayDays(): number {
-    try {
-      return this.getUpdateDelayDays?.() ?? 0
-    } catch {
-      // A settings read failure must not block updates entirely.
-      return 0
-    }
   }
 
   protected retryPrereleaseFallbackAfterMissingManifest(

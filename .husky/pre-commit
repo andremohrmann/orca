@@ -1,2 +1,6 @@
 #!/usr/bin/env sh
-pnpm exec lint-staged
+if merge_head=$(git rev-parse -q --verify MERGE_HEAD); then
+  pnpm exec lint-staged --diff="$merge_head" --concurrent=2
+else
+  pnpm exec lint-staged --concurrent=2
+fi

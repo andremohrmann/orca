@@ -3,8 +3,16 @@ import type { Store } from '../../persistence/loading-store/store'
 import type { Repo } from '../../../shared/repo-types'
 import type { CreateWorktreeArgs } from '../../../shared/worktree/create-types'
 import type { ExecutionHostId } from '../../../shared/execution-host'
+import type {
+  CrossStoreInferredSource,
+  CrossStoreParentRef
+} from '../../../shared/worktree/lineage-types'
 import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
-import type { AutomationWorkspaceProvenance, GitWorktreeInfo } from '../../../shared/worktree/types'
+import type {
+  AutomationWorkspaceProvenance,
+  CliWorkspaceProvenance,
+  GitWorktreeInfo
+} from '../../../shared/worktree/types'
 import { normalizeRuntimePathForComparison } from '../../../shared/cross-platform-path'
 import { getProjectHostSetupWorktreeMeta } from '../../../shared/project-host-setup-lookup'
 import { isTuiAgent } from '../../../shared/agent-launch/catalog/tui-agent-config'
@@ -42,9 +50,16 @@ export type ProvisionedRootRequest = Pick<
   | 'manualOrder'
   | 'createdWithAgent'
   | 'pendingFirstAgentMessageRename'
+  | 'comment'
 > & {
+  /** The composer's parent, resolved like a create's (`folder:<id>` or `worktree:<id>`). */
+  parentWorkspace?: string
+  parentWorkspaceOrigin?: 'manual'
+  crossStoreParent?: CrossStoreParentRef
+  crossStoreParentInferredFrom?: CrossStoreInferredSource
   expectedRefHead?: string
   automationProvenance?: AutomationWorkspaceProvenance
+  cliProvenance?: CliWorkspaceProvenance
 }
 
 export function provisionedRootPathsEqual(left: string, right: string): boolean {
@@ -134,12 +149,14 @@ export function buildProvisionedRootMeta(
     orcaCreatedAt: now,
     orcaCreationSource: options.source,
     creatorProvenance: { kind: 'host' },
+    ...(args.cliProvenance ? { cliProvenance: args.cliProvenance } : {}),
     orcaCreationWorkspaceLayout: getWorktreeCreationLayout(repo, store.getSettings()),
     ...(args.automationProvenance ? { automationProvenance: args.automationProvenance } : {}),
     ...(args.compareBaseRef || args.baseBranch
       ? { baseRef: args.compareBaseRef ?? args.baseBranch }
       : {}),
     ...(args.pushTarget ? { pushTarget: args.pushTarget } : {}),
+    ...(args.comment ? { comment: args.comment } : {}),
     ...(isTuiAgent(args.createdWithAgent) ? { createdWithAgent: args.createdWithAgent } : {}),
     ...(args.pendingFirstAgentMessageRename === true && isTuiAgent(args.createdWithAgent)
       ? { pendingFirstAgentMessageRename: true }

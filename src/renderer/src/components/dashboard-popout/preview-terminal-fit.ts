@@ -89,6 +89,7 @@ export function createPreviewTerminalFitScheduler(args: {
   scaleToFit: boolean
   localResizeToFit: boolean
   onUnscaledOverflow: () => void
+  onBoxResize?: () => void
 }): { schedule: () => void; dispose: () => void } {
   let disposed = false
   const frames = new PaneReparentFrameTracker(() => disposed)
@@ -109,11 +110,23 @@ export function createPreviewTerminalFitScheduler(args: {
       })
     })
   }
+  const observer =
+    typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => {
+          schedule()
+          args.onBoxResize?.()
+        })
+  if (args.container.parentElement) {
+    observer?.observe(args.container.parentElement)
+  }
+  observer?.observe(args.container)
   return {
     schedule,
     dispose: (): void => {
       disposed = true
       frames.cancelPending()
+      observer?.disconnect()
     }
   }
 }

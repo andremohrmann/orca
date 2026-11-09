@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import { installPreviewTerminalDomPasteShortcut } from './preview-terminal-dom-paste-shortcut'
 import { installPreviewTerminalFocusReporting } from './preview-terminal-focus-reporting'
 import { installPreviewTerminalRightClickPaste } from './preview-terminal-right-click-paste'
@@ -32,7 +33,8 @@ export function installPreviewTerminalInteractions({
       isRightClickToPasteEnabled,
       pasteClipboardText
     }),
-    installPreviewTerminalDomPasteShortcut({ container, pasteClipboardText })
+    installPreviewTerminalDomPasteShortcut({ container, pasteClipboardText }),
+    installPreviewTerminalAppMenuClipboard({ container, getTerminal, pasteClipboardText })
   ]
   return () => {
     for (const dispose of disposers) {

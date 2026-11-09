@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   TERMINAL_PASTE_CHUNK_MAX_BYTES,
   TERMINAL_PASTE_DIRECT_MAX_BYTES
-} from '@/components/terminal-pane/terminal-paste-limits'
+} from '@/components/terminal-pane/input/paste/terminal-paste-limits'
 import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START

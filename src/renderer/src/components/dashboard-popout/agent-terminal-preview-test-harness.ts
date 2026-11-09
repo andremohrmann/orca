@@ -1,5 +1,5 @@
 import { vi, type Mock } from 'vitest'
-import type { RemoteRuntimeMultiplexedTerminalCallbacks } from '@/runtime/remote-runtime-terminal-multiplexer-types'
+import type { RemoteRuntimeMultiplexedTerminalCallbacks } from '@/runtime/hosted-terminals/streams/remote-terminal-stream-contracts'
 
 type TerminalPreviewMock = Mock<(...args: unknown[]) => unknown>
 
@@ -131,19 +131,19 @@ vi.mock(import('@/lib/pane-manager/pane-terminal-options'), async (importOrigina
   ...(await importOriginal()),
   buildDefaultTerminalOptions: () => ({})
 }))
-vi.mock('@/components/terminal-pane/terminal-user-input-signal', () => ({
+vi.mock('@/components/terminal-pane/input/terminal-user-input-signal', () => ({
   subscribeToTerminalUserInput: (_terminal: unknown, listener: () => void) => {
     terminalHarness.userInputListener = listener
     return { dispose: terminalHarness.userInputDispose }
   }
 }))
-vi.mock('@/components/terminal-pane/use-system-prefers-dark', () => ({
+vi.mock('@/hooks/theme/use-system-prefers-dark', () => ({
   useSystemPrefersDark: () => false
 }))
 vi.mock('@/lib/shortcut-platform', () => ({
   getShortcutPlatform: () => platformState.value
 }))
-vi.mock('@/components/terminal-pane/terminal-ime-native-text-forwarder', () => ({
+vi.mock('@/components/terminal-pane/input/ime/terminal-ime-native-text-forwarder', () => ({
   installTerminalImeNativeTextForwarder: (args: {
     sendInput: (data: string) => void
     getKittyKeyboardFlags?: () => number
@@ -159,7 +159,7 @@ vi.mock('@/components/terminal-pane/terminal-ime-native-text-forwarder', () => (
     return forwarder
   }
 }))
-vi.mock('@/components/terminal-pane/terminal-ime-composition-tracker', () => ({
+vi.mock('@/components/terminal-pane/input/ime/terminal-ime-composition-tracker', () => ({
   installTerminalImeCompositionTracker: () => {
     const tracker = { isActive: () => false, dispose: vi.fn() }
     imeHarness.trackers.push(tracker)
@@ -171,10 +171,13 @@ vi.mock('@/store', () => {
   useAppStore.getState = (): typeof storeState => storeState
   return { useAppStore }
 })
-vi.mock('@/runtime/remote-runtime-terminal-multiplexer', () => ({
-  getRemoteRuntimeTerminalMultiplexer: () => ({
-    subscribeTerminal: runtimeStreamHarness.subscribeTerminal
+vi.mock(
+  '@/runtime/hosted-terminals/streams/registry/remote-runtime-terminal-multiplexer-registry',
+  () => ({
+    getRemoteRuntimeTerminalMultiplexer: () => ({
+      subscribeTerminal: runtimeStreamHarness.subscribeTerminal
+    })
   })
-}))
+)
 
 export { imeHarness, platformState, runtimeStreamHarness, storeState, terminalHarness }

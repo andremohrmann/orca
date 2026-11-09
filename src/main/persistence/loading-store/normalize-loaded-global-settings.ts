@@ -22,6 +22,7 @@ import {
 } from '../applying-settings/terminal-settings-migrations'
 import { readLegacySidekickFlag } from '../applying-settings/onboarding-normalization'
 import { normalizeMachineName } from '../../../shared/machine-name'
+import { replaceRetiredSpeechModelId } from '../../speech/model-catalog'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import type { PreparedLoadedTerminalSettings } from './prepare-loaded-terminal-settings'
 import type { PreparedLoadedProfileSettings } from './prepare-loaded-profile-settings'
@@ -35,6 +36,7 @@ export function normalizeLoadedGlobalSettings(
     defaults,
     migratedExternalVisibility,
     migratedTerminalScrollback,
+    migratedTerminalFontWeight,
     migratedTerminalTuiScrollSensitivity,
     migratedSourceControlAi,
     migratedOptionAsAlt,
@@ -70,6 +72,16 @@ export function normalizeLoadedGlobalSettings(
     normalizedSourceControlGroupOrder
   } = profile
   const pluginOwnedSettings = normalizePluginOwnedSettings(parsed.settings ?? {})
+  const voice = { ...getDefaultVoiceSettings(), ...parsed.settings?.voice }
+  // Stored 'toggle' was everyone's old default, and Auto still toggles on a tap; Hold was always a choice.
+  const keepsDictationMode =
+    voice.dictationMode === 'hold' ||
+    voice.dictationMode === 'auto' ||
+    (parsed.settings?.voiceDictationModeDefaultedToAuto === true &&
+      voice.dictationMode === 'toggle')
+  if (!keepsDictationMode) {
+    voice.dictationMode = 'auto'
+  }
   const matchTerminalSidebarInputs = {
     pluginAppThemeLight: pluginOwnedSettings.pluginAppThemeLight,
     pluginAppThemeDark: pluginOwnedSettings.pluginAppThemeDark,
@@ -103,6 +115,7 @@ export function normalizeLoadedGlobalSettings(
     ...migratedNestedWorkerMaxDepth,
     ...migratedTerminalCursorStyle,
     terminalLineHeight: migratedTerminalLineHeight,
+    ...migratedTerminalFontWeight,
     // False was always explicit; the old true default may be reset once.
     terminalRightClickToPaste: terminalRightClickToPasteDefaultedForPlatform
       ? (parsed.settings?.terminalRightClickToPaste ?? defaults.settings.terminalRightClickToPaste)
@@ -168,6 +181,7 @@ export function normalizeLoadedGlobalSettings(
     ...migratedAgentPermission,
     claudeAgentTeamsDefaultDisabledMigrated: true,
     sshRemoteCliControlExistingHostsMigrated: true,
+    agentWorkspaceTrustExistingReposMigrated: true,
     openInApplications: normalizeOpenInApplications(parsed.settings?.openInApplications, {
       seedDefaults: true
     }),
@@ -179,9 +193,7 @@ export function normalizeLoadedGlobalSettings(
       migratedSourceControlAi,
       parsed.settings?.commitMessageAi ?? defaults.settings.commitMessageAi
     ),
-    voice: {
-      ...getDefaultVoiceSettings(),
-      ...parsed.settings?.voice
-    }
+    voice: { ...voice, sttModel: replaceRetiredSpeechModelId(voice.sttModel) },
+    voiceDictationModeDefaultedToAuto: true
   }
 }
