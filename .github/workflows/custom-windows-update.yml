@@ -160,7 +160,9 @@ jobs:
             }
           }
 
-      - name: Upload installer artifact
+      - name: Upload optional CI copy of installer
+        continue-on-error: true
+        timeout-minutes: 3
         uses: actions/upload-artifact@v4
         with:
           name: custom-orca-windows-${{ steps.release.outputs.version }}
