@@ -31,7 +31,7 @@ jobs:
       - name: Check out custom branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ env.CUSTOM_BRANCH }}
+          ref: ${{ github.event_name == 'push' && github.sha || env.CUSTOM_BRANCH }}
           fetch-depth: 0
           token: ${{ github.token }}
 
@@ -83,10 +83,14 @@ jobs:
             }
           }
 
-      - name: Merge upstream, validate, and build installer
+      - name: Validate and build installer
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File config/scripts/build-custom-orca-update.ps1 `
+          $mergeOptions = @()
+          if ('${{ github.event_name }}' -eq 'push') {
+            $mergeOptions += '-SkipUpstreamMerge'
+          }
+          powershell -ExecutionPolicy Bypass -File config/scripts/build-custom-orca-update.ps1 @mergeOptions `
             -Branch "$env:CUSTOM_BRANCH" `
             -Upstream upstream/main `
             -OutputDir "$env:OUTPUT_DIR" `
@@ -123,7 +127,7 @@ jobs:
           $notes = @"
           Custom Orca Windows build.
 
-          Upstream: stablyai/orca@$(git rev-parse --short=12 upstream/main)
+          Upstream repository: stablyai/orca
           Custom branch: $env:CUSTOM_BRANCH@$(git rev-parse --short=12 HEAD)
           "@
           gh release create "${{ steps.release.outputs.tag }}" `
