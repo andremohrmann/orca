@@ -140,7 +140,7 @@ vi.mock('@/components/terminal-pane/input/terminal-user-input-signal', () => ({
 vi.mock('@/hooks/theme/use-system-prefers-dark', () => ({
   useSystemPrefersDark: () => false
 }))
-vi.mock('@/lib/shortcut-platform', () => ({
+vi.mock('@/lib/keyboard/shortcut-platform', () => ({
   getShortcutPlatform: () => platformState.value
 }))
 vi.mock('@/components/terminal-pane/input/ime/terminal-ime-native-text-forwarder', () => ({

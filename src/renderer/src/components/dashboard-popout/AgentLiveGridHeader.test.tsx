@@ -8,7 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 
-vi.mock('@/lib/agent-catalog', () => ({
+vi.mock('@/lib/agent-catalog/agent-catalog', () => ({
   AgentIcon: () => <span data-testid="agent-icon" />
 }))
 

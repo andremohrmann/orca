@@ -14,7 +14,7 @@ vi.mock('./AgentLiveGridTerminal', () => ({
   )
 }))
 vi.mock('./AgentLiveGridHeader', () => ({ AgentLiveGridHeader: () => null }))
-vi.mock('@/lib/agent-catalog', () => ({ AgentIcon: () => null }))
+vi.mock('@/lib/agent-catalog/agent-catalog', () => ({ AgentIcon: () => null }))
 
 let savedLayout: AgentDashboardLiveLayout
 let emitSettings: (updates: Partial<GlobalSettings>) => void

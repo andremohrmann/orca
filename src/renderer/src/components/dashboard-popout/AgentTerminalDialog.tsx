@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import { SquareArrowOutUpRight, XIcon } from 'lucide-react'
-import { AgentTypeIcon } from '@/lib/agent-type-icon'
+import { AgentTypeIcon } from '@/components/agent/icons/agent-type-icon'
 import { formatAgentTypeLabel } from '../../../../shared/agent-status/presentation/agent-type-label'
 import { agentStateLabel } from '@/components/AgentStateDot'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -14,7 +14,7 @@ import { AgentTerminalPreview } from './AgentTerminalPreview'
 import { AgentCardLastMessages, hasAgentCardLastMessages } from './AgentCardLastMessages'
 import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
 import { useTranslate } from '@/i18n/use-translate'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 
 /** Routing payload for focusing an agent's pane in the main window. */
 export type AgentRevealArgs = DashboardRevealAgentArgs

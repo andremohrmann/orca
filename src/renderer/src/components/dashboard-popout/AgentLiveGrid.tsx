@@ -3,7 +3,7 @@ import { formatAgentTypeLabel } from '../../../../shared/agent-status/presentati
 import type { DashboardCard, DashboardFilterOption } from '../../../../shared/dashboard-snapshot'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 import { translate } from '@/i18n/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { getAgentLiveGridColumns } from './agent-live-grid-layout'
 import {
   mergeLiveOrder,

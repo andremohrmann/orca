@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { RepoIconGlyph } from '@/components/repo/repo-icon'
-import { AgentIcon } from '@/lib/agent-catalog'
+import { AgentIcon } from '@/components/agent/icons/AgentIcon'
 import { agentTypeToIconAgent } from '../../../../shared/agent-status/presentation/agent-type-icon-agent'
 import { translate } from '@/i18n/i18n'
 import {

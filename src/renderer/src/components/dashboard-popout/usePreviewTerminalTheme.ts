@@ -4,7 +4,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { composeActiveTerminalTheme } from '@/components/terminal-pane/appearance/terminal-appearance'
 import { useSystemPrefersDark } from '@/hooks/theme/use-system-prefers-dark'
 import { useEffectiveMacOptionAsAlt } from '@/lib/keyboard-layout/use-effective-mac-option-as-alt'
-import { getBuiltinTheme, resolveEffectiveTerminalAppearance } from '@/lib/terminal-theme'
+import { resolveEffectiveTerminalAppearance } from '@/lib/terminal/appearance/terminal-theme'
+import { getTheme } from '@/lib/terminal/appearance/terminal-themes-data'
 import { useAppStore } from '@/store'
 
 export function usePreviewTerminalTheme(): {
@@ -22,7 +23,7 @@ export function usePreviewTerminalTheme(): {
     }
     const appearance = resolveEffectiveTerminalAppearance(settings, systemPrefersDark)
     const theme = composeActiveTerminalTheme(
-      appearance.theme ?? getBuiltinTheme(appearance.themeName),
+      appearance.theme ?? getTheme(appearance.themeName),
       settings
     )
     return { terminalTheme: theme, terminalMode: appearance.mode }

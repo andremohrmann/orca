@@ -7,12 +7,12 @@ import {
   GitPullRequestClosed,
   GitPullRequestDraft
 } from 'lucide-react'
-import { AgentTypeIcon } from '@/lib/agent-type-icon'
+import { AgentTypeIcon } from '@/components/agent/icons/agent-type-icon'
 import { AgentQuestionIcon } from '@/components/AgentQuestionIcon'
 import { AgentStateDot } from '@/components/AgentStateDot'
 import { RepoIconGlyph } from '@/components/repo/repo-icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import {
   dashboardCardDisplayState,
   type DashboardFilterOption,

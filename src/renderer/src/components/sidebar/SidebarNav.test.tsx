@@ -35,7 +35,7 @@ vi.mock('@/store', () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) => selector(mocks.state)
 }))
 
-vi.mock('@/store/selectors', () => ({
+vi.mock('../../../../cli/selectors', () => ({
   useRepoMap: () =>
     new Map(
       ((mocks.state.repos as Repo[] | undefined) ?? []).map((repo) => [repo.id, repo] as const)

@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
-import { PaneReparentFrameTracker } from '@/lib/pane-manager/pane-reparent-frame-tracker'
+import { PaneReparentFrameTracker } from '@/lib/pane-manager/pane-layout/pane-reparent-frame-tracker'
 
 const LOCAL_FIT_MIN_COLS = 20
 const LOCAL_FIT_MAX_COLS = 240

@@ -1,6 +1,6 @@
 import type { IBufferRange, IDisposable, ILinkHandler, Terminal } from '@xterm/xterm'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { installGuardedLinkProviderRegistration } from '@/lib/pane-manager/terminal-link-provider-guard'
+import { installGuardedLinkProviderRegistration } from '@/lib/pane-manager/terminal-input/terminal-link-provider-guard'
 import {
   createFilePathLinkProvider,
   type LinkHandlerDeps

@@ -11,8 +11,8 @@ import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START
 } from '../../../../shared/terminal/input/terminal-bracketed-paste-text'
-import { dispatchAppMenuPasteEvent } from '@/lib/app-menu-paste'
-import { dispatchAppMenuSelectionAction } from '@/lib/app-menu-selection-actions'
+import { dispatchAppMenuPasteEvent } from '@/lib/clipboard/menu/app-menu-paste'
+import { dispatchAppMenuSelectionAction } from '@/lib/app-commands/app-menu-selection-actions'
 import {
   imeHarness,
   platformState,

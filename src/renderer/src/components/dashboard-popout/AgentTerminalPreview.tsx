@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import { getShortcutPlatform } from '@/lib/shortcut-platform'
+import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
 import {
   createPreviewReplayWriter,
@@ -32,7 +32,7 @@ import { usePreviewTerminalRuntimeRefs } from './usePreviewTerminalRuntimeRefs'
 import { installPreviewTerminalInteractions } from './preview-terminal-interaction-installers'
 import { createPreviewGonePtyRetry } from './preview-terminal-gone-retry'
 import { createPreviewRemoteTerminalSession } from './preview-remote-terminal-session'
-import { isWindowsUserAgent } from '@/lib/user-agent-platform'
+import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
 const RESYNC_RETRY_DELAY_MS = 150
 type PendingLivePayload = {
   acknowledge: boolean

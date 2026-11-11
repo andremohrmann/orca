@@ -8,9 +8,9 @@ import {
 } from '../../../shared/local-windows-terminal-runtime'
 import { worktreeUsesWslPath } from '@/store/terminals/terminal-workspace-routing'
 import { getExecutionHostIdForWorktree } from './workspace/ownership/worktree-runtime-owner'
-import { getLocalProjectExecutionRuntimeContext } from './local-preflight-context'
-import { getRendererAppPlatform } from './renderer-app-platform'
-import { runQuickCommandInNewTab } from './run-quick-command-in-new-tab'
+import { getLocalProjectExecutionRuntimeContext } from '../runtime/hosts/preflight/local-preflight-context'
+import { getRendererAppPlatform } from '../app-shell/platform/renderer-app-platform'
+import { runQuickCommandInNewTab } from './terminal/quick-commands/run-quick-command-in-new-tab'
 
 // The desktop app also installs warp.cmd on PATH; only the Agent CLI belongs in a PTY.
 export const WINDOWS_WARP_AGENT_COMMAND =

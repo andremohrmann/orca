@@ -13,8 +13,12 @@ const mocks = vi.hoisted(() => ({
 }))
 let state: AppState & { settings: NonNullable<AppState['settings']> }
 vi.mock('@/store', () => ({ useAppStore: { getState: () => state } }))
-vi.mock('./run-quick-command-in-new-tab', () => ({ runQuickCommandInNewTab: mocks.launch }))
-vi.mock('./renderer-app-platform', () => ({ getRendererAppPlatform: mocks.platform }))
+vi.mock('./terminal/quick-commands/run-quick-command-in-new-tab', () => ({
+  runQuickCommandInNewTab: mocks.launch
+}))
+vi.mock('../app-shell/platform/renderer-app-platform', () => ({
+  getRendererAppPlatform: mocks.platform
+}))
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 function setHost(hostId: string, platform?: NodeJS.Platform): void {

@@ -1,6 +1,6 @@
 import type { Terminal, ITheme } from '@xterm/xterm'
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
 
 export function AgentTerminalPreviewFrame({

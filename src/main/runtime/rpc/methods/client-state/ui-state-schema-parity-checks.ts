@@ -12,6 +12,7 @@ type MainOwnedUIState =
   | 'trayMinimizeNoticeShown'
   | 'dashboardPopoutBounds'
   | 'dashboardPopoutOpacity'
+  | 'windowFullScreen'
   | '_expandedWorktreeCardPropertiesDefaulted'
   | '_jiraIssueWorktreeCardPropertyDefaulted'
   | '_hostWorktreeCardPropertyDefaulted'

@@ -3,7 +3,7 @@ import { app, BrowserWindow, nativeTheme, type WebContents, type Event } from 'e
 import { join } from 'node:path'
 import type { Store } from '../persistence/loading-store/store'
 import { isBackgroundLaunch, showWindowWithoutStealingFocus } from './foreground-activation-policy'
-import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
+import { resolveDashboardPopoutBounds } from './dashboard-popout-bounds'
 import { sendToTrustedUIRenderer } from '../ipc/ui'
 import { installPrivilegedWindowNavigationPolicy } from './privileged-window-navigation'
 import { stepUIZoomLevel, type UIZoomDirection } from '../../shared/ui-zoom-level'
@@ -24,6 +24,7 @@ import {
   persistDashboardPopoutOpacity
 } from './dashboard-popout-opacity-state'
 import { wslHostsWindowArguments } from '../wsl/host-lifecycle/wsl-host-gate'
+import { isMacAppPasteInput } from './mac-app-paste-input'
 
 const MIN_WIDTH = 480
 const MIN_HEIGHT = 360
@@ -137,27 +138,6 @@ function showAndMaximizeDashboardPopout(window: BrowserWindow): void {
   }, 0)
 }
 
-function resolveRestoredBounds(store: Store | null): {
-  x: number
-  y: number
-  width: number
-  height: number
-} | null {
-  const raw = store?.getUI().dashboardPopoutBounds ?? null
-  if (
-    raw &&
-    raw.width >= MIN_WIDTH &&
-    raw.height >= MIN_HEIGHT &&
-    rectHasVisibleAreaOnAnyDisplay(raw, MIN_WIDTH / 2, MIN_HEIGHT / 2)
-  ) {
-    return raw
-  }
-  if (raw) {
-    console.warn('[dashboard-popout] Discarding off-screen/near-min popout bounds:', raw)
-  }
-  return null
-}
-
 /**
  * Open the pop-out dashboard window, or focus it if already open. The window is
  * a standalone top-level BrowserWindow with a native frame that reuses the same
@@ -189,7 +169,7 @@ export function createOrFocusDashboardPopout(
   const initialView =
     view ?? normalizeAgentDashboardView(store?.getSettings().experimentalAgentDashboardDefaultView)
 
-  const savedBounds = resolveRestoredBounds(store)
+  const savedBounds = resolveDashboardPopoutBounds(store, MIN_WIDTH, MIN_HEIGHT)
 
   // Serve-only: this window lists saved WSL hosts and their Connect, as the main window does.
   const wslArguments = wslHostsWindowArguments()
@@ -246,8 +226,14 @@ export function createOrFocusDashboardPopout(
     }
   })
 
-  // No renderer shortcut routing exists here; handle zoom chords and yield everything else.
+  // No renderer shortcut routing exists here; handle paste and zoom chords and yield everything else.
   window.webContents.on('before-input-event', (event, input) => {
+    if (isMacAppPasteInput(input)) {
+      // Kitty-mode xterm encodes Cmd+V as CSI u and consumes it, so the Edit menu accelerator never fires.
+      event.preventDefault()
+      window.webContents.send('ui:appMenuPaste')
+      return
+    }
     if (input.type !== 'keyDown') {
       return
     }

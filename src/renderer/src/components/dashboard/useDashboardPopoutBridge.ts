@@ -1,4 +1,3 @@
-import { createDashboardChatProgramHolds } from './dashboard-chat-program-acquisition'
 import { useEffect } from 'react'
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
@@ -6,12 +5,6 @@ import {
   subscribeStructuredChatTabNames,
   getStructuredChatTabNames
 } from '@/runtime/native-chat/naming/structured-chat-name-observation'
-import { subscribeChatProgramFacts } from '@/lib/host-chat-program'
-import {
-  type AgentLaunchRouteView,
-  agentLaunchRouteInputsChanged,
-  selectAgentLaunchRouteView
-} from '@/lib/agent-session/launch/routing/agent-launch-route-input'
 import { revealDashboardAgent } from './reveal-dashboard-agent'
 import type { RepoIcon } from '../../../../shared/repo-icon'
 import { buildDashboardSnapshot, type DashboardSnapshotState } from './build-dashboard-snapshot'
@@ -36,16 +29,15 @@ export function repoIconsUnchanged(
   return nextIds.every((id) => id in previous && next[id] === previous[id])
 }
 
-type DashboardSnapshotWatchState = DashboardSnapshotState &
-  Pick<AppState, 'agentStatusEpoch'> &
-  AgentLaunchRouteView
+type DashboardSnapshotWatchState = DashboardSnapshotState & Pick<AppState, 'agentStatusEpoch'>
 
 export function dashboardSnapshotInputsChanged(
   state: DashboardSnapshotWatchState,
   previousState: DashboardSnapshotWatchState
 ): boolean {
   return (
-    agentLaunchRouteInputsChanged(state, previousState) ||
+    state.activeWorktreeId !== previousState.activeWorktreeId ||
+    state.activeWorkspaceExecutionHostId !== previousState.activeWorkspaceExecutionHostId ||
     state.repos !== previousState.repos ||
     selectWorktreesByRepo(state) !== selectWorktreesByRepo(previousState) ||
     state.tabsByWorktree !== previousState.tabsByWorktree ||
@@ -62,9 +54,6 @@ export function dashboardSnapshotInputsChanged(
     // Why: settings controls idle visibility and generated conversation names.
     state.settings !== previousState.settings ||
     state.workspaceStatuses !== previousState.workspaceStatuses ||
-    state.detectedAgentIds !== previousState.detectedAgentIds ||
-    state.remoteDetectedAgentIds !== previousState.remoteDetectedAgentIds ||
-    state.runtimeDetectedAgentIds !== previousState.runtimeDetectedAgentIds ||
     state.rateLimits !== previousState.rateLimits ||
     state.statusBarItems !== previousState.statusBarItems ||
     state.usagePercentageDisplay !== previousState.usagePercentageDisplay ||
@@ -103,12 +92,9 @@ export function watchSnapshotInputs(onChanged: () => void): () => void {
       onChanged()
     }
   })
-  // Launch options also read host chat facts held outside the store.
-  const unsubscribeChatFacts = subscribeChatProgramFacts(onChanged)
   return () => {
     stopNames()
     unsubscribeStore()
-    unsubscribeChatFacts()
   }
 }
 
@@ -157,7 +143,6 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
     }
     let open = false
     let disposed = false
-    const chatOwners = createDashboardChatProgramHolds()
     let unsubscribeStore: (() => void) | null = null
     let trailingTimer: ReturnType<typeof setTimeout> | null = null
     let lastPublishAt = 0
@@ -168,12 +153,10 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
     const publishNow = (withIcons: boolean): void => {
       lastPublishAt = Date.now()
       const state = useAppStore.getState()
-      chatOwners.reconcile(state)
       const snapshot = buildDashboardSnapshot(
         { ...state, chatNames: getStructuredChatTabNames() },
         lastPublishAt,
         {
-          launchRouteStore: selectAgentLaunchRouteView(state),
           rowsCache,
           rowsGeneration: state.agentStatusEpoch
         }
@@ -239,7 +222,6 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
         }
         publishNow(true)
       } else {
-        chatOwners.release()
         unsubscribeStore?.()
         unsubscribeStore = null
         if (trailingTimer) {
@@ -265,7 +247,6 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
 
     return () => {
       disposed = true
-      chatOwners.release()
       offOpenChanged?.()
       offRequested?.()
       unsubscribeStore?.()

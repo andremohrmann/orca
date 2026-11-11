@@ -4,7 +4,7 @@ import { useAgentLaunchPickerInventorySource } from '../agent/use-agent-launch-p
 import type { AgentPickerEntry } from '../../../../shared/agent-launch/picker/agent-launch-picker'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { launchWarpTab } from '@/lib/launch-warp-tab'
-import type { WindowsTerminalCapabilities } from '@/lib/windows-terminal-capabilities'
+import type { WindowsTerminalCapabilities } from '@/runtime/hosts/capabilities/windows-terminal-capabilities'
 import { useTabAgentMenuLaunch } from './QuickLaunchButton'
 import { requestNativeChatComposerFocus } from '@/components/native-chat/composer/focus/native-chat-composer-focus-intent'
 import { useNewTabAgentMenuRows } from './use-new-tab-agent-menu-rows'

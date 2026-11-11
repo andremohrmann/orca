@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { installPreviewTerminalDomPasteShortcut } from './preview-terminal-dom-paste-shortcut'
 
-vi.mock('@/lib/shortcut-platform', () => ({
+vi.mock('@/lib/keyboard/shortcut-platform', () => ({
   getShortcutPlatform: () => 'linux'
 }))
 
