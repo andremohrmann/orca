@@ -198,8 +198,7 @@ function Resolve-DeletedWorkflowMergeConflicts {
   $customContentConflicts = @(
     $conflicts | Where-Object {
       $customContentConflictAllowlist -contains $_ -and
-      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 2\s') -and
-      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 3\s')
+      (git ls-files --unmerged -- $_ | Select-String -Pattern '^[0-9]+ [0-9a-f]+ 2\s')
     }
   )
   foreach ($path in $customContentConflicts) {

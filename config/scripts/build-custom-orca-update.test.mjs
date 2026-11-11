@@ -20,7 +20,7 @@ const PACKAGED_STARTUP_SMOKE = readFileSync(
 
 describe('custom Windows updater merge safety', () => {
   it.skipIf(process.platform !== 'win32').each([false, true])(
-    'resolves upstream deletions while guarding preserved files (preserved=%s)',
+    'accepts upstream deletions but retains custom-owned files (preserved=%s)',
     (preserved) => {
       const directory = mkdtempSync(join(tmpdir(), 'orca-merge-deletion-'))
       const git = (...args) => {
@@ -36,6 +36,7 @@ describe('custom Windows updater merge safety', () => {
         git('init')
         git('config', 'user.name', 'Merge test')
         git('config', 'user.email', 'merge-test@example.invalid')
+        git('config', 'core.autocrlf', 'false')
         writeFileSync(join(directory, 'preview.test.ts'), 'base\n')
         git('add', '.')
         git('commit', '-m', 'base')
@@ -70,12 +71,13 @@ if (Resolve-DeletedWorkflowMergeConflicts) { exit 0 } else { exit 1 }
           { cwd: directory, encoding: 'utf8', windowsHide: true }
         )
         expect(result.error).toBeUndefined()
-        expect(result.status, result.stdout + result.stderr).toBe(preserved ? 1 : 0)
-        expect(git('diff', '--name-only', '--diff-filter=U')).toBe(
-          preserved ? 'preview.test.ts' : ''
-        )
+        expect(result.status, result.stdout + result.stderr).toBe(0)
+        expect(git('diff', '--name-only', '--diff-filter=U')).toBe('')
         if (!preserved) {
           expect(git('ls-files', '--', 'preview.test.ts')).toBe('')
+        } else {
+          expect(git('ls-files', '--', 'preview.test.ts')).toBe('preview.test.ts')
+          expect(readFileSync(join(directory, 'preview.test.ts'), 'utf8')).toBe('custom change\n')
         }
       } finally {
         rmSync(directory, { recursive: true, force: true })
