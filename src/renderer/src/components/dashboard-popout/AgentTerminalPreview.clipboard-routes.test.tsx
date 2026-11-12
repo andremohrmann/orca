@@ -169,7 +169,6 @@ vi.mock(
   })
 )
 
-// Paste encoding is under test here; owner routing is covered by AgentTerminalPreview.test.tsx.
 vi.mock('./terminal-preview-api', () => ({
   terminalPreviewApiFor: () => window.api.terminalPreview
 }))
