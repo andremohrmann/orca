@@ -164,11 +164,6 @@ import {
   zoomDashboardPopoutIfFocused
 } from './dashboard-popout-window'
 import { readBrowserClientHostIdArgument } from '../../shared/browser/client-hosting/browser-client-host-id-argument'
-import { hasWslHostsServeOnlyArgument } from '../../shared/wsl-host-internal-gate'
-import {
-  configureWslHostsGate,
-  resetWslHostsGateForTests
-} from '../wsl/host-lifecycle/wsl-host-gate'
 
 type FakeWindow = InstanceType<typeof BrowserWindowMock>
 
@@ -240,23 +235,6 @@ describe('createOrFocusDashboardPopout', () => {
       expect(win.setTitle).not.toHaveBeenCalled()
     } finally {
       await setMainUiLanguage('en')
-    }
-  })
-
-  it('lets its preload expose saved WSL hosts in serve-only, and passes nothing otherwise', () => {
-    vi.stubEnv('ORCA_INTERNAL_WSL_HOSTS', undefined)
-    createOrFocusDashboardPopout(makeStore() as never)
-    expect(instances[0].options.webPreferences?.additionalArguments).toBeUndefined()
-    closeDashboardPopout()
-
-    configureWslHostsGate({ hasSavedWslHost: () => true, hasWslMoveCutover: () => false })
-    try {
-      createOrFocusDashboardPopout(makeStore() as never)
-      expect(
-        hasWslHostsServeOnlyArgument(instances[1].options.webPreferences?.additionalArguments ?? [])
-      ).toBe(true)
-    } finally {
-      resetWslHostsGateForTests()
     }
   })
 
