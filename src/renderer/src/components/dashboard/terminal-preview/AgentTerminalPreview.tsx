@@ -5,7 +5,8 @@ import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { TerminalKittyKeyboardModeTracker } from '../../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
 import {
   createPreviewReplayWriter,
-  replayPreviewConnectionSnapshot
+  replayPreviewConnectionSnapshot,
+  type PendingLivePayload
 } from './transport/preview-terminal-snapshot-replay'
 import { previewAdvertisesKittyKeyboard } from '../../standalone-terminal/rendering/preview-terminal-options'
 import { installPreviewTerminalCompatibility } from '../../standalone-terminal/rendering/preview-terminal-compatibility'
@@ -18,7 +19,6 @@ import { useAppStore } from '@/store'
 import { installPreviewTerminalKeyHandler } from '../../standalone-terminal/input/preview-terminal-key-handler'
 import { createPreviewGridFocusHandoff } from '../../dashboard-popout/preview-grid-focus-handoff'
 import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/clipboard/terminal-native-copy-gutter'
-import type { TerminalPreviewDataPayload } from '../../../../../shared/terminal/replay/terminal-preview'
 import {
   PREVIEW_SCROLLBACK_ROWS,
   clearPreviewTerminalTimer,
@@ -37,10 +37,6 @@ import { createPreviewGonePtyRetry } from '../../dashboard-popout/preview-termin
 import { createPreviewRemoteTerminalSession } from '../../dashboard-popout/preview-remote-terminal-session'
 import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
 const RESYNC_RETRY_DELAY_MS = 150
-type PendingLivePayload = {
-  acknowledge: boolean
-  payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>
-}
 export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JSX.Element {
   const {
     ptyId,

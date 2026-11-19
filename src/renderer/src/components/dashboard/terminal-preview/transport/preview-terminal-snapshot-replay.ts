@@ -3,9 +3,15 @@ import type { TerminalKittyKeyboardModeTracker } from '../../../../../../shared/
 import { parseTerminalKittyKeyboardFlags } from '../../../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-flags'
 import { buildKittyKeyboardRestore } from '../../../../../../shared/terminal/protocol/input-modes/terminal-mode-reset-profiles'
 import type {
+  TerminalPreviewDataPayload,
   TerminalPreviewReplayChunk,
   TerminalPreviewSnapshot
 } from '../../../../../../shared/terminal/replay/terminal-preview'
+
+export type PendingLivePayload = {
+  acknowledge: boolean
+  payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>
+}
 
 /** Restore proven kitty flags after kitty-free snapshot ANSI; remain synchronous so events cannot observe the temporary reset. */
 export function replayPreviewConnectionSnapshot(args: {
