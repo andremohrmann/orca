@@ -363,7 +363,7 @@ if (!$SkipValidation) {
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/agent-dashboard-live-layout.test.ts',
-    'src/shared/update-feed-info.test.ts',
+    'src/shared/update-feed-info.test.ts'
   )
 }
 
