@@ -185,29 +185,29 @@ export function TabBarStaticCreateMenu({
             }
           ]
         : []
+  const warpItems: TabBarCreateRowItem[] = !terminalOnly
+    ? [
+        {
+          id: 'warp',
+          label: t('tabs.warp', 'Warp'),
+          icon: <WarpIcon className={ICON_CLASS} />,
+          run: onNewWarpTab
+        }
+      ]
+    : []
   const items =
     newTabMenuSurface === 'floating-panel'
       ? [
           ...markdownItems,
           ...openMarkdownItems,
           ...terminalItems,
-          {
-            id: 'warp',
-            label: 'New Warp Tab',
-            icon: <WarpIcon className={ICON_CLASS} />,
-            run: onNewWarpTab
-          },
+          ...warpItems,
           ...browserItems,
           ...simulatorItems
         ]
       : [
           ...terminalItems,
-          {
-            id: 'warp',
-            label: 'New Warp Tab',
-            icon: <WarpIcon className={ICON_CLASS} />,
-            run: onNewWarpTab
-          },
+          ...warpItems,
           ...browserItems,
           ...markdownItems,
           ...openMarkdownItems,
