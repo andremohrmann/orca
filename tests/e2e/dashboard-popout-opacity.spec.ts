@@ -1,4 +1,5 @@
-import { expect, test } from './desktop/electron-fixtures/orca-app'
+import { expect } from '@stablyai/playwright-test'
+import { test } from './desktop/electron-fixtures/orca-app'
 
 test.use({ seedTestRepo: false })
 
