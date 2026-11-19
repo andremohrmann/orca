@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/orca-app'
+import { expect, test } from './desktop/electron-fixtures/orca-app'
 
 test.use({ seedTestRepo: false })
 

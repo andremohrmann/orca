@@ -1,9 +1,9 @@
 import { resolve } from 'node:path'
-import type { CommandHandler } from '../dispatch'
+import type { CommandHandler } from '../dispatch/dispatch'
 import {
   formatEnvironmentDoctorChecks,
   type EnvironmentDoctorResult
-} from '../../shared/environment-doctor-types'
+} from '../../shared/workspace-setup/environment-doctor/environment-doctor-types'
 import { runEnvironmentDoctor } from '../../main/environment-doctor/environment-doctor'
 import { createHostEnvironmentDoctorDeps } from '../../main/environment-doctor/environment-doctor-host'
 

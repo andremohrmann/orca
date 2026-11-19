@@ -1,4 +1,4 @@
-import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
+import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 
 const MINUTE_MS = 60_000
 

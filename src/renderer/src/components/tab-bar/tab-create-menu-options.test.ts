@@ -6,7 +6,7 @@ import {
   isTabCreateMenuQueryTooLarge,
   withPluginNewFileMenuOptions,
   type TabCreateMenuOption
-} from './tab-create-menu-options'
+} from './create-menu/tab-create-menu-options'
 
 afterEach(() => {
   vi.restoreAllMocks()

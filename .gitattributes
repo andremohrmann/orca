@@ -84,7 +84,7 @@
 # Fork-only: both sides touch this file's import list and intersection members on nearly every
 # upstream merge for the same non-conflicting reason (adding a settings group). Union-merge it
 # instead of stopping on a conflict every day; see config/scripts/merge-global-settings-base.mjs.
-/src/shared/global-settings-base.ts merge=global-settings-base
+/src/shared/settings/global-settings-base.ts merge=global-settings-base
 
 # Fork-only: both sides append new attribute lines near the end of this very file on an upstream
 # merge, and a plain conflict here used to resolve to "take theirs" by default, which silently

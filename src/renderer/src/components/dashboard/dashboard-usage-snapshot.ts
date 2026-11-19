@@ -1,10 +1,13 @@
 import type { AppState } from '@/store/types'
-import type { DashboardUsageSnapshot } from '../../../../shared/dashboard-snapshot'
-import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate-limit-types'
-import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
-import type { UsagePercentageDisplay } from '../../../../shared/usage-percentage-display'
-import { isStatusBarItemAvailable } from '../status-bar/status-bar-agent-gating'
-import { getVisibleUsageProvider } from '../status-bar/status-bar-provider-visibility'
+import type { DashboardUsageSnapshot } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type {
+  ProviderRateLimits,
+  RateLimitState
+} from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
+import type { StatusBarUsageMode } from '../../../../shared/status-bar/status-bar-usage-mode'
+import type { UsagePercentageDisplay } from '../../../../shared/agent-usage/display/usage-percentage-display'
+import { isStatusBarItemAvailable } from '../status-bar/composition/status-bar-agent-gating'
+import { getVisibleUsageProvider } from '../status-bar/composition/status-bar-provider-visibility'
 
 export type DashboardUsageSnapshotState = {
   rateLimits: RateLimitState

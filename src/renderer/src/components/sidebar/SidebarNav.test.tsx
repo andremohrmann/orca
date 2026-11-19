@@ -5,11 +5,11 @@ import { createRoot, type Root } from 'react-dom/client'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { getDefaultSettings } from '../../../../shared/constants'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { Repo } from '../../../../shared/repo-types'
+import { getDefaultSettings } from '../../../../shared/orca-profiles/constants'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
+import type { Repo } from '../../../../shared/repository/repo-types'
 import { i18n } from '../../i18n/i18n'
-import { PSEUDO_LOCALIZATION_LOCALE } from '../../i18n/pseudo-localization'
+import { PSEUDO_LOCALIZATION_LOCALE } from '../../../../shared/i18n/pseudo-localization'
 
 const mocks = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
@@ -42,22 +42,22 @@ vi.mock('../../../../cli/selectors', () => ({
     )
 }))
 
-vi.mock('@/components/activity/useActivityUnreadCount', () => ({
+vi.mock('@/components/activity/events/useActivityUnreadCount', () => ({
   useActivityUnreadCount: () => 0
 }))
 
-vi.mock('@/components/dashboard/useAgentBucketCounts', () => ({
+vi.mock('@/components/dashboard/bucket-counts/useAgentBucketCounts', () => ({
   useAgentBucketCounts: () => {
     mocks.getAgentBucketCounts()
     return mocks.agentBucketCounts
   }
 }))
 
-vi.mock('@/hooks/useShortcutLabel', () => ({
+vi.mock('@/lib/keyboard/useShortcutLabel', () => ({
   useShortcutKeyComboDetails: () => [{ keys: ['⌘', 'J'], doubleTap: false }]
 }))
 
-vi.mock('./mobile-sidebar-onboarding-badge', () => ({
+vi.mock('./chrome/mobile-sidebar-onboarding-badge', () => ({
   useMobileSidebarOnboardingBadge: () => ({
     visible: false,
     hasPairedDevice: mocks.hasPairedMobileDevice,
@@ -93,7 +93,7 @@ import SidebarNav, {
   shouldShowAutomationsButton,
   shouldShowArtifactsButton,
   shouldShowMobileButton
-} from './SidebarNav'
+} from './chrome/SidebarNav'
 
 function gitRepo(): Repo {
   return {

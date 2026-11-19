@@ -20,10 +20,10 @@ import {
   storeState,
   terminalHarness
 } from './agent-terminal-preview-test-harness'
-import type { TerminalPreviewApi } from '../../../../preload/api/dashboard-api'
+import type { TerminalPreviewApi } from '../../../../preload/api/window-ui/dashboard-api'
 import type { TerminalPreviewConnectResult } from '../../../../shared/terminal/replay/terminal-preview'
 
-import { AgentTerminalPreview } from './AgentTerminalPreview'
+import { AgentTerminalPreview } from '../dashboard/terminal-preview/AgentTerminalPreview'
 
 describe('AgentTerminalPreview', () => {
   const input = vi.fn(async (_ptyId: string, _data: string) => true)

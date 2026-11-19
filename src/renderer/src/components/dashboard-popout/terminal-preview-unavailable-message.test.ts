@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
+import { terminalPreviewUnavailableMessage } from '../dashboard/terminal-preview/terminal-preview-unavailable-message'
 
 describe('terminalPreviewUnavailableMessage', () => {
   it('reports the generic no-preview message only for a pty the client could have observed', () => {

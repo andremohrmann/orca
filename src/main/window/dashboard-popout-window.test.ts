@@ -151,7 +151,7 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../ipc/ui', () => ({ sendToTrustedUIRenderer: sendToTrustedUIRendererMock }))
-vi.mock('./privileged-window-navigation', () => ({
+vi.mock('./security/privileged-window-navigation', () => ({
   installPrivilegedWindowNavigationPolicy: installNavigationPolicyMock
 }))
 

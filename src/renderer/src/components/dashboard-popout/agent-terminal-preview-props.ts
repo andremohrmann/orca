@@ -1,8 +1,8 @@
 import type {
   DashboardCardTerminalInput,
   DashboardCardTerminalLinks
-} from '../../../../shared/dashboard-snapshot'
-import type { DashboardPreviewLinkSource } from './dashboard-preview-http-actions'
+} from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { DashboardPreviewLinkSource } from '../dashboard/terminal-preview/links/dashboard-preview-http-actions'
 
 export type AgentTerminalPreviewProps = {
   ptyId: string

@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import {
   isPluginHostMethodName,
   PLUGIN_HOST_API,
@@ -28,7 +29,13 @@ import { PLUGIN_WORKSPACE_ACTION_HANDLERS } from './plugin-host-workspace-method
 import { PLUGIN_TERMINAL_ACTION_HANDLERS } from './plugin-host-terminal-method-bindings'
 import { PLUGIN_WORKSPACE_CREATE_HANDLERS } from './plugin-host-workspace-create-bindings'
 import { PLUGIN_AUTOMATION_HANDLERS } from './plugin-host-automation-bindings'
-import type { PluginRuntimeRpc } from './plugin-host-runtime-call'
+import { PLUGIN_AGENT_HISTORY_HANDLERS } from './plugin-host-agent-history-bindings'
+import { PLUGIN_PROJECT_VISIBILITY_HANDLERS } from './plugin-host-project-visibility-binding'
+import {
+  pluginHostRpc as rpc,
+  pluginWorkspaceSelector as workspaceSelector,
+  type PluginRuntimeRpc
+} from './plugin-host-runtime-call'
 import type { PluginAppearanceService } from '../../appearance/plugin-appearance-service'
 import type { PluginEditorTypographySource } from '../../appearance/plugin-editor-typography'
 import { PluginHostCallError } from './plugin-host-call-scope'
@@ -73,6 +80,9 @@ export type PluginHostServices = {
   resolveActiveWorktreeContext(): Promise<PluginWorktreeContext | null>
   listWorktreeTerminals(worktreeId: string): Promise<PluginWorkspaceTerminal[]>
   listAgentStatuses(): readonly PluginAgentStatusRow[]
+  /** The title of the orchestration task each pane runs, by pane key (`tabId:leafId`); absent
+   *  where no runtime dispatches tasks. */
+  listAgentTaskTitles?(): ReadonlyMap<string, string>
   sendTerminalText(
     terminalId: string,
     action: { text: string; enter: boolean }
@@ -124,6 +134,8 @@ export type PluginHostServices = {
 }
 
 const api = PLUGIN_HOST_API
+
+const worktreeShowAnswer = z.object({ worktree: z.object({ id: z.string() }) })
 const OK = { ok: true } as const
 
 const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
@@ -160,17 +172,27 @@ const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
       return surface === 'worker' ? projected : pluginFrameWorkspaceContext(projected)
     }
   ),
-  'agents.list': bind(api['agents.list'], async (_params, { services }) => {
-    const context = await services.resolveActiveWorktreeContext()
-    if (!context) {
+  'agents.list': bind(api['agents.list'], async (params, { services, scope }) => {
+    const worktreeId = params?.workspaceId
+      ? worktreeShowAnswer.parse(
+          await rpc(services)(
+            'worktree.show',
+            { worktree: workspaceSelector(params.workspaceId), matchFolderWorkspaces: true },
+            scope.signal ? { signal: scope.signal } : {}
+          )
+        ).worktree.id
+      : (await services.resolveActiveWorktreeContext())?.worktreeId
+    if (!worktreeId) {
       return { agents: [] }
     }
-    const terminals = await services.listWorktreeTerminals(context.worktreeId).catch(() => [])
+    const terminals = await services.listWorktreeTerminals(worktreeId).catch(() => [])
     return {
       agents: projectPluginWorkspaceAgents(
-        context.worktreeId,
+        worktreeId,
         terminals,
-        services.listAgentStatuses()
+        services.listAgentStatuses(),
+        // Only read when the workspace has agents: it reads the orchestration database.
+        () => services.listAgentTaskTitles?.() ?? new Map()
       )
     }
   }),
@@ -252,9 +274,11 @@ const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
   ...PLUGIN_PANEL_BRIDGE_HANDLERS,
   ...PLUGIN_STATUS_BAR_HANDLERS,
   ...PLUGIN_WORKSPACE_ACTION_HANDLERS,
+  ...PLUGIN_PROJECT_VISIBILITY_HANDLERS,
   ...PLUGIN_TERMINAL_ACTION_HANDLERS,
   ...PLUGIN_WORKSPACE_CREATE_HANDLERS,
-  ...PLUGIN_AUTOMATION_HANDLERS
+  ...PLUGIN_AUTOMATION_HANDLERS,
+  ...PLUGIN_AGENT_HISTORY_HANDLERS
 }
 
 function requireDesktop(services: PluginHostServices): PluginDesktopFrameServices {

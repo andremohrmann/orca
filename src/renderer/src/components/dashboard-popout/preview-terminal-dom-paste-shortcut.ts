@@ -1,5 +1,5 @@
 import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
-import { keybindingMatchesAction } from '../../../../shared/keybindings'
+import { keybindingMatchesAction } from '../../../../shared/keybindings/matching'
 
 export function installPreviewTerminalDomPasteShortcut({
   container,

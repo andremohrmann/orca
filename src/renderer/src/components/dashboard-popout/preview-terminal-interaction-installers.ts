@@ -1,9 +1,9 @@
 import type { Terminal } from '@xterm/xterm'
-import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
+import { installPreviewTerminalAppMenuClipboard } from '../standalone-terminal/input/preview-terminal-app-menu-clipboard'
 import { installPreviewTerminalDomPasteShortcut } from './preview-terminal-dom-paste-shortcut'
 import { installPreviewTerminalFocusReporting } from './preview-terminal-focus-reporting'
-import { installPreviewTerminalRightClickPaste } from './preview-terminal-right-click-paste'
-import type { PreviewTerminalPasteSource } from './preview-terminal-paste'
+import { installPreviewTerminalRightClickPaste } from '../standalone-terminal/input/preview-terminal-right-click-paste'
+import type { PreviewTerminalPasteSource } from '../standalone-terminal/input/preview-terminal-paste'
 
 export function installPreviewTerminalInteractions({
   container,

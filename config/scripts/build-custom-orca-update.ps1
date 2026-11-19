@@ -35,10 +35,10 @@ $customContentConflictAllowlist = @(
   'config/dev-app-update.yml',
   'src/shared/update-feed-info.ts',
   'src/shared/update-feed-info.test.ts',
-  'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.tsx',
+  'src/renderer/src/components/dashboard/terminal-preview/AgentTerminalPreview.tsx',
   'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
-  'src/renderer/src/components/dashboard-popout/preview-terminal-links.ts',
-  'src/renderer/src/components/dashboard-popout/preview-terminal-paste.ts'
+  'src/renderer/src/components/standalone-terminal/rendering/preview-terminal-links.ts',
+  'src/renderer/src/components/standalone-terminal/input/preview-terminal-paste.ts'
 )
 
 function Invoke-Native {
@@ -346,14 +346,10 @@ if (!$SkipValidation) {
     '120000',
     'src/main/ipc/dashboard-popout.test.ts',
     'src/main/window/dashboard-popout-window.test.ts',
-    'src/renderer/src/components/dashboard-popout/AgentKanbanBoard.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentLiveGrid.child-agents.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.settings-lifetime.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.settings-geometry.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreviewRemote.test.tsx',
     'src/renderer/src/components/dashboard-popout/AgentTerminalPreviewFitResync.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.clipboard-routes.test.tsx',
     'src/renderer/src/components/dashboard-popout/preview-remote-terminal-session.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-claim.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-terminal-fit.test.ts',
@@ -367,9 +363,7 @@ if (!$SkipValidation) {
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/agent-dashboard-live-layout.test.ts',
-    'src/shared/release-channel.test.ts',
     'src/shared/update-feed-info.test.ts',
-    'config/scripts/desktop-build/output-contracts/electron-vite-output-contract.test.ts'
   )
 }
 

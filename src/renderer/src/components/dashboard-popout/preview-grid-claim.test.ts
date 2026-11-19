@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createPreviewGridClaim } from './preview-grid-claim'
+import { createPreviewGridClaim } from '../dashboard/terminal-preview/geometry/preview-grid-claim'
 
 function dimension(element: HTMLElement, name: string, value: number): void {
   Object.defineProperty(element, name, { configurable: true, value })

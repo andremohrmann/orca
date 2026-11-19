@@ -1,6 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { formatAgentTypeLabel } from '../../../../shared/agent-status/presentation/agent-type-label'
-import type { DashboardCard, DashboardFilterOption } from '../../../../shared/dashboard-snapshot'
+import type {
+  DashboardCard,
+  DashboardFilterOption
+} from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/class-names'
@@ -11,14 +14,14 @@ import {
   orderedPaneKeys,
   sortedLiveCards
 } from './agent-live-grid-order'
-import type { AgentRevealArgs } from './AgentTerminalDialog'
+import type { DashboardRevealAgentArgs as AgentRevealArgs } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { useAgentLiveGridLayout } from './useAgentLiveGridLayout'
 import type { AgentDashboardLiveSort } from '../../../../shared/agent-dashboard-live-layout'
 import { AgentLiveCompactPaneRow } from './AgentLiveCompactPaneRow'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridToolbar } from './AgentLiveGridToolbar'
 import { inactiveLivePaneKeys } from './agent-live-grid-auto-minimize'
-import type { RepoIcon } from '../../../../shared/repo-icon'
+import type { RepoIcon } from '../../../../shared/repository/appearance/repo-icon'
 import { AgentLiveGridTerminal } from './AgentLiveGridTerminal'
 
 type AgentLiveGridProps = {

@@ -3,8 +3,8 @@
 import '@testing-library/jest-dom/vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import type { AgentDashboardLiveLayout } from '../../../../shared/agent-dashboard-live-layout'
 import { AgentLiveGrid } from './AgentLiveGrid'
 

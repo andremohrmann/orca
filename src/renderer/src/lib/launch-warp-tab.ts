@@ -1,12 +1,12 @@
 import { useAppStore } from '@/store'
 import { toast } from 'sonner'
-import { parseExecutionHostId } from '../../../shared/execution-host'
+import { parseExecutionHostId } from '../../../shared/execution-host/execution-host'
 import { resolveTerminalInputHostPlatform } from '@/components/terminal-pane/input/terminal-input-host-platform'
 import {
   isWslShellName,
   resolveLocalWindowsTerminalShellOverrideForTab
-} from '../../../shared/local-windows-terminal-runtime'
-import { worktreeUsesWslPath } from '@/store/terminals/terminal-workspace-routing'
+} from '../../../shared/shell/launch/local-windows-terminal-runtime'
+import { worktreeUsesWslPath } from '@/store/terminals/tabs/creation/terminal-workspace-routing'
 import { getExecutionHostIdForWorktree } from './workspace/ownership/worktree-runtime-owner'
 import { getLocalProjectExecutionRuntimeContext } from '../runtime/hosts/preflight/local-preflight-context'
 import { getRendererAppPlatform } from '../app-shell/platform/renderer-app-platform'

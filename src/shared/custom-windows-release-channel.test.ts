@@ -4,7 +4,7 @@ import {
   getVersionChannel,
   isCustomVersion,
   normalizeTagToVersion
-} from './release-channel'
+} from './updater/release-channel'
 
 describe('custom Windows release channel', () => {
   it('maps custom builds onto the RC update channel', () => {

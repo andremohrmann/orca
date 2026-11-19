@@ -1,6 +1,6 @@
 import type { AgentDashboardLiveLayout } from './agent-dashboard-live-layout'
 import type { AgentDashboardView } from './agent-dashboard-view'
-import type { AgentDashboardMode } from './ui-chrome-types'
+import type { AgentDashboardMode } from './ui-chrome/ui-chrome-types'
 
 export type AgentDashboardSettings = {
   /** Experimental: pop-out Kanban dashboard for monitoring and opening agent terminals across worktrees. */

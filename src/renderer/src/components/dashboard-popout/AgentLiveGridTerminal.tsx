@@ -1,6 +1,6 @@
-import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
-import { AgentTerminalPreview } from './AgentTerminalPreview'
-import type { AgentRevealArgs } from './AgentTerminalDialog'
+import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import { AgentTerminalPreview } from '../dashboard/terminal-preview/AgentTerminalPreview'
+import type { DashboardRevealAgentArgs as AgentRevealArgs } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 
 type LiveDashboardCard = DashboardCard & { ptyId: string }
 

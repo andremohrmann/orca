@@ -3,7 +3,10 @@ import type {
   TerminalPreviewConnectResult,
   TerminalPreviewReplayChunk
 } from '../../../../shared/terminal/replay/terminal-preview'
-import type { OutputMeta, PreviewSession } from './remote-runtime-terminal-preview-api'
+import type {
+  OutputMeta,
+  PreviewSession
+} from '../dashboard/terminal-preview/transport/remote-runtime-terminal-preview-api'
 
 type SnapshotMeta = Parameters<RemoteRuntimeMultiplexedTerminalCallbacks['onSnapshot']>[1]
 

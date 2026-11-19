@@ -1,5 +1,5 @@
 import { getRemoteRuntimeTerminalMultiplexer } from '@/runtime/hosted-terminals/streams/registry/remote-runtime-terminal-multiplexer-registry'
-import { createNonSecureContextUuid } from '../../../../shared/non-secure-context-uuid'
+import { createNonSecureContextUuid } from '../../../../shared/identifiers/non-secure-context-uuid'
 import { getRuntimeEnvironmentRevision } from '@/runtime/rpc/environment-revisions/runtime-environment-revision'
 import type { RemoteRuntimeMultiplexedTerminal } from '@/runtime/hosted-terminals/streams/remote-terminal-stream-contracts'
 import { parseRemoteRuntimePtyId } from '../../../../shared/remote-runtime/remote-runtime-pty-id'

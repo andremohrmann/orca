@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import type { MacOptionAsAlt } from '@/components/terminal-pane/input/keyboard/terminal-option-shortcut-policy'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import { buildPreviewAppearanceOptions } from './preview-terminal-options'
-import { syncPreviewTerminalLigatures } from './preview-terminal-ligatures'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
+import { buildPreviewAppearanceOptions } from '../standalone-terminal/rendering/preview-terminal-options'
+import { syncPreviewTerminalLigatures } from '../standalone-terminal/rendering/preview-terminal-ligatures'
 
 export function usePreviewTerminalAppearance({
   terminalRef,

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useAppMenuPaste } from '@/hooks/clipboard/menu/useAppMenuPaste'
 import { useAppMenuSelectionActions } from '@/hooks/app-commands/useAppMenuSelectionActions'
-import { AgentKanbanBoard } from './AgentKanbanBoard'
-import { useDashboardSnapshot } from './useDashboardSnapshot'
+import { AgentKanbanBoard } from '../dashboard/board/AgentKanbanBoard'
+import { useDashboardSnapshot } from './snapshot/useDashboardSnapshot'
 import { DashboardPopoutOpacityControl } from './DashboardPopoutOpacityControl'
 import {
   normalizeAgentDashboardView,
   type AgentDashboardView
 } from '../../../../shared/agent-dashboard-view'
-import { useAgentDashboardTelemetry } from './use-agent-dashboard-telemetry'
+import { useAgentDashboardTelemetry } from '../dashboard/board/use-agent-dashboard-telemetry'
 
 type DashboardPopoutRootProps = {
   /** The layout requested via popout.html?view=<name>. */

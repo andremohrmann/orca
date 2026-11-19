@@ -49,14 +49,16 @@ vi.mock('../window/dashboard-popout-window', () => ({
   onDashboardPopoutOpenChanged: vi.fn(),
   setDashboardPopoutOpacity: setPopoutOpacityMock
 }))
-vi.mock('../window/focus-existing-window', () => ({ safelyRevealWindow: safelyRevealMock }))
+vi.mock('../window/activation/focus-existing-window', () => ({
+  safelyRevealWindow: safelyRevealMock
+}))
 vi.mock('./ui', () => ({
   getTrustedUIRendererWindow: getTrustedWindowMock,
   isTrustedUIRenderer: isTrustedUIRendererMock,
   sendToTrustedUIRenderer: sendToTrustedMock
 }))
 
-import { registerDashboardPopoutHandlers } from './dashboard-popout'
+import { registerDashboardPopoutHandlers } from './dashboard/dashboard-popout'
 
 const mainSender = { id: 1, send: vi.fn() }
 const popoutSender = { id: 2, send: vi.fn() }

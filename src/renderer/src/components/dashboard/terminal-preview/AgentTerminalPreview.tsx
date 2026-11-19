@@ -1,0 +1,410 @@
+import { useEffect, useRef, useState } from 'react'
+import type { Terminal } from '@xterm/xterm'
+import '@xterm/xterm/css/xterm.css'
+import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
+import { TerminalKittyKeyboardModeTracker } from '../../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
+import {
+  createPreviewReplayWriter,
+  replayPreviewConnectionSnapshot
+} from './transport/preview-terminal-snapshot-replay'
+import { previewAdvertisesKittyKeyboard } from '../../standalone-terminal/rendering/preview-terminal-options'
+import { installPreviewTerminalCompatibility } from '../../standalone-terminal/rendering/preview-terminal-compatibility'
+import { createPreviewClipboardPaster } from '../../standalone-terminal/input/preview-terminal-paste'
+import {
+  installPreviewImeBridge,
+  type PreviewImeBridge
+} from '../../standalone-terminal/input/preview-terminal-ime-bridge'
+import { useAppStore } from '@/store'
+import { installPreviewTerminalKeyHandler } from '../../standalone-terminal/input/preview-terminal-key-handler'
+import { createPreviewGridFocusHandoff } from '../../dashboard-popout/preview-grid-focus-handoff'
+import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/clipboard/terminal-native-copy-gutter'
+import type { TerminalPreviewDataPayload } from '../../../../../shared/terminal/replay/terminal-preview'
+import {
+  PREVIEW_SCROLLBACK_ROWS,
+  clearPreviewTerminalTimer,
+  ensurePreviewTerminal
+} from '../../dashboard-popout/preview-terminal-session'
+import { usePreviewTerminalTheme } from '../../dashboard-popout/usePreviewTerminalTheme'
+import { AgentTerminalPreviewFrame } from '../../dashboard-popout/AgentTerminalPreviewFrame'
+import type { AgentTerminalPreviewProps } from '../../dashboard-popout/agent-terminal-preview-props'
+import { createPreviewTerminalFitScheduler } from '../../dashboard-popout/preview-terminal-fit'
+import { createPreviewTerminalHorizontalScrollReset } from '../../dashboard-popout/preview-terminal-horizontal-scroll'
+import { installPreviewTerminalInputRouting } from '../../dashboard-popout/preview-terminal-input-routing'
+import { usePreviewTerminalAppearance } from '../../dashboard-popout/usePreviewTerminalAppearance'
+import { usePreviewTerminalRuntimeRefs } from '../../dashboard-popout/usePreviewTerminalRuntimeRefs'
+import { installPreviewTerminalInteractions } from '../../dashboard-popout/preview-terminal-interaction-installers'
+import { createPreviewGonePtyRetry } from '../../dashboard-popout/preview-terminal-gone-retry'
+import { createPreviewRemoteTerminalSession } from '../../dashboard-popout/preview-remote-terminal-session'
+import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
+const RESYNC_RETRY_DELAY_MS = 150
+type PendingLivePayload = {
+  acknowledge: boolean
+  payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>
+}
+export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JSX.Element {
+  const {
+    ptyId,
+    terminalInput = null,
+    terminalLinks = null,
+    claimGrid = true,
+    releaseGridOnWindowBlur = false,
+    refreshAfterInput = true,
+    scaleToFit = true,
+    autoFocus = true,
+    onClosedActivate,
+    onRequestClose,
+    linkSource,
+    onBrowserForeground,
+    className
+  } = props
+  const containerRef = useRef<HTMLDivElement>(null)
+  const terminalRef = useRef<Terminal | null>(null)
+  const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
+  const {
+    settingsRef,
+    macOptionAsAltRef,
+    terminalInputRef,
+    terminalLinksRef,
+    linkSourceRef,
+    onBrowserForegroundRef
+  } = usePreviewTerminalRuntimeRefs({
+    settings,
+    macOptionAsAlt,
+    terminalInput,
+    terminalLinks,
+    linkSource,
+    onBrowserForeground
+  })
+  const onRequestCloseRef = useRef(onRequestClose)
+  onRequestCloseRef.current = onRequestClose
+  const [ptyGone, setPtyGone] = useState(false),
+    retryGonePtyRef = useRef<() => void>(() => undefined),
+    reclaimGridRef = useRef<() => void>(() => undefined)
+  usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
+  useEffect(() => {
+    setPtyGone(false)
+    const container = containerRef.current
+    if (!container) {
+      return
+    }
+    let disposed = false
+    let terminal: Terminal | null = null
+    let userInputDisposable: { dispose: () => void } | null = null
+    let imeBridge: PreviewImeBridge | null = null
+    let disposeKeyHandler: (() => void) | null = null
+    let disposeNativeCopyGutterTrim: (() => void) | null = null
+    let disposeTerminalCompatibility: (() => void) | null = null
+    const mountTerminalInput = terminalInputRef.current
+    const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker({
+      kittyKeyboard: previewAdvertisesKittyKeyboard(mountTerminalInput)
+    })
+    let refreshInFlight = false
+    let refreshAgain = false
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
+    let requestInputRefresh = (): void => undefined,
+      scheduleGridClaim = (): void => undefined
+    const pendingLivePayloads: PendingLivePayload[] = []
+    const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
+    const boxFit = createPreviewTerminalFitScheduler({
+      container,
+      getTerminal: () => terminal,
+      scaleToFit,
+      localResizeToFit: !scaleToFit,
+      onUnscaledOverflow: () => scheduleGridClaim(),
+      onBoxResize: () => scheduleGridClaim()
+    })
+    const goneRetry = createPreviewGonePtyRetry({
+      retryDelayMs: 1_000,
+      requestReconnect: () => void setup(true),
+      isDisposed: () => disposed
+    })
+    const remoteSession = createPreviewRemoteTerminalSession({
+      ptyId,
+      onSnapshot: (snapshot) => {
+        setPtyGone(false)
+        replayConnection({ snapshot, replay: [] }, terminal !== null, () => undefined)
+      },
+      onData: (data) => writeLive({ type: 'data', ptyId, data, bytes: 0 }, false),
+      onResize: ({ cols, rows }) => terminal?.resize(cols, rows),
+      onUnavailable: () => setPtyGone(true)
+    })
+    const gridClaim = createPreviewGridFocusHandoff({
+      claimGrid,
+      releaseOnWindowBlur: releaseGridOnWindowBlur,
+      ptyId,
+      container,
+      getTerminal: () => terminal,
+      transport: remoteSession ?? undefined
+    })
+    scheduleGridClaim = gridClaim.schedule
+    reclaimGridRef.current = gridClaim.reclaim
+    const replayWriter = createPreviewReplayWriter({
+      getTerminal: () => terminal,
+      kittyKeyboardModes,
+      onParsed: boxFit.schedule
+    })
+    const writeReplayed = replayWriter.write
+    const writeLive = (payload: PendingLivePayload['payload'], acknowledge = true): void => {
+      clearPreviewTerminalTimer(inputRefreshTimer)
+      inputRefreshTimer = null
+      if (!terminal) {
+        pendingLivePayloads.push({ payload, acknowledge })
+        return
+      }
+      writeReplayed(
+        payload.data,
+        () => {
+          if (!disposed && acknowledge) {
+            void window.api.terminalPreview.ack(ptyId, payload.bytes)
+          }
+        },
+        true
+      )
+    }
+    const sendInput = (data: string): boolean | Promise<boolean> =>
+      remoteSession ? remoteSession.input(data) : window.api.terminalPreview.input(ptyId, data)
+    const pasteClipboardText = createPreviewClipboardPaster({
+      ptyId,
+      container,
+      getTerminal: () => terminal,
+      getTerminalInput: () => terminalInputRef.current,
+      getTerminalLinks: () => terminalLinksRef.current,
+      writePty: sendInput,
+      isDisposed: () => disposed
+    })
+
+    const disposeImeNativeTextBridge = (): void => {
+      imeBridge?.dispose()
+      imeBridge = null
+    }
+    const disposeInteractions = installPreviewTerminalInteractions({
+      container,
+      getTerminal: () => terminal,
+      sendInput,
+      requestInputRefresh,
+      isRightClickToPasteEnabled: () =>
+        settingsRef.current?.terminalRightClickToPaste ?? isWindowsUserAgent(),
+      pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
+    })
+
+    const replayConnection = (
+      connection: Awaited<ReturnType<typeof window.api.terminalPreview.connect>>,
+      replaceExisting: boolean,
+      requestRefresh: () => void
+    ): void => {
+      const snap = connection.snapshot!
+      const resolved = ensurePreviewTerminal({
+        terminal,
+        container,
+        snap,
+        replaceExisting,
+        settings: settingsRef.current,
+        terminalInput: mountTerminalInput,
+        macOptionIsMeta: macOptionAsAltRef.current === 'true',
+        theme: terminalTheme,
+        themeMode: terminalMode
+      })
+      terminal = resolved.terminal
+      if (!terminal) {
+        return
+      }
+      if (resolved.created) {
+        terminalRef.current = terminal
+        disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
+          getSettings: () => settingsRef.current,
+          getTerminalLinks: () => terminalLinksRef.current,
+          getLinkSource: () => linkSourceRef.current,
+          onBrowserForeground: () => onBrowserForegroundRef.current?.()
+        })
+        disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
+        userInputDisposable = installPreviewTerminalInputRouting({
+          terminal,
+          sendInput,
+          requestInputRefresh:
+            refreshAfterInput && !remoteSession ? requestInputRefresh : () => undefined,
+          scheduleHorizontalReset: horizontalReset.schedule,
+          isReplaying: replayWriter.isReplaying
+        })
+        imeBridge = installPreviewImeBridge(terminal, {
+          getKittyKeyboardFlags: () => kittyKeyboardModes.flags
+        })
+        disposeKeyHandler = installPreviewTerminalKeyHandler({
+          terminal,
+          claimImeKeyEvent: (event) => imeBridge?.claimKeyEvent(event) ?? false,
+          pasteClipboardText: (activeElement, source) =>
+            void pasteClipboardText(activeElement, source),
+          sendInput: (data) => terminal?.input(data),
+          requestClose: () => onRequestCloseRef.current?.(),
+          getShortcutContext: () => ({
+            clientPlatform: getShortcutPlatform(),
+            macOptionAsAlt: macOptionAsAltRef.current,
+            keybindings: useAppStore.getState().keybindings,
+            terminalInput: terminalInputRef.current,
+            getKittyKeyboardFlags: () => kittyKeyboardModes.flags,
+            terminalShortcutPolicy: settingsRef.current?.terminalShortcutPolicy
+          })
+        })
+      }
+      replayPreviewConnectionSnapshot({
+        snapshot: snap,
+        replay: connection.replay,
+        kittyKeyboardModes,
+        write: (chunk, live) => writeReplayed(chunk, undefined, live)
+      })
+      for (const pending of pendingLivePayloads.splice(0)) {
+        writeLive(pending.payload, pending.acknowledge)
+      }
+      if (connection.resyncRequired) {
+        refreshAgain = false
+        writeReplayed('', () => {
+          if (disposed || retryTimer) {
+            return
+          }
+          retryTimer = setTimeout(() => {
+            retryTimer = null
+            requestRefresh()
+          }, RESYNC_RETRY_DELAY_MS)
+        })
+      } else if (refreshAgain) {
+        refreshAgain = false
+        writeReplayed('', requestRefresh)
+      }
+      boxFit.schedule()
+      gridClaim.requestNow()
+      gridClaim.schedule()
+      if (autoFocus) {
+        terminal.focus()
+      }
+    }
+
+    const setup = async (replaceExisting = false): Promise<void> => {
+      if (refreshInFlight) {
+        refreshAgain = true
+        return
+      }
+      refreshInFlight = true
+      // Why: a failed or absent transport must show the unavailable message, not a blank dialog.
+      const connection = await window.api.terminalPreview
+        .connect(ptyId, { scrollbackRows: PREVIEW_SCROLLBACK_ROWS })
+        .catch(() => null)
+      if (disposed) {
+        return
+      }
+      if (!connection?.snapshot) {
+        refreshInFlight = false
+        setPtyGone(true)
+        userInputDisposable?.dispose()
+        userInputDisposable = null
+        disposeImeNativeTextBridge()
+        disposeTerminalCompatibility?.()
+        disposeTerminalCompatibility = null
+        disposeKeyHandler?.()
+        disposeKeyHandler = null
+        disposeNativeCopyGutterTrim?.()
+        disposeNativeCopyGutterTrim = null
+        terminal?.dispose()
+        terminal = null
+        terminalRef.current = null
+        void window.api.terminalPreview.unsubscribe(ptyId)
+        goneRetry.schedule()
+        return
+      }
+      refreshInFlight = false
+      setPtyGone(false)
+      goneRetry.dispose()
+      if (!connection.resyncRequired && retryTimer) {
+        clearTimeout(retryTimer)
+        retryTimer = null
+      }
+      replayConnection(connection, replaceExisting, () => void setup(true))
+    }
+
+    requestInputRefresh = (): void => {
+      clearPreviewTerminalTimer(inputRefreshTimer)
+      inputRefreshTimer = setTimeout(() => {
+        inputRefreshTimer = null
+        void setup(true)
+      }, 180)
+    }
+    retryGonePtyRef.current = remoteSession ? () => void remoteSession.start() : goneRetry.retryNow
+
+    const offData = remoteSession
+      ? null
+      : window.api.terminalPreview.onData((payload) => {
+          if (payload.ptyId !== ptyId) {
+            return
+          }
+          if (payload.type === 'resync') {
+            void setup(true)
+            return
+          }
+          writeLive(payload)
+        })
+
+    void (remoteSession ? remoteSession.start() : setup())
+    return () => {
+      disposed = true
+      boxFit.dispose()
+      clearPreviewTerminalTimer(retryTimer)
+      clearPreviewTerminalTimer(inputRefreshTimer)
+      goneRetry.dispose()
+      retryGonePtyRef.current = () => undefined
+      reclaimGridRef.current = () => undefined
+      horizontalReset.dispose()
+      gridClaim.dispose()
+      offData?.()
+      userInputDisposable?.dispose()
+      disposeImeNativeTextBridge()
+      disposeTerminalCompatibility?.()
+      disposeKeyHandler?.()
+      disposeInteractions()
+      disposeNativeCopyGutterTrim?.()
+      if (remoteSession) {
+        remoteSession.dispose()
+      } else {
+        void window.api.terminalPreview.unsubscribe(ptyId)
+      }
+      terminal?.dispose()
+      terminalRef.current = null
+    }
+  }, [
+    autoFocus,
+    claimGrid,
+    macOptionAsAltRef,
+    linkSourceRef,
+    onBrowserForegroundRef,
+    ptyId,
+    releaseGridOnWindowBlur,
+    refreshAfterInput,
+    scaleToFit,
+    settingsRef,
+    terminalInputRef,
+    terminalLinksRef,
+    terminalTheme,
+    terminalMode,
+    settings?.terminalMinimumContrastRatio,
+    settings?.terminalFontSize,
+    settings?.terminalFontFamily,
+    settings?.terminalFontWeight,
+    settings?.terminalFontWeightBold,
+    settings?.terminalLineHeight,
+    settings?.terminalLigatures
+  ])
+
+  return (
+    <AgentTerminalPreviewFrame
+      className={className}
+      containerRef={containerRef}
+      terminalRef={terminalRef}
+      ptyId={ptyId}
+      ptyGone={ptyGone}
+      onActivate={() => reclaimGridRef.current()}
+      onClosedActivate={() => {
+        onClosedActivate?.()
+        retryGonePtyRef.current()
+      }}
+      terminalTheme={terminalTheme}
+    />
+  )
+}

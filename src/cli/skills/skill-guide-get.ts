@@ -1,6 +1,6 @@
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { RuntimeClientError } from '../runtime/types'
-import { writeStdoutLine } from '../stdout-line'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { RuntimeClientError } from '../runtime/connection/types'
+import { writeStdoutLine } from '../output/stdout-line'
 import {
   loadCanonicalGuides,
   requireTopic,

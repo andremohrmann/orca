@@ -1,4 +1,4 @@
-import type { RuntimeTerminalCreate } from '../../shared/runtime-terminal-create-contract'
+import type { RuntimeTerminalCreate } from '../../shared/terminal/runtime/runtime-terminal-create-contract'
 import type {
   RuntimeTerminalFocus,
   RuntimeTerminalListResult,
@@ -8,8 +8,8 @@ import type {
   RuntimeTerminalShow,
   RuntimeTerminalSplit,
   RuntimeTerminalWait
-} from '../../shared/runtime-terminal-contracts'
-import type { CommandHandler } from '../dispatch'
+} from '../../shared/terminal/runtime/runtime-terminal-contracts'
+import type { CommandHandler } from '../dispatch/dispatch'
 import { shouldUseRendererBackedInteractiveTerminal } from './codex-command-classification'
 import {
   formatTerminalCreate,
@@ -22,23 +22,23 @@ import {
   formatTerminalSplit,
   formatTerminalWait
 } from './terminal-format'
-import { printResult } from '../command-result-output'
+import { printResult } from '../output/command-result-output'
 import {
   getOptionalPositiveIntegerFlag,
   getOptionalStringFlag,
   getRequiredStringFlag,
   getRequiredStringFlagAllowingEmpty
-} from '../flags'
+} from '../arguments/flags'
 import {
   annotateOmittedHostScope,
   type WithAnnotatedHostScope
 } from '../hosts/omitted-host-scope-selectors'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import {
   isSupportedWindowsShellOverride,
   listSupportedWindowsShellOverrides
-} from '../../shared/windows-terminal-shell'
-import '../../shared/protocol-version'
+} from '../../shared/shell/launch/windows-terminal-shell'
+import '../../shared/remote-runtime/protocol/protocol-version'
 import {
   TERMINAL_CREATE_SHELL_SELECTION_RUNTIME_CAPABILITY,
   TERMINAL_SPLIT_RETRY_RUNTIME_CAPABILITY

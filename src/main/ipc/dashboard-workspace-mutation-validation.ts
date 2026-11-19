@@ -2,7 +2,7 @@ import {
   DASHBOARD_MAX_LABEL_LENGTH,
   type DashboardAssignWorkspaceStatusArgs,
   type DashboardRenameWorkspaceArgs
-} from '../../shared/dashboard-snapshot'
+} from '../../shared/agent-status/presentation/dashboard-snapshot'
 
 const MAX_ID_LENGTH = 4_096
 

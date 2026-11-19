@@ -2,7 +2,7 @@
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { runtimeStreamHarness, terminalHarness } from './agent-terminal-preview-test-harness'
-import { AgentTerminalPreview } from './AgentTerminalPreview'
+import { AgentTerminalPreview } from '../dashboard/terminal-preview/AgentTerminalPreview'
 
 afterEach(() => {
   cleanup()

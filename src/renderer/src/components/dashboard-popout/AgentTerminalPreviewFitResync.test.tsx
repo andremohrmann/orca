@@ -4,7 +4,7 @@ import '@testing-library/jest-dom/vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { terminalHarness } from './agent-terminal-preview-test-harness'
-import { AgentTerminalPreview } from './AgentTerminalPreview'
+import { AgentTerminalPreview } from '../dashboard/terminal-preview/AgentTerminalPreview'
 
 describe('AgentTerminalPreview fit resync', () => {
   const input = vi.fn(async (_ptyId: string, _data: string) => true)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
+import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { mergeLiveOrder, moveLiveCardBefore, sortedLiveCards } from './agent-live-grid-order'
 
 function card(paneKey: string, overrides: Partial<DashboardCard> = {}): DashboardCard {

@@ -1,6 +1,6 @@
 import { GripVertical, Maximize2, Minus, Pencil, SquareArrowOutUpRight, X } from 'lucide-react'
 import type { DragEvent } from 'react'
-import { AgentStateDot } from '@/components/AgentStateDot'
+import { AgentStateDot } from '@/components/agent/status/AgentStateDot'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -12,10 +12,10 @@ import {
   dashboardCardDisplayState,
   type DashboardCard,
   type DashboardFilterOption
-} from '../../../../shared/dashboard-snapshot'
-import type { RepoIcon } from '../../../../shared/repo-icon'
+} from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { RepoIcon } from '../../../../shared/repository/appearance/repo-icon'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
-import type { AgentRevealArgs } from './AgentTerminalDialog'
+import type { DashboardRevealAgentArgs as AgentRevealArgs } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { DashboardWorkspaceStatusButton } from './DashboardWorkspaceStatusButton'
 
 type AgentLiveGridHeaderProps = {

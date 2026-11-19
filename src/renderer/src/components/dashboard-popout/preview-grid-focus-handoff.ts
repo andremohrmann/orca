@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
-import { createPreviewGridClaim } from './preview-grid-claim'
+import { createPreviewGridClaim } from '../dashboard/terminal-preview/geometry/preview-grid-claim'
 import { installPreviewGridFocusOwnership } from './preview-grid-focus-ownership'
 
 const noGridClaim = {

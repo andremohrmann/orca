@@ -3,9 +3,9 @@ import type { MacOptionAsAlt } from '@/components/terminal-pane/input/keyboard/t
 import type {
   DashboardCardTerminalInput,
   DashboardCardTerminalLinks
-} from '../../../../shared/dashboard-snapshot'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { DashboardPreviewLinkSource } from './dashboard-preview-http-actions'
+} from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
+import type { DashboardPreviewLinkSource } from '../dashboard/terminal-preview/links/dashboard-preview-http-actions'
 
 export function usePreviewTerminalRuntimeRefs(args: {
   settings: GlobalSettings | null

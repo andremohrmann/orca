@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
+import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { inactiveLivePaneKeys, liveCardActivityAt } from './agent-live-grid-auto-minimize'
 
 const NOW = 1_000_000

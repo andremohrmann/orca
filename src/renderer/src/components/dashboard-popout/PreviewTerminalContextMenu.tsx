@@ -6,9 +6,9 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { formatPrimaryShortcutLabel } from '@/hooks/useShortcutLabel'
+import { formatPrimaryShortcutLabel } from '@/lib/keyboard/useShortcutLabel'
 import { translate } from '@/i18n/i18n'
-import type { KeybindingOverrides } from '../../../../shared/keybindings'
+import type { KeybindingOverrides } from '../../../../shared/keybindings/types'
 
 export function PreviewTerminalContextMenu({
   open,

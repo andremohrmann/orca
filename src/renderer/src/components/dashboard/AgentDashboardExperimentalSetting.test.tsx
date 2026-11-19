@@ -3,8 +3,8 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../../../shared/constants'
-import { AgentDashboardExperimentalSetting } from './AgentDashboardExperimentalSetting'
+import { getDefaultSettings } from '../../../../shared/orca-profiles/constants'
+import { AgentDashboardExperimentalSetting } from './settings/AgentDashboardExperimentalSetting'
 import { getExperimentalSearchEntry } from '../settings/advanced/experimental-search'
 import { matchesSettingsSearch } from '../settings/search/settings-search'
 

@@ -1,27 +1,27 @@
 import { AlertTriangle } from 'lucide-react'
-import type { DashboardUsageSnapshot } from '../../../../shared/dashboard-snapshot'
-import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
+import type { DashboardUsageSnapshot } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type {
+  ProviderRateLimits,
+  RateLimitWindow
+} from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
 import {
   clampUsedPercent,
   getDisplayedUsagePercentage,
   normalizeUsagePercentageDisplay,
   type UsagePercentageDisplay
-} from '../../../../shared/usage-percentage-display'
-import { normalizeStatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
+} from '../../../../shared/agent-usage/display/usage-percentage-display'
+import { normalizeStatusBarUsageMode } from '../../../../shared/status-bar/status-bar-usage-mode'
 import {
   formatRateLimitWindowChipLabel,
   formatWindowLabel
-} from '../../../../shared/rate-limit-window-label'
-import { getProviderDisplayName } from '../../../../shared/usage-provider-windows'
+} from '../../../../shared/agent-usage/rate-limits/rate-limit-window-label'
+import { getProviderDisplayName } from '../../../../shared/agent-usage/display/usage-provider-windows'
 import { cn } from '@/lib/class-names'
 import { translate } from '@/i18n/i18n'
-import {
-  barColor,
-  getProviderUsageStatusLabel,
-  getWindowSections,
-  ProviderIcon
-} from '@/components/status-bar/tooltip'
-import { formatUsagePercentageLabel } from '@/components/status-bar/usage-percentage-label'
+import { getWindowSections, ProviderIcon } from '@/components/status-bar/usage/provider-usage-panel'
+import { getProviderUsageStatusLabel } from '../../../../shared/agent-usage/status-copy/usage-error-copy'
+import { usageBarClass } from '@/components/status-bar/usage/usage-health-tone'
+import { formatUsagePercentageLabel } from '@/components/status-bar/usage/usage-percentage-label'
 
 type UsageSection = { label: string; window: RateLimitWindow }
 
@@ -70,7 +70,7 @@ function UsageProviderMeter({
   display: UsagePercentageDisplay
 }): React.JSX.Element {
   const section = dashboardUsageSection(provider)
-  const statusLabel = getProviderUsageStatusLabel(provider)
+  const statusLabel = getProviderUsageStatusLabel(provider, translate)
 
   if (provider.status === 'idle' || (provider.status === 'fetching' && !section)) {
     return (
@@ -116,7 +116,7 @@ function UsageProviderMeter({
       ) : null}
       <span className="h-[5px] w-8 overflow-hidden rounded-full bg-muted">
         <span
-          className={cn('block h-full rounded-full', barColor(used))}
+          className={cn('block h-full rounded-full', usageBarClass(used, 'health'))}
           style={{ width: `${shown}%` }}
         />
       </span>

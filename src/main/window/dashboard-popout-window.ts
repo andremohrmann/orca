@@ -2,18 +2,24 @@ import { mainI18n, translateMain } from '../i18n/main-i18n'
 import { app, BrowserWindow, nativeTheme, type WebContents, type Event } from 'electron'
 import { join } from 'node:path'
 import type { Store } from '../persistence/loading-store/store'
-import { isBackgroundLaunch, showWindowWithoutStealingFocus } from './foreground-activation-policy'
+import {
+  isBackgroundLaunch,
+  showWindowWithoutStealingFocus
+} from './activation/foreground-activation-policy'
 import { resolveDashboardPopoutBounds } from './dashboard-popout-bounds'
 import { sendToTrustedUIRenderer } from '../ipc/ui'
-import { installPrivilegedWindowNavigationPolicy } from './privileged-window-navigation'
-import { stepUIZoomLevel, type UIZoomDirection } from '../../shared/ui-zoom-level'
-import { nativeZoomCommandMatchesKeybindings } from '../../shared/window-shortcut-policy'
+import { installPrivilegedWindowNavigationPolicy } from './security/privileged-window-navigation'
 import {
-  keybindingMatchesAction,
-  type KeybindingActionId,
-  type KeybindingInput,
-  type KeybindingOverrides
-} from '../../shared/keybindings'
+  stepUIZoomLevel,
+  type UIZoomDirection
+} from '../../shared/app-lifecycle/windows/ui-zoom-level'
+import { nativeZoomCommandMatchesKeybindings } from '../../shared/keybindings/window-shortcut-policy'
+import { keybindingMatchesAction } from '../../shared/keybindings/matching'
+import type {
+  KeybindingActionId,
+  KeybindingInput,
+  KeybindingOverrides
+} from '../../shared/keybindings/types'
 import {
   normalizeAgentDashboardView,
   type AgentDashboardView
@@ -24,7 +30,7 @@ import {
   persistDashboardPopoutOpacity
 } from './dashboard-popout-opacity-state'
 import { wslHostsWindowArguments } from '../wsl/host-lifecycle/wsl-host-gate'
-import { isMacAppPasteInput } from './mac-app-paste-input'
+import { isMacAppPasteInput } from './editing/mac-app-paste-input'
 
 const MIN_WIDTH = 480
 const MIN_HEIGHT = 360

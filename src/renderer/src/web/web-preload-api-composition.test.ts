@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installBrowserGlobals } from './web-preload-api-test-harness'
+import { installBrowserGlobals } from './testing/web-preload-api-test-harness'
 
 describe('web preload API composition', () => {
   beforeEach(() => {
@@ -9,7 +9,7 @@ describe('web preload API composition', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
-    vi.doUnmock('../../../shared/e2e-config')
+    vi.doUnmock('../../../shared/app-lifecycle/launch/e2e-config')
   })
 
   it('keeps fallback namespaces non-enumerable and non-thenable', async () => {
@@ -33,7 +33,7 @@ describe('web preload API composition', () => {
       evaluationOrder.push('e2e')
       return config
     })
-    vi.doMock('../../../shared/e2e-config', () => ({ createE2EConfig }))
+    vi.doMock('../../../shared/app-lifecycle/launch/e2e-config', () => ({ createE2EConfig }))
     vi.stubEnv('VITE_EXPOSE_STORE', 'true')
     const globals = installBrowserGlobals('Linux')
     Object.assign(globals.window.location, {

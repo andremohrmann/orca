@@ -1,5 +1,5 @@
 import type { Store } from '../persistence/loading-store/store'
-import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
+import { rectHasVisibleAreaOnAnyDisplay } from './presentation/window-bounds-validation'
 
 export function resolveDashboardPopoutBounds(
   store: Store | null,

@@ -5,14 +5,14 @@ import type React from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
+import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 
 vi.mock('@/lib/agent-catalog/agent-catalog', () => ({
   AgentIcon: () => <span data-testid="agent-icon" />
 }))
 
-vi.mock('@/components/AgentStateDot', () => ({
+vi.mock('@/components/agent/status/AgentStateDot', () => ({
   AgentStateDot: () => <span data-testid="state-dot" />
 }))
 

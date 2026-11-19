@@ -30,19 +30,19 @@ vi.mock('@/components/terminal-pane/input/terminal-user-input-signal', () => ({
 vi.mock('@/components/terminal-pane/clipboard/terminal-native-copy-gutter', () => ({
   installTerminalNativeCopyGutterTrim: () => ({ dispose: () => {} })
 }))
-vi.mock('../dashboard-popout/preview-terminal-compatibility', () => ({
+vi.mock('./rendering/preview-terminal-compatibility', () => ({
   installPreviewTerminalCompatibility: () => () => {}
 }))
-vi.mock('../dashboard-popout/preview-terminal-ime-bridge', () => ({
+vi.mock('./input/preview-terminal-ime-bridge', () => ({
   installPreviewImeBridge: () => ({ claimKeyEvent: () => false, dispose: () => {} })
 }))
-vi.mock('../dashboard-popout/preview-terminal-key-handler', () => ({
+vi.mock('./input/preview-terminal-key-handler', () => ({
   installPreviewTerminalKeyHandler: () => () => {}
 }))
-vi.mock('../dashboard-popout/preview-terminal-app-menu-clipboard', () => ({
+vi.mock('./input/preview-terminal-app-menu-clipboard', () => ({
   installPreviewTerminalAppMenuClipboard: () => () => {}
 }))
-vi.mock('../dashboard-popout/preview-terminal-right-click-paste', () => ({
+vi.mock('./input/preview-terminal-right-click-paste', () => ({
   installPreviewTerminalRightClickPaste: () => () => {}
 }))
 
