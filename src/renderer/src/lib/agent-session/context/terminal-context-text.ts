@@ -11,7 +11,7 @@ export function readTerminalContextText(terminal: Pick<Terminal, 'buffer' | 'col
 }
 
 // Joins soft wraps before trimming so a printed space at a wrap boundary survives.
-function readBufferText(buffer: IBuffer, firstRow: number, cols: number): string {
+export function readBufferText(buffer: IBuffer, firstRow: number, cols: number): string {
   const lines: string[] = []
   let logicalLine = ''
   for (let row = firstRow; row < buffer.length; row++) {

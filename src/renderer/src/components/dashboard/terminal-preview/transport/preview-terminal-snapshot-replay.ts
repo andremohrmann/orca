@@ -13,6 +13,30 @@ export type PendingLivePayload = {
   payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>
 }
 
+export function writePreviewLivePayload(args: {
+  payload: PendingLivePayload['payload']
+  acknowledge: boolean
+  terminal: Terminal | null
+  pending: PendingLivePayload[]
+  write: ReturnType<typeof createPreviewReplayWriter>['write']
+  isDisposed: () => boolean
+}): void {
+  const { payload, acknowledge } = args
+  if (!args.terminal) {
+    args.pending.push({ payload, acknowledge })
+    return
+  }
+  args.write(
+    payload.data,
+    () => {
+      if (!args.isDisposed() && acknowledge) {
+        void window.api.terminalPreview.ack(payload.ptyId, payload.bytes)
+      }
+    },
+    true
+  )
+}
+
 /** Restore proven kitty flags after kitty-free snapshot ANSI; remain synchronous so events cannot observe the temporary reset. */
 export function replayPreviewConnectionSnapshot(args: {
   snapshot: TerminalPreviewSnapshot

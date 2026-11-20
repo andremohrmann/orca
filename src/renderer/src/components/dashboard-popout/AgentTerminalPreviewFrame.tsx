@@ -2,6 +2,7 @@ import type { Terminal, ITheme } from '@xterm/xterm'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/class-names'
 import { terminalPreviewUnavailableMessage } from '../dashboard/terminal-preview/terminal-preview-unavailable-message'
+import type { usePreviewTerminalTextMode } from './use-preview-terminal-text-mode'
 
 export function AgentTerminalPreviewFrame({
   className,
@@ -12,7 +13,8 @@ export function AgentTerminalPreviewFrame({
   onActivate,
   onClosedActivate,
   terminalTheme,
-  contextMenu
+  contextMenu,
+  textPreview
 }: {
   className?: string
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -23,9 +25,13 @@ export function AgentTerminalPreviewFrame({
   onClosedActivate?: () => void
   terminalTheme: ITheme | null
   contextMenu?: ReactNode
+  textPreview?: ReturnType<typeof usePreviewTerminalTextMode>
 }): React.JSX.Element {
+  const { frameRef, textRef, focused, text } = textPreview ?? {}
   return (
     <div
+      ref={frameRef}
+      tabIndex={textPreview ? 0 : undefined}
       data-preview-terminal-frame="true"
       className={cn(
         'relative h-[calc(100vh-140px)] w-full overflow-hidden bg-background p-1.5',
@@ -34,6 +40,10 @@ export function AgentTerminalPreviewFrame({
       style={terminalTheme?.background ? { backgroundColor: terminalTheme.background } : undefined}
       onPointerDownCapture={() => {
         if (ptyGone) {
+          return
+        }
+        if (textPreview && !focused) {
+          frameRef?.current?.focus({ preventScroll: true })
           return
         }
         onActivate?.()
@@ -49,11 +59,24 @@ export function AgentTerminalPreviewFrame({
           {terminalPreviewUnavailableMessage({ ptyId })}
         </button>
       ) : null}
+      {textPreview && !focused && !ptyGone ? (
+        <pre
+          ref={textRef}
+          className="scrollbar-sleek h-full w-full overflow-auto whitespace-pre-wrap break-words bg-background font-mono text-xs text-foreground"
+          style={{
+            backgroundColor: terminalTheme?.background,
+            color: terminalTheme?.foreground
+          }}
+        >
+          {text}
+        </pre>
+      ) : null}
       <div
-        aria-hidden={ptyGone || undefined}
+        aria-hidden={ptyGone || (textPreview && !focused) || undefined}
         className={cn(
           'flex h-full min-w-0 w-full items-end overflow-hidden [contain:paint]',
-          ptyGone && 'invisible'
+          ptyGone && 'invisible',
+          textPreview && !focused && 'invisible absolute inset-1.5 pointer-events-none'
         )}
       >
         <div ref={containerRef} className="max-w-full origin-bottom-left" />

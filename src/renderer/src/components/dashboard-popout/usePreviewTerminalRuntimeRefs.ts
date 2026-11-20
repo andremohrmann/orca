@@ -14,6 +14,7 @@ export function usePreviewTerminalRuntimeRefs(args: {
   terminalLinks: DashboardCardTerminalLinks | null
   linkSource?: DashboardPreviewLinkSource
   onBrowserForeground?: () => void
+  onRequestClose?: () => void
 }): {
   settingsRef: React.MutableRefObject<GlobalSettings | null>
   macOptionAsAltRef: React.MutableRefObject<MacOptionAsAlt>
@@ -21,6 +22,7 @@ export function usePreviewTerminalRuntimeRefs(args: {
   terminalLinksRef: React.MutableRefObject<DashboardCardTerminalLinks | null>
   linkSourceRef: React.MutableRefObject<DashboardPreviewLinkSource | undefined>
   onBrowserForegroundRef: React.MutableRefObject<(() => void) | undefined>
+  onRequestCloseRef: React.MutableRefObject<(() => void) | undefined>
 } {
   const settingsRef = useRef(args.settings)
   const macOptionAsAltRef = useRef(args.macOptionAsAlt)
@@ -28,6 +30,7 @@ export function usePreviewTerminalRuntimeRefs(args: {
   const terminalLinksRef = useRef(args.terminalLinks)
   const linkSourceRef = useRef(args.linkSource)
   const onBrowserForegroundRef = useRef(args.onBrowserForeground)
+  const onRequestCloseRef = useRef(args.onRequestClose)
 
   useLayoutEffect(() => {
     settingsRef.current = args.settings
@@ -36,13 +39,15 @@ export function usePreviewTerminalRuntimeRefs(args: {
     terminalLinksRef.current = args.terminalLinks
     linkSourceRef.current = args.linkSource
     onBrowserForegroundRef.current = args.onBrowserForeground
+    onRequestCloseRef.current = args.onRequestClose
   }, [
     args.settings,
     args.macOptionAsAlt,
     args.terminalInput,
     args.terminalLinks,
     args.linkSource,
-    args.onBrowserForeground
+    args.onBrowserForeground,
+    args.onRequestClose
   ])
 
   return {
@@ -51,6 +56,7 @@ export function usePreviewTerminalRuntimeRefs(args: {
     terminalInputRef,
     terminalLinksRef,
     linkSourceRef,
-    onBrowserForegroundRef
+    onBrowserForegroundRef,
+    onRequestCloseRef
   }
 }

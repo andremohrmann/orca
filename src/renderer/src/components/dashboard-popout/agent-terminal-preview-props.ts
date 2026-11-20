@@ -14,6 +14,7 @@ export type AgentTerminalPreviewProps = {
   refreshAfterInput?: boolean
   scaleToFit?: boolean
   autoFocus?: boolean
+  textWhenUnfocused?: boolean
   onClosedActivate?: () => void
   onRequestClose?: () => void
   /** Identifies the card for smart HTTP-link routing (foreground an existing browser tab). */

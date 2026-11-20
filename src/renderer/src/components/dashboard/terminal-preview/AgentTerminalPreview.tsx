@@ -5,6 +5,7 @@ import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { TerminalKittyKeyboardModeTracker } from '../../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
 import {
   createPreviewReplayWriter,
+  writePreviewLivePayload,
   replayPreviewConnectionSnapshot,
   type PendingLivePayload
 } from './transport/preview-terminal-snapshot-replay'
@@ -36,6 +37,7 @@ import { installPreviewTerminalInteractions } from '../../dashboard-popout/previ
 import { createPreviewGonePtyRetry } from '../../dashboard-popout/preview-terminal-gone-retry'
 import { createPreviewRemoteTerminalSession } from '../../dashboard-popout/preview-remote-terminal-session'
 import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
+import { usePreviewTerminalTextMode } from '../../dashboard-popout/use-preview-terminal-text-mode'
 const RESYNC_RETRY_DELAY_MS = 150
 export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JSX.Element {
   const {
@@ -47,6 +49,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     refreshAfterInput = true,
     scaleToFit = true,
     autoFocus = true,
+    textWhenUnfocused = false,
     onClosedActivate,
     onRequestClose,
     linkSource,
@@ -62,20 +65,22 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     terminalInputRef,
     terminalLinksRef,
     linkSourceRef,
-    onBrowserForegroundRef
+    onBrowserForegroundRef,
+    onRequestCloseRef
   } = usePreviewTerminalRuntimeRefs({
     settings,
     macOptionAsAlt,
     terminalInput,
     terminalLinks,
     linkSource,
-    onBrowserForeground
+    onBrowserForeground,
+    onRequestClose
   })
-  const onRequestCloseRef = useRef(onRequestClose)
-  onRequestCloseRef.current = onRequestClose
   const [ptyGone, setPtyGone] = useState(false),
     retryGonePtyRef = useRef<() => void>(() => undefined),
     reclaimGridRef = useRef<() => void>(() => undefined)
+  const textPreview = usePreviewTerminalTextMode(textWhenUnfocused, terminalRef, reclaimGridRef)
+  const { interactiveRef, refreshText } = textPreview
   usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
   useEffect(() => {
     setPtyGone(false)
@@ -104,7 +109,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
     const boxFit = createPreviewTerminalFitScheduler({
       container,
-      getTerminal: () => terminal,
+      getTerminal: () => (interactiveRef.current ? terminal : null),
       scaleToFit,
       localResizeToFit: !scaleToFit,
       onUnscaledOverflow: () => scheduleGridClaim(),
@@ -130,7 +135,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       releaseOnWindowBlur: releaseGridOnWindowBlur,
       ptyId,
       container,
-      getTerminal: () => terminal,
+      getTerminal: () => (interactiveRef.current ? terminal : null),
       transport: remoteSession ?? undefined
     })
     scheduleGridClaim = gridClaim.schedule
@@ -138,25 +143,19 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     const replayWriter = createPreviewReplayWriter({
       getTerminal: () => terminal,
       kittyKeyboardModes,
-      onParsed: boxFit.schedule
+      onParsed: () => refreshText(boxFit.schedule)
     })
     const writeReplayed = replayWriter.write
     const writeLive = (payload: PendingLivePayload['payload'], acknowledge = true): void => {
       clearPreviewTerminalTimer(inputRefreshTimer)
-      inputRefreshTimer = null
-      if (!terminal) {
-        pendingLivePayloads.push({ payload, acknowledge })
-        return
-      }
-      writeReplayed(
-        payload.data,
-        () => {
-          if (!disposed && acknowledge) {
-            void window.api.terminalPreview.ack(ptyId, payload.bytes)
-          }
-        },
-        true
-      )
+      writePreviewLivePayload({
+        payload,
+        acknowledge,
+        terminal,
+        pending: pendingLivePayloads,
+        write: writeReplayed,
+        isDisposed: () => disposed
+      })
     }
     const sendInput = (data: string): boolean | Promise<boolean> =>
       remoteSession ? remoteSession.input(data) : window.api.terminalPreview.input(ptyId, data)
@@ -319,7 +318,6 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     requestInputRefresh = (): void => {
       clearPreviewTerminalTimer(inputRefreshTimer)
       inputRefreshTimer = setTimeout(() => {
-        inputRefreshTimer = null
         void setup(true)
       }, 180)
     }
@@ -366,10 +364,13 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     }
   }, [
     autoFocus,
+    interactiveRef,
+    refreshText,
     claimGrid,
     macOptionAsAltRef,
     linkSourceRef,
     onBrowserForegroundRef,
+    onRequestCloseRef,
     ptyId,
     releaseGridOnWindowBlur,
     refreshAfterInput,
@@ -401,6 +402,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         retryGonePtyRef.current()
       }}
       terminalTheme={terminalTheme}
+      textPreview={textWhenUnfocused ? textPreview : undefined}
     />
   )
 }

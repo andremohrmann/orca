@@ -21,6 +21,7 @@ export function AgentLiveGridTerminal({
       refreshAfterInput={false}
       scaleToFit={false}
       autoFocus={false}
+      textWhenUnfocused={true}
       onClosedActivate={() =>
         onRevealAgent({
           repoId: card.repoId,
