@@ -7,10 +7,13 @@ import {
 } from './updater-release-readiness'
 import {
   applyReleaseDelay,
+  isReleaseOldEnough,
   type DatedReleaseTag,
   type ReleaseDelayResult
 } from './updater-release-delay'
 import { getUpdateFeedInfo } from '../../../shared/update-feed-info'
+import { listMainRepoReleaseBuildsUntil } from './updater-release-builds'
+import type { ReleaseBuild } from '../../../shared/updater/release-channel'
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -19,6 +22,13 @@ function escapeRegExp(value: string): string {
 const updateFeedInfo = getUpdateFeedInfo()
 const ATOM_FEED_URL = updateFeedInfo.atomUrl
 const MAX_MANIFEST_PROBE_CANDIDATES = 6
+// Releases past the feed don't change and newer ones come from Atom, so a list that settled the delay stays accurate.
+const OLDER_RELEASES_TTL_MS = 6 * 60 * 60 * 1000
+let olderReleasesCache: {
+  tags: DatedReleaseTag[]
+  expiresAt: number
+  exhaustive: boolean
+} | null = null
 
 // Atom includes stable and prerelease tags without channel filtering.
 const ENTRY_RE = /<entry>([\s\S]*?)<\/entry>/g
@@ -153,36 +163,109 @@ export async function fetchNewerReleaseTagsWithReadiness(
     return { tags: [], state: 'unavailable', unavailableReason: 'feed' }
   }
 
-  // Why: a custom Windows build's tags share this repo's feed with ordinary stable/RC releases.
-  // Once either side is custom, cross-channel comparison is meaningless, so pin to the other
-  // custom builds rather than letting a same-day stable tag outrank an older custom one on semver.
-  const channelTags =
-    updateFeedInfo.isCustom || isCustomReleaseTag(currentVersion)
-      ? tags.filter(({ tag }) => isCustomReleaseTag(tag))
-      : tags
-
-  // Why: perf builds are explicit opt-in; regular prerelease checks should
-  // stay on the main RC/stable series even though perf tags are semver-newer.
-  const channelCandidates =
-    options.releaseFilter === 'perf'
-      ? channelTags.filter(({ tag }) => isPerfPrereleaseTag(tag))
-      : includePrerelease
-        ? channelTags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
-        : channelTags.filter(({ version }) => !isPrereleaseVersion(version))
+  const customChannel = updateFeedInfo.isCustom || isCustomReleaseTag(currentVersion)
+  const channelCandidates = selectChannelCandidates(
+    tags,
+    includePrerelease,
+    options.releaseFilter,
+    customChannel
+  )
   if (!options.minReleaseAgeMs || options.minReleaseAgeMs <= 0) {
     return resolveNewerReleaseTags(channelCandidates, currentVersion, maxTags)
   }
+  const now = options.now ?? Date.now()
+  const cutoff = now - options.minReleaseAgeMs
+  // Newest-first lists settle the delay at an aged-out newer release or our own release; an older
+  // line's recent maintenance release does not prove that history is complete.
+  const settlesDelay = (list: ReleaseFeedTag[]): boolean =>
+    list.some(({ version }) => compareVersions(version, currentVersion) === 0) ||
+    selectChannelCandidates(list, includePrerelease, options.releaseFilter, customChannel).some(
+      (entry) =>
+        isReleaseOldEnough(entry, cutoff) && compareVersions(entry.version, currentVersion) > 0
+    )
+  // Atom keeps only ~10 entries, so an aged-out release may predate it.
+  // Judge REST pages through the merge so Atom's later `updated` time wins, as it does below.
+  const olderTags = settlesDelay(tags)
+    ? null
+    : await fetchOlderReleaseTags((older) => settlesDelay(mergeReleaseTags(tags, older)), now)
+  const allTags = olderTags ? mergeReleaseTags(tags, olderTags) : tags
   const { eligible, releaseDelay } = applyReleaseDelay(
-    channelCandidates,
-    tags,
+    selectChannelCandidates(allTags, includePrerelease, options.releaseFilter, customChannel),
+    allTags,
     currentVersion,
     options.minReleaseAgeMs,
-    options.now ?? Date.now()
+    now
   )
   return {
     ...(await resolveNewerReleaseTags(eligible, currentVersion, maxTags)),
     releaseDelay
   }
+}
+
+// Perf builds require explicit opt-in, even when semver considers them newer.
+function selectChannelCandidates(
+  tags: ReleaseFeedTag[],
+  includePrerelease: boolean,
+  releaseFilter: FetchNewerReleaseTagOptions['releaseFilter'],
+  customChannel: boolean
+): ReleaseFeedTag[] {
+  if (customChannel) {
+    tags = tags.filter(({ tag }) => isCustomReleaseTag(tag))
+  }
+  if (releaseFilter === 'perf') {
+    return tags.filter(({ tag }) => isPerfPrereleaseTag(tag))
+  }
+  return includePrerelease
+    ? tags.filter(({ tag }) => !isPerfPrereleaseTag(tag))
+    : tags.filter(({ version }) => !isPrereleaseVersion(version))
+}
+
+async function fetchOlderReleaseTags(
+  settlesDelay: (tags: ReleaseFeedTag[]) => boolean,
+  now: number
+): Promise<ReleaseFeedTag[] | null> {
+  if (
+    olderReleasesCache &&
+    olderReleasesCache.expiresAt > now &&
+    (olderReleasesCache.exhaustive || settlesDelay(olderReleasesCache.tags))
+  ) {
+    return olderReleasesCache.tags
+  }
+  try {
+    const builds = await listMainRepoReleaseBuildsUntil((listed) =>
+      settlesDelay(listed.map(toDatedReleaseTag))
+    )
+    const tags = builds.map(toDatedReleaseTag)
+    // An unsettled list ran to the last page or the cap, so refetching within the TTL finds nothing more.
+    olderReleasesCache = {
+      tags,
+      expiresAt: now + OLDER_RELEASES_TTL_MS,
+      exhaustive: !settlesDelay(tags)
+    }
+    return tags
+  } catch {
+    // Rate limits or outages keep the Atom-only result, which holds the update (fail closed).
+    return null
+  }
+}
+
+function toDatedReleaseTag({ tag, version, publishedAt }: ReleaseBuild): ReleaseFeedTag {
+  const releasedAt = publishedAt ? Date.parse(publishedAt) : Number.NaN
+  return { tag, version, releasedAt: Number.isNaN(releasedAt) ? null : releasedAt }
+}
+
+// Atom entries win; REST pages can repeat a release published while paging.
+function mergeReleaseTags(
+  feedTags: ReleaseFeedTag[],
+  olderTags: ReleaseFeedTag[]
+): ReleaseFeedTag[] {
+  const byTag = new Map<string, ReleaseFeedTag>()
+  for (const entry of [...feedTags, ...olderTags]) {
+    if (!byTag.has(entry.tag)) {
+      byTag.set(entry.tag, entry)
+    }
+  }
+  return [...byTag.values()].sort((left, right) => compareVersions(right.version, left.version))
 }
 
 async function resolveNewerReleaseTags(

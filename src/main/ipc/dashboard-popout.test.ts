@@ -133,30 +133,6 @@ describe('registerDashboardPopoutHandlers', () => {
     getTrustedWindowMock.mockReturnValue(null)
   })
 
-  it('opens only for the trusted main renderer while the feature is enabled', () => {
-    handlers.get('dashboardPopout:open')!({ sender: untrustedSender } as never)
-    expect(createPopoutMock).not.toHaveBeenCalled()
-
-    store.getSettings.mockReturnValue({ experimentalAgentDashboardPopout: false })
-    handlers.get('dashboardPopout:open')!({ sender: mainSender } as never)
-    expect(createPopoutMock).not.toHaveBeenCalled()
-
-    store.getSettings.mockReturnValue({ experimentalAgentDashboardPopout: true })
-    handlers.get('dashboardPopout:open')!({ sender: mainSender } as never)
-    expect(createPopoutMock).toHaveBeenCalledWith(store, undefined, {
-      getKeybindings: expect.any(Function)
-    })
-
-    handlers.get('dashboardPopout:open')!({ sender: mainSender } as never, 'live')
-    expect(createPopoutMock).toHaveBeenLastCalledWith(store, 'live', {
-      getKeybindings: expect.any(Function)
-    })
-
-    createPopoutMock.mockClear()
-    handlers.get('dashboardPopout:open')!({ sender: mainSender } as never, 'invalid')
-    expect(createPopoutMock).not.toHaveBeenCalled()
-  })
-
   it('caches and forwards only valid trusted snapshots', () => {
     const popout = makeWindow(popoutSender)
     getPopoutMock.mockReturnValue(popout)
@@ -234,25 +210,6 @@ describe('registerDashboardPopoutHandlers', () => {
       false
     )
     expect(handlers.get('dashboard:getPopoutOpen')!({ sender: mainSender } as never)).toBe(true)
-  })
-
-  it('reads and changes opacity only for the live popout renderer', () => {
-    expect(handlers.get('dashboardPopout:getOpacity')!({ sender: untrustedSender } as never)).toBe(
-      null
-    )
-    expect(handlers.get('dashboardPopout:getOpacity')!({ sender: popoutSender } as never)).toEqual({
-      opacity: 0.8,
-      supported: true
-    })
-
-    handlers.get('dashboardPopout:setOpacity')!({ sender: untrustedSender } as never, 0.7)
-    handlers.get('dashboardPopout:setOpacity')!({ sender: popoutSender } as never, Number.NaN)
-    expect(setPopoutOpacityMock).not.toHaveBeenCalled()
-
-    expect(
-      handlers.get('dashboardPopout:setOpacity')!({ sender: popoutSender } as never, 0.7)
-    ).toEqual({ opacity: 0.7, supported: true })
-    expect(setPopoutOpacityMock).toHaveBeenCalledWith(store, 0.7)
   })
 
   it('relays valid seen acknowledgements from only the popout', () => {

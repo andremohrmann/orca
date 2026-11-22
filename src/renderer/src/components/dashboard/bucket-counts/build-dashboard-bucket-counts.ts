@@ -1,4 +1,4 @@
-import type { DashboardSnapshotState } from '../snapshot/build-dashboard-snapshot'
+import type { DashboardSnapshotState } from '../snapshot/dashboard-snapshot-state'
 
 /** The accepted projection adjusts four totals from changed rows and workspace membership. */
 export function buildDashboardBucketCounts(

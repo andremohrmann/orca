@@ -3,13 +3,35 @@ import { flushSync } from 'react-dom'
 import { AGENT_STATUS_STALE_AFTER_MS } from '../../../../../shared/agent-status/contracts/agent-status-freshness'
 import {
   EMPTY_DASHBOARD_SNAPSHOT,
+  type DashboardCard,
   type DashboardSnapshot
 } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { patchDashboardSnapshotFromAgentStatus } from './dashboard-agent-status-patch'
+import { dashboardCardChangesSince } from '../../dashboard/snapshot/dashboard-card-changes'
+import { KeyedDeadlines } from '../../../../../shared/collections/keyed-deadlines'
 
 const TOPOLOGY_REFRESH_DEBOUNCE_MS = 250
 const TOPOLOGY_REFRESH_MAX_WAIT_MS = 1_000
 const CLOSED_TERMINAL_REFRESH_INTERVAL_MS = 5_000
+
+function cardDeadline({ statusUpdatedAt, dotState }: DashboardCard): number | undefined {
+  if (
+    statusUpdatedAt !== undefined &&
+    (dotState === 'working' || dotState === 'blocked' || dotState === 'waiting')
+  ) {
+    return statusUpdatedAt + AGENT_STATUS_STALE_AFTER_MS
+  }
+  return undefined
+}
+
+function* cardDeadlines(cards: DashboardCard[]): Iterable<[string, number]> {
+  for (const [index, card] of cards.entries()) {
+    const at = cardDeadline(card)
+    if (at !== undefined) {
+      yield [String(index), at]
+    }
+  }
+}
 
 /** Animate column membership changes only, not content updates. */
 function columnSignature(snapshot: DashboardSnapshot): string {
@@ -45,6 +67,7 @@ export function useDashboardSnapshot(): DashboardSnapshot {
     let topologyRefreshStartedAt: number | null = null
     let staleRefreshTimer: ReturnType<typeof setTimeout> | null = null
     let closedTerminalRefreshTimer: ReturnType<typeof setTimeout> | null = null
+    let deadlines = new KeyedDeadlines()
     const transientClearWatermarks = new Map<string, number>()
 
     const requestTopologyRefresh = (): void => {
@@ -69,22 +92,19 @@ export function useDashboardSnapshot(): DashboardSnapshot {
       )
     }
 
-    const scheduleStaleRefresh = (next: DashboardSnapshot): void => {
+    const scheduleStaleRefresh = (next: DashboardSnapshot, changes: number[] | null): void => {
       if (staleRefreshTimer) {
         clearTimeout(staleRefreshTimer)
         staleRefreshTimer = null
       }
-      let nextDeadline = Number.POSITIVE_INFINITY
-      for (const card of next.cards) {
-        if (
-          card.statusUpdatedAt !== undefined &&
-          (card.dotState === 'working' ||
-            card.dotState === 'blocked' ||
-            card.dotState === 'waiting')
-        ) {
-          nextDeadline = Math.min(nextDeadline, card.statusUpdatedAt + AGENT_STATUS_STALE_AFTER_MS)
+      if (changes) {
+        for (const index of changes) {
+          deadlines.set(String(index), cardDeadline(next.cards[index]))
         }
+      } else {
+        deadlines = KeyedDeadlines.fromUniqueEntries(cardDeadlines(next.cards))
       }
+      const nextDeadline = deadlines.next
       if (Number.isFinite(nextDeadline)) {
         staleRefreshTimer = setTimeout(
           requestTopologyRefresh,
@@ -118,10 +138,16 @@ export function useDashboardSnapshot(): DashboardSnapshot {
       if (next.repoIconsByRepoId !== undefined) {
         retainedRepoIconsRef.current = next.repoIconsByRepoId
       }
+      const previous = snapshotRef.current
+      const changes = dashboardCardChangesSince(next.cards, previous.cards)
       snapshotRef.current = next
-      scheduleStaleRefresh(next)
+      scheduleStaleRefresh(next, changes)
       scheduleClosedTerminalRefresh(next)
-      const nextSignature = columnSignature(next)
+      const nextSignature =
+        !changes ||
+        changes.some((index) => next.cards[index].bucket !== previous.cards[index].bucket)
+          ? columnSignature(next)
+          : columnSignatureRef.current
       const layoutChanged = nextSignature !== columnSignatureRef.current
       columnSignatureRef.current = nextSignature
 

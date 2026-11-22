@@ -1,5 +1,6 @@
 import { app, ipcMain } from 'electron'
 import type { Store } from '../../persistence/loading-store/store'
+import { createStoreNativeSettingsProjection } from '../../core-desktop/native-settings-projection'
 import type { KeybindingService } from '../../keybindings/keybinding-service'
 import type { DashboardSnapshot } from '../../../shared/agent-status/presentation/dashboard-snapshot'
 import { isAgentDashboardView } from '../../../shared/agent-dashboard-view'
@@ -36,6 +37,7 @@ export function registerDashboardPopoutHandlers(
   store: Store,
   keybindings?: KeybindingService
 ): void {
+  const nativeSettings = createStoreNativeSettingsProjection(store)
   ipcMain.removeHandler('dashboardPopout:open')
   ipcMain.removeHandler('dashboard:publishSnapshot')
   ipcMain.removeHandler('dashboard:requestSnapshot')
@@ -69,7 +71,7 @@ export function registerDashboardPopoutHandlers(
     if (view !== undefined && !isAgentDashboardView(view)) {
       return
     }
-    createOrFocusDashboardPopout(store, view, {
+    createOrFocusDashboardPopout(nativeSettings, view, {
       getKeybindings: () => keybindings?.getOverrides()
     })
   })
@@ -116,7 +118,7 @@ export function registerDashboardPopoutHandlers(
     if (!isDashboardPopoutRenderer(event.sender) || !isDashboardEnabled(store)) {
       return null
     }
-    return getDashboardPopoutOpacityState(store)
+    return getDashboardPopoutOpacityState(nativeSettings)
   })
 
   ipcMain.handle('dashboardPopout:setOpacity', (event, opacity: unknown) => {
@@ -128,7 +130,7 @@ export function registerDashboardPopoutHandlers(
     ) {
       return null
     }
-    return setDashboardPopoutOpacity(store, opacity)
+    return setDashboardPopoutOpacity(nativeSettings, opacity)
   })
 
   // Seen-sync: opening a card's terminal dialog acknowledges the agent in the

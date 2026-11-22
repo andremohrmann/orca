@@ -262,10 +262,3 @@ export const remoteRuntimeTerminalPreviewApi: TerminalPreviewApi = {
     return () => listeners.delete(callback)
   }
 }
-
-export function resetRemoteRuntimeTerminalPreviewSessionsForTests(): void {
-  for (const [ptyId, session] of sessions) {
-    closeSession(ptyId, session)
-  }
-  listeners.clear()
-}

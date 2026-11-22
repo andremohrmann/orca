@@ -1,3 +1,4 @@
+import type { CoreWriteRequest } from '../core-desktop/native-settings-projection'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setMainUiLanguage } from '../i18n/main-i18n'
 import es from '../../renderer/src/i18n/locales/es.json'
@@ -174,16 +175,23 @@ function makeStore(
   getUI: () => Record<string, unknown>
   getSettings: () => Record<string, unknown>
   updateUI: ReturnType<typeof vi.fn>
+  requestCoreWrite: (request: CoreWriteRequest) => Promise<void>
   onUIChanged: ReturnType<typeof vi.fn>
   emitUIChanged: (next: Record<string, unknown>) => void
   uiChangeUnsubscribe: ReturnType<typeof vi.fn>
 } {
   const listeners: ((next: Record<string, unknown>) => void)[] = []
   const uiChangeUnsubscribe = vi.fn()
+  const updateUI = vi.fn()
   return {
     getUI: () => ui,
     getSettings: () => settings,
-    updateUI: vi.fn(),
+    updateUI,
+    requestCoreWrite: async (request) => {
+      if (request.kind === 'ui') {
+        updateUI(request.updates)
+      }
+    },
     onUIChanged: vi.fn((listener: (next: Record<string, unknown>) => void) => {
       listeners.push(listener)
       return uiChangeUnsubscribe

@@ -1,3 +1,5 @@
+import { createDashboardBoardProjection } from './agent-board-projection'
+import { dashboardCardIndex } from '../snapshot/dashboard-card-changes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Columns3, Grid2X2, XIcon } from 'lucide-react'
 import {
@@ -13,12 +15,12 @@ import type { AgentSubjectReadIntent } from '@/attention/agent-subject-read-acti
 import { cn } from '@/lib/class-names'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
-import { AgentKanbanColumn, groupByDashboardBucket } from '../../dashboard-popout/AgentKanbanColumn'
+import { AgentKanbanColumn } from '../../dashboard-popout/AgentKanbanColumn'
 import { AgentDashboardToolbar } from './AgentDashboardToolbar'
 import { AgentTerminalDialog } from '../terminal-preview/AgentTerminalDialog'
 import {
   EMPTY_DASHBOARD_FILTERS,
-  filterDashboardCards,
+  matchesDashboardCard,
   type DashboardFilters
 } from './agent-board-filtering'
 import './agent-board-transitions.css'
@@ -87,22 +89,22 @@ export function AgentKanbanBoard({
       DASHBOARD_BUCKET_ORDER.filter((bucket) => bucket !== 'idle' || snapshot.showIdle === true),
     [snapshot.showIdle]
   )
-  const visibleCards = useMemo(
-    () => snapshot.cards.filter((card) => visibleBuckets.includes(card.bucket)),
-    [snapshot.cards, visibleBuckets]
-  )
-  const availableCards = view === 'live' ? snapshot.cards : visibleCards
   const [query, setQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [filters, setFilters] = useState<DashboardFilters>(EMPTY_DASHBOARD_FILTERS)
-  const filteredCards = useMemo(
-    () => filterDashboardCards(availableCards, query, filters),
-    [availableCards, filters, query]
+  const [projectBoard] = useState(createDashboardBoardProjection)
+  const { lanes, visibleCards, hasRelativeTimestamps } = projectBoard(
+    snapshot.cards,
+    snapshot.showIdle === true,
+    query,
+    filters
   )
-  const grouped = useMemo(() => groupByDashboardBucket(filteredCards), [filteredCards])
-  const hasRelativeTimestamps = useMemo(
-    () => snapshot.cards.some((card) => (card.finishedAt ?? card.startedAt) > 0),
-    [snapshot.cards]
+  const filteredCards = useMemo(
+    () =>
+      (view === 'live' ? snapshot.cards : visibleCards).filter((card) =>
+        matchesDashboardCard(card, query.trim().toLowerCase(), filters)
+      ),
+    [view, snapshot.cards, visibleCards, query, filters]
   )
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -143,7 +145,7 @@ export function AgentKanbanBoard({
       return null
     }
     return (
-      snapshot.cards.find((c) => c.paneKey === openedCard.paneKey) ?? {
+      snapshot.cards[dashboardCardIndex(snapshot.cards, openedCard.paneKey)] ?? {
         ...openedCard,
         ptyId: null,
         leafId: null
@@ -206,7 +208,7 @@ export function AgentKanbanBoard({
           <h1 className="text-[13px] font-semibold">{t('dashboardPopout.title', 'Agents')}</h1>
           <span className="text-[11px] text-muted-foreground">
             {translate('dashboardPopout.total', '{{count}} total', {
-              count: availableCards.length
+              count: view === 'live' ? snapshot.cards.length : visibleCards.length
             })}
           </span>
           <div
@@ -272,7 +274,8 @@ export function AgentKanbanBoard({
                   <AgentKanbanColumn
                     key={bucket}
                     bucket={bucket}
-                    cards={grouped[bucket]}
+                    cards={snapshot.cards}
+                    lane={lanes[bucket]}
                     repoIconsByRepoId={snapshot.repoIconsByRepoId}
                     now={now}
                     dialogPaneKey={openedCard?.paneKey ?? null}

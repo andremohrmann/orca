@@ -1,5 +1,5 @@
 import type { ActiveDashboardWorkspace } from './dashboard-snapshot-workspaces'
-import type { DashboardSnapshotState } from './build-dashboard-snapshot'
+import type { DashboardSnapshotState } from './dashboard-snapshot-state'
 import {
   releaseRuntimeAgentOrchestrationBatchCache,
   selectRuntimeAgentOrchestrationBatch

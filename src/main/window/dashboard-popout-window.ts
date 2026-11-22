@@ -1,7 +1,7 @@
 import { mainI18n, translateMain } from '../i18n/main-i18n'
 import { app, BrowserWindow, nativeTheme, type WebContents, type Event } from 'electron'
 import { join } from 'node:path'
-import type { Store } from '../persistence/loading-store/store'
+import type { NativeSettingsProjection } from '../core-desktop/native-settings-projection'
 import {
   isBackgroundLaunch,
   showWindowWithoutStealingFocus
@@ -57,10 +57,10 @@ export function isDashboardPopoutRenderer(sender: WebContents): boolean {
 export { getDashboardPopoutOpacityState } from './dashboard-popout-opacity-state'
 
 export function setDashboardPopoutOpacity(
-  store: Store,
+  nativeSettings: NativeSettingsProjection,
   requestedOpacity: number
 ): DashboardPopoutOpacityState {
-  return persistDashboardPopoutOpacity(store, requestedOpacity, getDashboardPopoutWindow())
+  return persistDashboardPopoutOpacity(nativeSettings, requestedOpacity, getDashboardPopoutWindow())
 }
 
 function zoomDashboardPopout(window: BrowserWindow, direction: UIZoomDirection): void {
@@ -151,7 +151,7 @@ function showAndMaximizeDashboardPopout(window: BrowserWindow): void {
  * (popout.html?view=…).
  */
 export function createOrFocusDashboardPopout(
-  store: Store | null,
+  nativeSettings: NativeSettingsProjection | null,
   view?: AgentDashboardView,
   options: { getKeybindings?: () => KeybindingOverrides | undefined } = {}
 ): BrowserWindow {
@@ -173,9 +173,10 @@ export function createOrFocusDashboardPopout(
   }
 
   const initialView =
-    view ?? normalizeAgentDashboardView(store?.getSettings().experimentalAgentDashboardDefaultView)
+    view ??
+    normalizeAgentDashboardView(nativeSettings?.getSettings().experimentalAgentDashboardDefaultView)
 
-  const savedBounds = resolveDashboardPopoutBounds(store, MIN_WIDTH, MIN_HEIGHT)
+  const savedBounds = resolveDashboardPopoutBounds(nativeSettings, MIN_WIDTH, MIN_HEIGHT)
 
   // Serve-only: this window lists saved WSL hosts and their Connect, as the main window does.
   const wslArguments = wslHostsWindowArguments()
@@ -200,7 +201,7 @@ export function createOrFocusDashboardPopout(
       ...(wslArguments.length > 0 ? { additionalArguments: wslArguments } : {})
     }
   })
-  const opacityState = getDashboardPopoutOpacityState(store)
+  const opacityState = getDashboardPopoutOpacityState(nativeSettings)
   if (opacityState.supported) {
     window.setOpacity(opacityState.opacity)
   }
@@ -216,12 +217,12 @@ export function createOrFocusDashboardPopout(
   // Apply persisted app zoom or the popout always opens at 100%.
   window.webContents.on('dom-ready', () => {
     if (!window.isDestroyed()) {
-      window.webContents.setZoomLevel(store?.getUI().uiZoomLevel ?? 0)
+      window.webContents.setZoomLevel(nativeSettings?.getUI().uiZoomLevel ?? 0)
     }
   })
   // Compare against last app zoom, not live window zoom, so local changes persist until app-wide zoom actually changes.
-  let lastFollowedZoomLevel = store?.getUI().uiZoomLevel ?? 0
-  const unsubscribeUIChanged = store?.onUIChanged((ui) => {
+  let lastFollowedZoomLevel = nativeSettings?.getUI().uiZoomLevel ?? 0
+  const unsubscribeUIChanged = nativeSettings?.onUIChanged((ui) => {
     const level = ui.uiZoomLevel ?? 0
     if (level === lastFollowedZoomLevel) {
       return
@@ -289,16 +290,25 @@ export function createOrFocusDashboardPopout(
       if (bounds.width < MIN_WIDTH || bounds.height < MIN_HEIGHT) {
         return
       }
-      store?.updateUI({ dashboardPopoutBounds: bounds, dashboardPopoutMaximized: false })
+      void nativeSettings?.requestCoreWrite({
+        kind: 'ui',
+        updates: { dashboardPopoutBounds: bounds, dashboardPopoutMaximized: false }
+      })
     }, 500)
   }
   window.on('resize', saveBounds)
   window.on('move', saveBounds)
   window.on('maximize', () => {
-    store?.updateUI({ dashboardPopoutMaximized: true })
+    void nativeSettings?.requestCoreWrite({
+      kind: 'ui',
+      updates: { dashboardPopoutMaximized: true }
+    })
   })
   window.on('unmaximize', () => {
-    store?.updateUI({ dashboardPopoutMaximized: false })
+    void nativeSettings?.requestCoreWrite({
+      kind: 'ui',
+      updates: { dashboardPopoutMaximized: false }
+    })
   })
 
   const freezeBounds = (event?: Event): void => {

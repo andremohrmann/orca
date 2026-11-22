@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import type { Store } from '../persistence/loading-store/store'
+import type { NativeSettingsProjection } from '../core-desktop/native-settings-projection'
 import {
   normalizeDashboardPopoutOpacity,
   type DashboardPopoutOpacityState
@@ -9,16 +9,20 @@ function dashboardPopoutOpacitySupported(): boolean {
   return process.platform === 'win32' || process.platform === 'darwin'
 }
 
-export function getDashboardPopoutOpacityState(store: Store | null): DashboardPopoutOpacityState {
+export function getDashboardPopoutOpacityState(
+  nativeSettings: NativeSettingsProjection | null
+): DashboardPopoutOpacityState {
   const supported = dashboardPopoutOpacitySupported()
   return {
-    opacity: supported ? normalizeDashboardPopoutOpacity(store?.getUI().dashboardPopoutOpacity) : 1,
+    opacity: supported
+      ? normalizeDashboardPopoutOpacity(nativeSettings?.getUI().dashboardPopoutOpacity)
+      : 1,
     supported
   }
 }
 
 export function persistDashboardPopoutOpacity(
-  store: Store,
+  nativeSettings: NativeSettingsProjection,
   requestedOpacity: number,
   window: BrowserWindow | null
 ): DashboardPopoutOpacityState {
@@ -31,6 +35,9 @@ export function persistDashboardPopoutOpacity(
     return state
   }
   window?.setOpacity(state.opacity)
-  store.updateUI({ dashboardPopoutOpacity: state.opacity })
+  void nativeSettings.requestCoreWrite({
+    kind: 'ui',
+    updates: { dashboardPopoutOpacity: state.opacity }
+  })
   return state
 }

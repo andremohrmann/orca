@@ -1,8 +1,8 @@
-import {
-  DASHBOARD_BUCKET_ORDER,
-  type DashboardBucket,
-  type DashboardCard,
-  type DashboardFilterOption
+import type { DashboardLane } from '../dashboard/board/agent-board-projection'
+import type {
+  DashboardBucket,
+  DashboardCard,
+  DashboardFilterOption
 } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { RepoIcon } from '../../../../shared/repository/appearance/repo-icon'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
@@ -23,27 +23,10 @@ function bucketLabel(bucket: DashboardBucket, translate: Translate): string {
   }
 }
 
-export function groupByDashboardBucket(
-  cards: DashboardCard[]
-): Record<DashboardBucket, DashboardCard[]> {
-  const grouped: Record<DashboardBucket, DashboardCard[]> = {
-    attention: [],
-    working: [],
-    done: [],
-    idle: []
-  }
-  for (const card of cards) {
-    grouped[card.bucket].push(card)
-  }
-  for (const bucket of DASHBOARD_BUCKET_ORDER) {
-    grouped[bucket].sort((a, b) => b.stateChangedAt - a.stateChangedAt)
-  }
-  return grouped
-}
-
 type AgentKanbanColumnProps = {
   bucket: DashboardBucket
   cards: DashboardCard[]
+  lane: DashboardLane
   repoIconsByRepoId: Record<string, RepoIcon | null> | undefined
   now: number
   dialogPaneKey: string | null
@@ -55,6 +38,7 @@ type AgentKanbanColumnProps = {
 export function AgentKanbanColumn({
   bucket,
   cards,
+  lane,
   repoIconsByRepoId,
   now,
   dialogPaneKey,
@@ -76,20 +60,21 @@ export function AgentKanbanColumn({
           {label}
         </span>
         <span className="ml-auto rounded-full bg-background px-1.5 text-[11px] tabular-nums text-muted-foreground">
-          {cards.length}
+          {lane.indexes.length}
         </span>
       </header>
       <div
         ref={setScrollElement}
         className="scrollbar-sleek min-h-0 flex-1 overflow-y-auto px-2 pb-2"
       >
-        {cards.length === 0 ? (
+        {lane.indexes.length === 0 ? (
           <p className="px-1 py-2 text-[11px] text-muted-foreground">
             {translate('dashboardPopout.bucket.empty', 'None')}
           </p>
         ) : (
           <AgentKanbanLaneCardList
             cards={cards}
+            lane={lane}
             scrollElement={scrollElement}
             repoIconsByRepoId={repoIconsByRepoId}
             now={now}

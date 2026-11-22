@@ -1,3 +1,4 @@
+import { readRuntimeStatuses } from '@/store/slices/runtime-status/views/runtime-status-owner'
 import { useAppStore } from '@/store'
 import { toast } from 'sonner'
 import { parseExecutionHostId } from '../../../shared/execution-host/execution-host'
@@ -24,6 +25,7 @@ export function launchWarpTab(
   onCreated?: (tabId: string) => void
 ): void {
   const state = useAppStore.getState()
+  const statuses = readRuntimeStatuses()
   const clientPlatform = getRendererAppPlatform()
   const host = parseExecutionHostId(getExecutionHostIdForWorktree(state, worktreeId))
   const environmentId = host?.kind === 'runtime' ? host.environmentId : null
@@ -31,8 +33,7 @@ export function launchWarpTab(
     ? state.sshStateByEnvironment.get(environmentId)?.connectionStates
     : state.sshConnectionStates
   if (
-    (host?.kind === 'runtime' &&
-      !state.runtimeStatusByEnvironmentId.get(host.environmentId)?.status?.hostPlatform) ||
+    (host?.kind === 'runtime' && !statuses.get(host.environmentId)?.status?.hostPlatform) ||
     (host?.kind === 'ssh' && !sshStates?.get(host.targetId)?.remotePlatform)
   ) {
     toast.error('Connect to the workspace host before opening a Warp tab.')
@@ -40,6 +41,7 @@ export function launchWarpTab(
   }
   const platform = resolveTerminalInputHostPlatform({
     state,
+    statuses,
     clientPlatform,
     worktreeId,
     transport: null

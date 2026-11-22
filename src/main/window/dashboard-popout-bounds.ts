@@ -1,8 +1,8 @@
-import type { Store } from '../persistence/loading-store/store'
+import type { NativeSettingsProjection } from '../core-desktop/native-settings-projection'
 import { rectHasVisibleAreaOnAnyDisplay } from './presentation/window-bounds-validation'
 
 export function resolveDashboardPopoutBounds(
-  store: Store | null,
+  nativeSettings: NativeSettingsProjection | null,
   minWidth: number,
   minHeight: number
 ): {
@@ -11,7 +11,7 @@ export function resolveDashboardPopoutBounds(
   width: number
   height: number
 } | null {
-  const raw = store?.getUI().dashboardPopoutBounds ?? null
+  const raw = nativeSettings?.getUI().dashboardPopoutBounds ?? null
   if (
     raw &&
     raw.width >= minWidth &&
