@@ -1,12 +1,15 @@
 import { mainI18n, translateMain } from '../i18n/main-i18n'
-import { app, BrowserWindow, nativeTheme, type WebContents, type Event } from 'electron'
+import { app, BrowserWindow, nativeTheme, type WebContents } from 'electron'
 import { join } from 'node:path'
 import type { NativeSettingsProjection } from '../core-desktop/native-settings-projection'
 import {
   isBackgroundLaunch,
   showWindowWithoutStealingFocus
 } from './activation/foreground-activation-policy'
-import { resolveDashboardPopoutBounds } from './dashboard-popout-bounds'
+import {
+  resolveDashboardPopoutBounds,
+  installDashboardPopoutBoundsPersistence
+} from './dashboard-popout-bounds'
 import { sendToTrustedUIRenderer } from '../ipc/ui'
 import { installPrivilegedWindowNavigationPolicy } from './security/privileged-window-navigation'
 import {
@@ -268,61 +271,7 @@ export function createOrFocusDashboardPopout(
     showAndMaximizeDashboardPopout(window)
   })
 
-  // Freeze/debounce remembered bounds during teardown so resize events cannot replace them with minimum size.
-  let boundsTimer: ReturnType<typeof setTimeout> | null = null
-  let windowClosing = false
-  const saveBounds = (): void => {
-    if (boundsTimer) {
-      clearTimeout(boundsTimer)
-    }
-    boundsTimer = setTimeout(() => {
-      boundsTimer = null
-      if (
-        windowClosing ||
-        window.isDestroyed() ||
-        window.isMinimized() ||
-        window.isFullScreen() ||
-        window.isMaximized()
-      ) {
-        return
-      }
-      const bounds = window.getBounds()
-      if (bounds.width < MIN_WIDTH || bounds.height < MIN_HEIGHT) {
-        return
-      }
-      void nativeSettings?.requestCoreWrite({
-        kind: 'ui',
-        updates: { dashboardPopoutBounds: bounds, dashboardPopoutMaximized: false }
-      })
-    }, 500)
-  }
-  window.on('resize', saveBounds)
-  window.on('move', saveBounds)
-  window.on('maximize', () => {
-    void nativeSettings?.requestCoreWrite({
-      kind: 'ui',
-      updates: { dashboardPopoutMaximized: true }
-    })
-  })
-  window.on('unmaximize', () => {
-    void nativeSettings?.requestCoreWrite({
-      kind: 'ui',
-      updates: { dashboardPopoutMaximized: false }
-    })
-  })
-
-  const freezeBounds = (event?: Event): void => {
-    if (event?.defaultPrevented) {
-      return
-    }
-    windowClosing = true
-    if (boundsTimer) {
-      clearTimeout(boundsTimer)
-      boundsTimer = null
-    }
-  }
-  window.on('close', freezeBounds)
-  app.on('before-quit', freezeBounds)
+  installDashboardPopoutBoundsPersistence(window, nativeSettings, MIN_WIDTH, MIN_HEIGHT)
 
   window.on('page-title-updated', (event) => {
     event.preventDefault()
@@ -336,7 +285,6 @@ export function createOrFocusDashboardPopout(
 
   window.on('closed', () => {
     mainI18n.off('languageChanged', updateTitle)
-    app.removeListener('before-quit', freezeBounds)
     unsubscribeUIChanged?.()
     if (dashboardPopoutWindow === window) {
       dashboardPopoutWindow = null
