@@ -5,6 +5,19 @@
 /skill-stubs/_shared/*.md text eol=lf
 /skills/*/SKILL.md text eol=lf
 /src/cli/skills/bundled-skill-guides.ts text eol=lf
+# Keep the personal build's formatted metadata stable on Windows checkouts.
+/.github/workflows/personal-dashboard-windows.yml text eol=lf
+/HOST-EXTENSION-PROGRESS.md text eol=lf
+/config/tsconfig.tc.web.json text eol=lf
+/docs/agents-md-refs/personal-dashboard-host-build.md text eol=lf
+/package.json text eol=lf
+/skill-guides/orca-plugin-authoring/references/cli.md text eol=lf
+/skill-guides/orca-plugin-authoring/references/components.md text eol=lf
+/skill-guides/orca-plugin-authoring/references/events.md text eol=lf
+/skill-guides/orca-plugin-authoring/references/host-api.md text eol=lf
+/skill-guides/orca-plugin-authoring/references/manifest.md text eol=lf
+/skill-guides/orca-plugin-authoring/references/testing.md text eol=lf
+/src/renderer/src/i18n/locales/en.json text eol=lf
 # SVG bytes feed embedded data URLs and asset hashes on every build host.
 *.svg text eol=lf
 # Compiler input line breaks must not depend on the checkout OS.
