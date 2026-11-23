@@ -1,3 +1,4 @@
+import { usePluginFontLoadKey } from '@/store/plugins/appearance/plugin-fonts'
 import { useEffect } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import type { MacOptionAsAlt } from '@/components/terminal-pane/input/keyboard/terminal-option-shortcut-policy'
@@ -14,6 +15,7 @@ export function usePreviewTerminalAppearance({
   settings: GlobalSettings | null
   macOptionAsAlt: MacOptionAsAlt
 }): void {
+  const fontLoadKey = usePluginFontLoadKey(settings?.terminalFontFamily)
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal) {
@@ -24,5 +26,5 @@ export function usePreviewTerminalAppearance({
       buildPreviewAppearanceOptions(settings, macOptionAsAlt === 'true')
     )
     syncPreviewTerminalLigatures(terminal, settings)
-  }, [terminalRef, settings, macOptionAsAlt])
+  }, [terminalRef, settings, macOptionAsAlt, fontLoadKey])
 }

@@ -1,3 +1,4 @@
+import { escapeRegex } from '../../../shared/text/regex-escaping'
 import { net } from 'electron'
 import { compareVersions, isPrereleaseVersion, isValidVersion } from './updater-fallback'
 import {
@@ -13,11 +14,12 @@ import {
 } from './updater-release-delay'
 import { getUpdateFeedInfo } from '../../../shared/update-feed-info'
 import { listMainRepoReleaseBuildsUntil } from './updater-release-builds'
-import type { ReleaseBuild } from '../../../shared/updater/release-channel'
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+import {
+  normalizeTagToVersion,
+  isCustomVersion as isCustomReleaseTag,
+  type ReleaseBuild
+} from '../../../shared/updater/release-channel'
+export { normalizeTagToVersion, isCustomReleaseTag }
 
 const updateFeedInfo = getUpdateFeedInfo()
 const ATOM_FEED_URL = updateFeedInfo.atomUrl
@@ -33,21 +35,11 @@ let olderReleasesCache: {
 // Atom includes stable and prerelease tags without channel filtering.
 const ENTRY_RE = /<entry>([\s\S]*?)<\/entry>/g
 const TAG_HREF_RE = new RegExp(
-  `href="${escapeRegExp(`https://github.com/${updateFeedInfo.repo}/releases/tag/`)}([^"]+)"`
+  `href="${escapeRegex(`https://github.com/${updateFeedInfo.repo}/releases/tag/`)}([^"]+)"`
 )
 const ENTRY_UPDATED_RE = /<updated>([^<]+)<\/updated>/
 
-export function normalizeTagToVersion(tag: string): string {
-  return tag.replace(/^custom-windows-/i, '').replace(/^v/i, '')
-}
-
 type ReleaseFeedTag = DatedReleaseTag
-
-const CUSTOM_VERSION = /^\d+\.\d+\.\d+-custom\.\d{14}$/
-
-export function isCustomReleaseTag(tag: string): boolean {
-  return CUSTOM_VERSION.test(normalizeTagToVersion(tag))
-}
 
 export function isPerfPrereleaseTag(tag: string): boolean {
   const version = normalizeTagToVersion(tag)
@@ -99,7 +91,7 @@ export async function fetchLatestStableReleaseTag(): Promise<string | null> {
     }
     const target = new URL(response.redirectUrl, latestUrl)
     const match = target.pathname.match(
-      new RegExp(`^/${escapeRegExp(updateFeedInfo.repo)}/releases/tag/([^/]+)$`)
+      new RegExp(`^/${escapeRegex(updateFeedInfo.repo)}/releases/tag/([^/]+)$`)
     )
     if (target.origin !== 'https://github.com' || !match) {
       return null
@@ -121,6 +113,7 @@ type FetchNewerReleaseTagOptions = {
   releaseFilter?: 'perf'
   /** User update delay: only releases public at least this long are offered. */
   minReleaseAgeMs?: number
+  minimumVersion?: string
   now?: number
 }
 
@@ -164,14 +157,32 @@ export async function fetchNewerReleaseTagsWithReadiness(
   }
 
   const customChannel = updateFeedInfo.isCustom || isCustomReleaseTag(currentVersion)
-  const channelCandidates = selectChannelCandidates(
-    tags,
-    includePrerelease,
-    options.releaseFilter,
-    customChannel
-  )
+  const minimum = options.minimumVersion
+  const candidates = (list: ReleaseFeedTag[]): ReleaseFeedTag[] => {
+    const channel = selectChannelCandidates(
+      list,
+      includePrerelease,
+      options.releaseFilter,
+      customChannel
+    )
+    return minimum
+      ? channel.filter(({ version }) => compareVersions(version, minimum) >= 0)
+      : channel
+  }
+  const channelCandidates = candidates(tags)
   if (!options.minReleaseAgeMs || options.minReleaseAgeMs <= 0) {
-    return resolveNewerReleaseTags(channelCandidates, currentVersion, maxTags)
+    if (channelCandidates.length || !minimum) {
+      return resolveNewerReleaseTags(channelCandidates, currentVersion, maxTags)
+    }
+    const older = await fetchOlderReleaseTags(
+      (list) => candidates(list).length > 0,
+      options.now ?? Date.now()
+    )
+    return resolveNewerReleaseTags(
+      candidates(mergeReleaseTags(tags, older ?? [])),
+      currentVersion,
+      maxTags
+    )
   }
   const now = options.now ?? Date.now()
   const cutoff = now - options.minReleaseAgeMs
@@ -179,27 +190,33 @@ export async function fetchNewerReleaseTagsWithReadiness(
   // line's recent maintenance release does not prove that history is complete.
   const settlesDelay = (list: ReleaseFeedTag[]): boolean =>
     list.some(({ version }) => compareVersions(version, currentVersion) === 0) ||
-    selectChannelCandidates(list, includePrerelease, options.releaseFilter, customChannel).some(
+    candidates(list).some(
       (entry) =>
         isReleaseOldEnough(entry, cutoff) && compareVersions(entry.version, currentVersion) > 0
-    )
+    ) ||
+    (minimum !== undefined &&
+      candidates(list).some(({ version }) => compareVersions(version, minimum) === 0))
   // Atom keeps only ~10 entries, so an aged-out release may predate it.
   // Judge REST pages through the merge so Atom's later `updated` time wins, as it does below.
   const olderTags = settlesDelay(tags)
     ? null
     : await fetchOlderReleaseTags((older) => settlesDelay(mergeReleaseTags(tags, older)), now)
   const allTags = olderTags ? mergeReleaseTags(tags, olderTags) : tags
+  const allCandidates = candidates(allTags)
   const { eligible, releaseDelay } = applyReleaseDelay(
-    selectChannelCandidates(allTags, includePrerelease, options.releaseFilter, customChannel),
+    allCandidates,
     allTags,
     currentVersion,
     options.minReleaseAgeMs,
     now
   )
-  return {
-    ...(await resolveNewerReleaseTags(eligible, currentVersion, maxTags)),
-    releaseDelay
-  }
+  const bypassDelayForMinimum = minimum !== undefined && eligible.length === 0
+  const result = await resolveNewerReleaseTags(
+    bypassDelayForMinimum ? allCandidates.toReversed() : eligible,
+    currentVersion,
+    bypassDelayForMinimum ? 1 : maxTags
+  )
+  return { ...result, releaseDelay }
 }
 
 // Perf builds require explicit opt-in, even when semver considers them newer.
