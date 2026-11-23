@@ -1,3 +1,4 @@
+import type { AgentAttentionTurn } from '../../agent-status/lifecycle/agent-attention-turn'
 import type { DictationTerm } from '../../speech/dictation/dictation-dictionary'
 import type { SmartTier } from '../../sidebar-list/sorting/sort-stamps'
 import type {
@@ -45,6 +46,10 @@ export type RuntimeWorktreeAgentRow = {
   state: AgentStatusState
   workingMode?: AgentWorkingMode
   agentType: AgentType | null
+  attentionTurn?: AgentAttentionTurn
+  pendingQuestion?: string
+  turnEndedAt?: number
+  turnEndDisposition?: 'identified' | 'ambiguous'
   prompt: string
   taskTitle: string | null
   displayName: string | null

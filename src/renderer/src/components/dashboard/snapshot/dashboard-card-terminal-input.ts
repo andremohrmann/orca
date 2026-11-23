@@ -77,6 +77,7 @@ export function resolveDashboardCardTerminalInput(
     cwd: string
     shellOverride: string | null | undefined
     launchAgent: TuiAgent | null | undefined
+    hostPlatform?: NodeJS.Platform
     clientPlatform: NodeJS.Platform
     userAgent: string
     osRelease: string | undefined
@@ -101,25 +102,27 @@ export function resolveDashboardCardTerminalInput(
     shellOverride: args.shellOverride,
     executionHostId
   }
-  const hostPlatform = resolveTerminalInputHostPlatform({
-    clientPlatform: args.clientPlatform,
-    state,
-    statuses: state.runtimeStatusByEnvironmentId,
-    worktreeId: args.worktreeId,
-    transport: {
-      getConnectionId: () => connectionId,
-      getPtyId: () => args.ptyId,
-      getExecutionHostId: () => executionHostId,
-      // Match the pane metadata gate so WSL resolves Linux protocols instead of inheriting Windows CSI-u behavior.
-      getLocalSessionMetadata: () =>
-        connectionId
-          ? null
-          : {
-              ...(args.cwd ? { cwd: args.cwd } : {}),
-              ...(args.shellOverride ? { shellOverride: args.shellOverride } : {})
-            }
-    }
-  })
+  const hostPlatform =
+    args.hostPlatform ??
+    resolveTerminalInputHostPlatform({
+      clientPlatform: args.clientPlatform,
+      state,
+      statuses: state.runtimeStatusByEnvironmentId,
+      worktreeId: args.worktreeId,
+      transport: {
+        getConnectionId: () => connectionId,
+        getPtyId: () => args.ptyId,
+        getExecutionHostId: () => executionHostId,
+        // Match the pane metadata gate so WSL resolves Linux protocols instead of inheriting Windows CSI-u behavior.
+        getLocalSessionMetadata: () =>
+          connectionId
+            ? null
+            : {
+                ...(args.cwd ? { cwd: args.cwd } : {}),
+                ...(args.shellOverride ? { shellOverride: args.shellOverride } : {})
+              }
+      }
+    })
   const protectedPaste = resolveProtectedMultilinePasteOptionsForAgentEvidence({
     isWindowsClient: args.clientPlatform === 'win32',
     hostPlatform,

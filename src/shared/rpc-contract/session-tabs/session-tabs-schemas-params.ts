@@ -36,6 +36,8 @@ export const ActivateTab = WorktreeTabSelector.extend({
 })
 
 export const BotLinkActivateTab = ActivateTab.extend({
+  expectedAgentSessionId: z.string().min(1).max(4096).optional(),
+  expectedWorktreeId: z.string().min(1).max(4096).optional(),
   botLinkTarget: BotLinkOpenTargetSchema.optional()
 })
 

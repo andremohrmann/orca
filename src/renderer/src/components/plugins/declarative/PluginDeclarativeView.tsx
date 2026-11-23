@@ -1,4 +1,5 @@
 import { useContext, useLayoutEffect, useMemo, useRef } from 'react'
+import { PluginDeclarativeTerminalSurface } from './PluginDeclarativeTerminalSurface'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -69,6 +70,7 @@ export type PluginDeclarativeViewProps = {
   /** Opens a validated `http(s):`/`mailto:` href outside Orca, once `gestureId`'s control settled. */
   onOpenLink?: (href: string, gestureId: string) => void
   /** Object URL for a plugin-relative image file, or null when it cannot be shown. */
+  resolveTerminalSurface?: PluginDeclarativeHostServices['resolveTerminalSurface']
   onLoadImage?: (path: string) => Promise<string | null>
   /** Tracks where granting controls sit, so a press can be judged settled. */
   gestures?: PluginDeclarativeGestureGeometry
@@ -132,6 +134,8 @@ function PluginDeclarativeNodeView({
     )
   }
   switch (node.type) {
+    case 'TerminalSurface':
+      return <PluginDeclarativeTerminalSurface {...node.props} />
     case 'Stack':
       return (
         <div
@@ -339,11 +343,12 @@ export function PluginDeclarativeView({
   onEvent,
   onOpenLink,
   onLoadImage,
+  resolveTerminalSurface,
   gestures
 }: PluginDeclarativeViewProps): React.JSX.Element {
   const services = useMemo<PluginDeclarativeHostServices>(
-    () => ({ openLink: onOpenLink, loadImage: onLoadImage }),
-    [onLoadImage, onOpenLink]
+    () => ({ openLink: onOpenLink, loadImage: onLoadImage, resolveTerminalSurface }),
+    [onLoadImage, onOpenLink, resolveTerminalSurface]
   )
   const containerRef = useRef<HTMLDivElement | null>(null)
   // Every commit can move controls (a sibling grew, an ancestor reflowed), so re-measure.

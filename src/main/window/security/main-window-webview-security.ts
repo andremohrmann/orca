@@ -243,7 +243,7 @@ export function installMainWindowWebviewSecurity(mainWindow: BrowserWindow): voi
 const PLUGIN_FRAME_GUEST_INHERITED_PREFERENCES: ReadonlySet<string> = new Set(['zoomFactor'])
 
 /** Renderer markup is a request: main drops every preference it did not pin, then pins its set. */
-function hardenPluginFrameGuestPreferences(
+export function hardenPluginFrameGuestPreferences(
   webPreferences: Electron.WebPreferences,
   preload: string,
   partition: string

@@ -26,6 +26,16 @@ type EvidenceState = {
   accepted: AcceptedEvidence | null
 }
 
+const incarnationListeners = new Set<(environmentId: string) => void>()
+export function onRuntimeEnvironmentCapabilityIncarnationChanged(
+  listener: (environmentId: string) => void
+): () => void {
+  incarnationListeners.add(listener)
+  return () => {
+    incarnationListeners.delete(listener)
+  }
+}
+
 const evidenceByEnvironment = new Map<string, EvidenceState>()
 
 export function resetRuntimeEnvironmentCapabilityEvidence(): void {
@@ -62,6 +72,9 @@ export function advanceRuntimeEnvironmentCapabilityIncarnation(environmentId: st
   const state = stateFor(environmentId)
   state.epoch += 1
   state.accepted = null
+  for (const listener of incarnationListeners) {
+    listener(environmentId)
+  }
 }
 
 export function getRuntimeEnvironmentCapabilityIncarnation(environmentId: string): number {

@@ -1,3 +1,4 @@
+import { parseAskFromStatus } from '../../../../shared/native-chat/input/native-chat-ask'
 import { paneAgentIdentity } from '../../../agent-hooks/server/pane-agent-identity'
 import {
   pickParsedAgentStatusPayload,
@@ -26,7 +27,7 @@ export type ConnectedPtyEvidence = {
 }
 
 /** Join only the host-owned summary of this exact chat, never a remote pane with a similar id. */
-function publishedStructuredChildren(
+function publishedStructuredSummary(
   entry: AgentStatusIpcPayload,
   read: ((sessionId: string) => AgentSessionStatusSummary | undefined) | undefined
 ) {
@@ -39,7 +40,7 @@ function publishedStructuredChildren(
     return undefined
   }
   const summary = read(sessionId)
-  return summary?.workspaceId === entry.worktreeId ? (summary?.children ?? []) : undefined
+  return summary?.workspaceId === entry.worktreeId ? summary : undefined
 }
 
 /** Admit hook-server rows using their execution-host evidence. */
@@ -69,8 +70,15 @@ export function collectRuntimeWorktreePtyAgentSources(args: {
     ) {
       continue
     }
+    const attentionTurn: NonNullable<RuntimeWorktreeAgentSource['attentionTurn']> = entry
     const hookPayload = pickParsedAgentStatusPayload(entry)
-    const children = publishedStructuredChildren(entry, args.readStructuredSummary)
+    const summary = publishedStructuredSummary(entry, args.readStructuredSummary)
+    const children = summary ? (summary.children ?? []) : undefined
+    const pendingQuestion =
+      summary?.awaitsQuestion?.text ??
+      parseAskFromStatus(entry.interactivePrompt, entry.toolName)
+        ?.questions.map((question) => question.question)
+        .join('\n')
     const terminalHandle =
       entry.terminalHandle ??
       (entry.structuredHost
@@ -101,12 +109,27 @@ export function collectRuntimeWorktreePtyAgentSources(args: {
       ...(entry.providerSession?.id ? { providerSessionId: entry.providerSession.id } : {}),
       ...(orcaSessionId ? { orcaSessionId } : {}),
       prompt: entry.prompt,
+      ...(pendingQuestion ? { pendingQuestion } : {}),
+      ...(entry.turnEndedAt !== undefined ? { turnEndedAt: entry.turnEndedAt } : {}),
+      ...(entry.turnEndDisposition ? { turnEndDisposition: entry.turnEndDisposition } : {}),
       lastAssistantMessage: entry.lastAssistantMessage ?? null,
       toolName: entry.toolName ?? null,
       toolInput: entry.toolInput ?? null,
       interrupted: false,
       ...agentVerdictFields(entry),
       stateStartedAt: entry.stateStartedAt,
+      attentionTurn: {
+        state: entry.state,
+        stateStartedAt: entry.stateStartedAt,
+        sessionBoundary: entry.sessionBoundary === true,
+        ...(attentionTurn.stateHistory
+          ? {
+              stateHistory: attentionTurn.stateHistory
+                .slice(-20)
+                .map(({ startedAt }) => ({ startedAt }))
+            }
+          : {})
+      },
       // A replay advances delivery order, not the age of the evidence shown by worktree.ps.
       updatedAt: entry.evidenceObservedAt ?? entry.receivedAt,
       ...(children !== undefined ? { children } : {}),

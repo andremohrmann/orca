@@ -16,6 +16,7 @@ Everything a components panel (`"ui": "components"`) imports comes from `orca`. 
 
 ## Components
 
+- `TerminalSurface` (children: none): `terminalId: string; hostId?: string; label: string; rows?: number`
 - `Stack` (children: any): `gap?: Gap; align?: Align`
 - `Row` (children: any): `gap?: Gap; align?: Align; justify?: 'start' | 'center' | 'end' | 'between'; wrap?: boolean`
 - `Text` (children: text, Text, Link, Code, Badge, RelativeTime): `tone?: Tone; muted?: boolean; size?: Size; weight?: 'regular' | 'medium' | 'semibold'; truncate?: boolean`

@@ -1,16 +1,33 @@
 import {
   PLUGIN_VIEW_NO_WORKSPACE_CODE,
   type PluginViewReply,
-  type PluginViewRequestBody
+  type PluginViewRequestBody,
+  type PluginWorkspaceReview
 } from '../../../shared/plugins/view/plugin-view-protocol'
 import type { PluginCommandAliasActionId } from '../../../shared/plugins/contributions/plugin-command-actions'
 import { PluginHostCallError } from '../workers/host-api/plugin-host-call-scope'
+import type { PluginHostCallScope } from '../workers/host-api/plugin-host-call-scope'
 
 /** What a worker's `editor.open` and `commands.run` ask of Orca's window. */
 export type PluginHostRendererActions = {
   openFile(worktreeId: string, relativePath: string): Promise<void>
   runAction(action: PluginCommandAliasActionId): Promise<void>
   openFolderWorkspace(folderWorkspaceId: string): Promise<void>
+  readWorkspaceReview?(input: {
+    worktreeId: string
+    executionHostId: string
+  }): Promise<PluginWorkspaceReview | null>
+  revealExistingAgent?(
+    input: { workspaceId: string; orcaSessionId: string },
+    scope: PluginHostCallScope,
+    pluginId: string
+  ): Promise<boolean>
+}
+
+type ExistingAgentReveal = NonNullable<PluginHostRendererActions['revealExistingAgent']>
+let existingAgentReveal: ExistingAgentReveal | null = null
+export function setPluginExistingAgentReveal(next: ExistingAgentReveal | null): void {
+  existingAgentReveal = next
 }
 
 /** Sends one request to the main window's renderer; null when there is no window to ask. */
@@ -23,6 +40,24 @@ let request: PluginHostRendererRequest | null = null
 
 export function setPluginHostRendererRequest(next: PluginHostRendererRequest | null): void {
   request = next
+}
+
+async function readWorkspaceReview(input: {
+  worktreeId: string
+  executionHostId: string
+}): Promise<PluginWorkspaceReview | null> {
+  const pending = request?.({ kind: 'read-workspace-review', ...input })
+  if (!pending) {
+    return null
+  }
+  const reply = await pending
+  if (!reply.ok) {
+    throw new PluginHostCallError('unavailable', reply.message)
+  }
+  const value = reply.workspaceReview
+  return value?.worktreeId === input.worktreeId && value.executionHostId === input.executionHostId
+    ? value
+    : null
 }
 
 async function ask(body: PluginViewRequestBody): Promise<void> {
@@ -46,6 +81,8 @@ async function ask(body: PluginViewRequestBody): Promise<void> {
 export function getPluginHostRendererActions(): PluginHostRendererActions | null {
   return request
     ? {
+        readWorkspaceReview,
+        ...(existingAgentReveal ? { revealExistingAgent: existingAgentReveal } : {}),
         openFile: (worktreeId, relativePath) =>
           ask({ kind: 'open-file', worktreeId, relativePath }),
         runAction: (action) => ask({ kind: 'run-action', action }),

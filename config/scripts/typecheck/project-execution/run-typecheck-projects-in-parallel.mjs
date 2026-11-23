@@ -79,6 +79,7 @@ export function resolveProjectCompiler(config, root = repoRoot) {
 export const BUN_TYPESCRIPT_VERSION = '7.0.2'
 
 export function parseTypecheckOptions(args) {
+  let serial = false
   const options = {
     compiler: 'auto',
     bunConcurrency: 2,
@@ -88,7 +89,9 @@ export function parseTypecheckOptions(args) {
   }
   const selected = []
   for (const argument of args) {
-    if (/^--compiler=(auto|tsrs|bun|native)$/.test(argument)) {
+    if (argument === '--serial') {
+      serial = true
+    } else if (/^--compiler=(auto|tsrs|bun|native)$/.test(argument)) {
       options.compiler = argument.slice('--compiler='.length)
     } else if (argument.startsWith('--bun-concurrency=')) {
       options.bunConcurrency = Number(argument.slice('--bun-concurrency='.length))
@@ -116,6 +119,12 @@ export function parseTypecheckOptions(args) {
   }
   if (options.checkers !== null && (!Number.isInteger(options.checkers) || options.checkers < 1)) {
     throw new Error('Checkers must be a positive integer')
+  }
+  if (serial) {
+    options.parallelism = 1
+    options.bunConcurrency = 1
+    options.bunThreads = 1
+    options.checkers = 1
   }
   if (selected.length > 0) {
     options.projects = selected

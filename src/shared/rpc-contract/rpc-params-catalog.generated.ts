@@ -1042,6 +1042,7 @@ import {
   SkillUploadChunkRequestSchema,
   SkillUploadCommitRequestSchema
 } from '../skills/sharing/skill-upload-session-contract'
+import { terminalPreviewTargetParams } from '../terminal/stream/terminal-plugin-preview-contract'
 
 // Why: the host parses params with these schemas, so a client that matches this map
 // matches the dispatcher. Clients must import it for types only — parsing a params
@@ -2085,6 +2086,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'terminal.list': TerminalListParams,
   'terminal.multiplex': TerminalMultiplex,
   'terminal.openInputSession': TerminalOpenInputSession,
+  'terminal.previewTarget': terminalPreviewTargetParams,
   'terminal.read': TerminalRead,
   'terminal.readKittyFile': TerminalReadKittyFile,
   'terminal.recoverPane': TerminalRecoverPane,

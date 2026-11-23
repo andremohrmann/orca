@@ -125,6 +125,7 @@ export async function executePluginHostCall(
       services,
       scope
     })
+    scope.assertActive()
     if (!validated) {
       await auditMutation('error').catch(() => undefined)
       // Malformed host results must not leak unvalidated shapes through any plugin transport.
@@ -135,9 +136,13 @@ export async function executePluginHostCall(
       }
     }
     await auditMutation('ok').catch(() => undefined)
+    scope.assertActive()
     return { ok: true, value: validated.value }
   } catch (error) {
     await auditMutation('error').catch(() => undefined)
+    if (scope.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
+      return { ok: false, code: 'cancelled', error: 'plugin host call was cancelled' }
+    }
     if (error instanceof ZodError) {
       // A runtime answer Orca's own binding did not expect; its shape is internal.
       scope.log?.(`${input.method}: unexpected runtime answer: ${error.message}`)

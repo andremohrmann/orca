@@ -14687,7 +14687,9 @@
           "agentStatusChanged": "When an agent’s status changes",
           "detail": "Background code runs",
           "workspaceChanged": "When you switch workspace or its terminals change",
-          "editorTypographyChanged": "When the editor font or zoom changes"
+          "editorTypographyChanged": "When the editor font or zoom changes",
+          "providerUsageChanged": "When provider quota changes",
+          "agentSummariesChanged": "When agent summaries change"
         },
         "pluginInstallAction": {
           "installed": "{{value0}} installed",
@@ -20747,6 +20749,11 @@
       "webPairingRefused": {
         "title": "Orca refused this browser",
         "retry": "Try again"
+      }
+    },
+    "plugins": {
+      "terminalSurface": {
+        "unavailable": "Terminal unavailable"
       }
     }
   },
@@ -29591,6 +29598,22 @@
       "unknownProject": "an unknown project",
       "automationNewWorkspaces": "Automation {{id}}: a new workspace of {{project}} each run, on {{schedule}}.",
       "automationInWorkspace": "Automation {{id}}: in {{project}} / {{workspace}}, on {{schedule}}."
+    },
+    "windowConsent": {
+      "openPopout": "Allow {{identity}} to open a separate window?",
+      "openPanel": "Allow {{identity}} to open in Orca?",
+      "openDetail": "Only this plugin’s declared panel opens. Background launches remain hidden.",
+      "open": "Open panel",
+      "opacity": "Allow {{identity}} to set its window opacity to {{percent}}%?",
+      "opacityDetail": "This changes only the plugin popout. Orca’s main window stays opaque.",
+      "setOpacity": "Set opacity",
+      "disableStartup": "Stop opening {{identity}} at startup?",
+      "enableStartup": "Allow {{identity}} to open at startup?",
+      "disableStartupDetail": "The saved startup preference will be removed.",
+      "startupPopoutDetail": "At the next desktop startup, this approved plugin panel opens in a separate window. Background launches remain hidden. Updating the install requires consent again.",
+      "startupPanelDetail": "At the next desktop startup, this approved plugin panel opens in Orca. Background launches remain hidden. Updating the install requires consent again.",
+      "disable": "Disable startup",
+      "allow": "Allow startup"
     }
   },
   "checks": {

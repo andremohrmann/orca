@@ -112,9 +112,21 @@ declare module 'orca' {
     /** The agents in the focused workspace, or in the one `workspaceId` names (rejected when no workspace has it): their terminal, title, agent kind, status, session and dispatched task. `agent.status.changed` reports each change after. */
     "agents.list": { params: { workspaceId?: string } | undefined; result: { agents: { terminalId: string | null; title: string | null; agent: string | null; state: "working" | "blocked" | "waiting" | "done"; stateStartedAt: number; sessionId?: string | null; task?: { title: string } | null }[] } }
     /** Delivers a workspace, agent or editor event to this panel as `orca.on(event)`; needs the event's read capability, when it has one. The frame APIs call it for you. */
-    "events.subscribe": { params: { event: "workspace.created" | "workspace.removed" | "agent.status.changed" | "workspace.changed" | "editor.typography.changed" }; result: { ok: true } }
+    "events.subscribe": { params: { event: "workspace.created" | "workspace.removed" | "agent.status.changed" | "workspace.changed" | "editor.typography.changed" | "provider.usageChanged" | "agents.summariesChanged" }; result: { ok: true } }
+    /** Identifies this personal host extension and its contract revision; does not assert official Orca release availability. Feature-detect individual methods as well. */
+    "host.customContract": { params: Record<string, never> | undefined; result: { id: "andre-dashboard-v1"; version: 1; distribution: "personal-fork"; officialRelease: null } }
     /** The font family, size, weight, line height, ligatures, word wrap and minimap Orca's file editor uses now, editor zoom included. `editor.typography.changed` reports each change after. */
     "editor.readTypography": { params: Record<string, never> | undefined; result: { fontFamily: string; cssFontFamily: string; fontSize: number; fontWeight: string; lineHeight: number; fontLigatures: boolean; wordWrap: "on" | "off"; minimap: boolean } }
+    /** Reads this plugin panel’s native popout and host-owned startup preference. Desktop only; Linux opacity is unsupported. */
+    "window.read": { params: { panelId: string }; result: { open: boolean; opacity: number; opacitySupported: boolean; bounds: { x: number; y: number; width: number; height: number } | null; startup: "panel" | "popout" | null } }
+    /** After host confirmation, opens this plugin’s declared panel in Orca or a sandboxed native popout without activating Orca. A popout is revealed when Orca is active; background launches remain hidden. Reuses one popout per panel. */
+    "window.open": { params: { panelId: string; presentation: "panel" | "popout"; bounds?: { x: number; y: number; width: number; height: number } }; result: { status: "applied" | "cancelled" | "consent-unavailable" } }
+    /** Closes only this plugin panel’s native popout; does not change its startup preference or sidebar. */
+    "window.close": { params: { panelId: string }; result: { closed: boolean } }
+    /** After host confirmation, sets this plugin’s open popout opacity (0.2–1). Unsupported on Linux. Never changes Orca’s main window. */
+    "window.setOpacity": { params: { panelId: string; opacity: number }; result: { status: "applied" | "cancelled" | "consent-unavailable" } }
+    /** After host confirmation, remembers a panel or popout presentation for next desktop startup; null disables it. Bound to this approved install revision; hidden/background startup stays hidden. */
+    "window.setStartup": { params: { panelId: string; presentation: "panel" | "popout" | null }; result: { status: "applied" | "cancelled" | "consent-unavailable" } }
   }
   /** Workspace and agent events `on(event)` delivers, with the read capability of their domain. */
   export type PluginEvents = {
@@ -128,6 +140,10 @@ declare module 'orca' {
     "workspace.changed": { context: { workspaceId?: string; branch: string; displayName: string; terminals: { id: string; title?: string }[] } | null }
     /** What Orca's file editor uses changed (a setting or the editor zoom); the payload is what `editor.readTypography` now answers. Needs no capability. */
     "editor.typography.changed": { fontFamily: string; cssFontFamily: string; fontSize: number; fontWeight: string; lineHeight: number; fontLigatures: boolean; wordWrap: "on" | "off"; minimap: boolean }
+    /** Custom andre-dashboard-v1: this execution host published new quota/account state; re-read provider.usage. No account data is carried. */
+    "provider.usageChanged": { invalidated: true }
+    /** Custom andre-dashboard-v1: agent status or desktop attention publication changed; re-read agents.summaries. No conversation data is carried. */
+    "agents.summariesChanged": { invalidated: true }
   }
   // </generated>
   export type HostMethod = keyof HostMethods

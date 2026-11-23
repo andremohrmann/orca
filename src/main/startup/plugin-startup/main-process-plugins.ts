@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import { installPluginWindowPresentation } from '../../plugins/windows/plugin-window-startup'
 import { PluginImageCache } from '../../plugins/media/plugin-image-cache'
 import { installPluginImageProtocolHandler } from '../../plugins/media/plugin-image-protocol'
 import { getPluginDesktopFrameServices } from '../../plugins/panels/desktop-actions/plugin-frame-desktop-services'
@@ -28,18 +29,14 @@ import {
   normalizePluginConsents,
   normalizePluginIdList
 } from '../../../shared/plugins/approval/plugin-consent-state'
-import { projectPluginAgentStatusChangedPayload } from '../../plugins/events/plugin-agent-status-event'
 import { setMainPluginLanguagePacks, setMainUiLanguage } from '../../i18n/main-i18n'
 import { isUsablePluginLanguagePack } from '../../../shared/plugins/languages/plugin-language-pack-coverage'
 import { rebuildAppMenu } from '../../menu/register-app-menu'
 import { rebuildSystemTrayMenu } from '../../tray/system-tray'
 import { logStartupMilestone } from '../diagnostics/startup-diagnostics'
 import { agentHookServer } from '../../agent-hooks/server/agent-hook-server'
-import {
-  bindPluginRuntime,
-  createPluginAgentStatusForwarder,
-  watchPluginWorkspaceContext
-} from '../../plugins/runtime/plugin-runtime-binding'
+import { bindPluginRuntime } from '../../plugins/runtime/plugin-runtime-binding'
+import { installPluginRuntimeObservers } from '../../plugins/runtime/plugin-runtime-observers'
 import { emitPluginWorktreeLifecycle } from '../pty-startup/main-process-pty-startup'
 import { mainProcessState as state } from '../main-process-state'
 import type { DesktopCore } from '../../core-desktop/desktop-core'
@@ -248,7 +245,15 @@ export async function initializeMainProcessPlugins(core: DesktopCore, store: Sto
     marketplace: core.pluginMarketplaceService,
     installer: core.pluginMarketplaceInstaller
   })
-  bindPluginDesktopViews(state.isServeMode, pluginService, () => state.mainWindow)
+  bindPluginDesktopViews(
+    state.isServeMode,
+    pluginService,
+    () => state.mainWindow,
+    pluginDelegate.callRuntime
+  )
+  if (!state.isServeMode) {
+    installPluginWindowPresentation(pluginService, () => state.mainWindow, store)
+  }
   // Initialization discovers manifests only; workers/panel reads wait for explicit triggers.
   void core.pluginService
     .initialize()
@@ -295,19 +300,6 @@ export async function initializeMainProcessPlugins(core: DesktopCore, store: Sto
       requestOfficialMarketplaceSeed()
     }
   }, PLUGIN_MARKETPLACE_SEED_STARTUP_DELAY_MS).unref?.()
-  // Filter hook/worktree events server-side by each plugin subscription.
-  const forwardAgentStatus = createPluginAgentStatusForwarder(pluginDelegate, pluginService)
-  agentHookServer.subscribeEnrichedStatus((enriched) => {
-    const payload = projectPluginAgentStatusChangedPayload(enriched, store)
-    if (payload) {
-      forwardAgentStatus(payload, enriched.terminalHandle)
-    }
-  })
-  watchPluginWorkspaceContext({
-    delegate: pluginDelegate,
-    events: pluginService,
-    onSessionWritten: (listener) => store.onWorkspaceSessionWritten(listener),
-    onStateWritten: (listener) => store.onStateWritten(listener)
-  })
+  installPluginRuntimeObservers(pluginService, pluginDelegate, store, agentHookServer)
   runtime.onWorktreeLifecycle(emitPluginWorktreeLifecycle)
 }

@@ -1,3 +1,4 @@
+import { retireChangedTerminalPreviewProfile } from './terminal-multiplex-preview-profile'
 import {
   TerminalStreamOpcode,
   decodeTerminalStreamJson,
@@ -17,7 +18,10 @@ import {
   sendSnapshotFrames,
   serializeBudgetedRequestedSnapshot
 } from './terminal-snapshot-publication'
-import { chainPassiveDesktopResize, updateViewportForClient } from './terminal-viewport-update'
+import {
+  applyMultiplexStreamViewport,
+  handleMultiplexViewportFrame
+} from './terminal-multiplex-viewport-frames'
 import { notePausedOutputDropped } from './terminal-multiplex-paused-output-drop'
 import { releaseAckPendingHoldbackIfDrained } from './terminal-multiplex-ack-window'
 import {
@@ -30,36 +34,15 @@ import {
   type MultiplexSnapshotRequest,
   type TerminalMultiplexConnection
 } from './terminal-multiplex-connection'
-import type { TerminalMultiplexStream, TerminalViewportClient } from './terminal-stream-types'
-
-function decodeViewportFrame(
-  payload: TerminalStreamFrame['payload']
-): { cols: number; rows: number } | null {
-  const viewport = decodeTerminalStreamJson<{ cols?: unknown; rows?: unknown }>(payload)
-  return viewport && typeof viewport.cols === 'number' && typeof viewport.rows === 'number'
-    ? { cols: viewport.cols, rows: viewport.rows }
-    : null
-}
+import type { TerminalMultiplexStream } from './terminal-stream-types'
 
 export function installMultiplexSlotFrames(state: TerminalMultiplexConnection): void {
   const { runtime, streams } = state
   const inputSequenceLedger = getTerminalInputSequenceLedger(runtime)
-  const applyStreamViewport = (
-    stream: TerminalMultiplexStream,
-    client: TerminalViewportClient,
-    viewport: { cols: number; rows: number }
-  ) =>
-    updateViewportForClient(
-      runtime,
-      stream.ptyId,
-      stream.remoteDesktopSubscriptionKey,
-      client,
-      viewport,
-      stream.isMobile ? 'mobile' : 'desktop',
-      'register',
-      !stream.supportsDesktopViewportClaims
-    )
   state.handleSlotFrame = (stream: TerminalMultiplexStream, frame: TerminalStreamFrame): void => {
+    if (retireChangedTerminalPreviewProfile(state, stream)) {
+      return
+    }
     if (!isMultiplexStreamAttached(state, stream)) {
       return
     }
@@ -114,42 +97,7 @@ export function installMultiplexSlotFrames(state: TerminalMultiplexConnection): 
       }
       return
     }
-    if (frame.opcode === TerminalStreamOpcode.Resize && stream.client) {
-      const viewport = decodeViewportFrame(frame.payload)
-      if (!viewport) {
-        return
-      }
-      // Register stream geometry for detach cleanup; older clients cannot claim explicitly.
-      if (!stream.isMobile && stream.client?.id) {
-        stream.registeredRemoteDesktopDriver = true
-        if (stream.buffering) {
-          stream.pendingRemoteDesktopViewport = viewport
-          return
-        }
-      }
-      stream.desktopClaimTail = chainPassiveDesktopResize(
-        stream.desktopClaimTail,
-        stream.supportsDesktopViewportClaims,
-        () => applyStreamViewport(stream, stream.client!, viewport)
-      )
-      return
-    }
-    if (frame.opcode === TerminalStreamOpcode.ClaimViewport && stream.client && !stream.isMobile) {
-      const viewport = decodeViewportFrame(frame.payload)
-      if (!viewport) {
-        return
-      }
-      stream.registeredRemoteDesktopDriver = true
-      const claim = () =>
-        runtime.updateRemoteDesktopViewer(
-          stream.ptyId,
-          stream.remoteDesktopSubscriptionKey,
-          stream.client!.id,
-          viewport.cols,
-          viewport.rows,
-          true
-        )
-      stream.desktopClaimTail = stream.desktopClaimTail.then(claim, claim).catch(() => false)
+    if (handleMultiplexViewportFrame(state, stream, frame)) {
       return
     }
     if (frame.opcode === TerminalStreamOpcode.SnapshotRequest) {
@@ -281,7 +229,7 @@ export function installMultiplexSlotFrames(state: TerminalMultiplexConnection): 
         ) {
           const viewport = stream.pendingRemoteDesktopViewport
           stream.pendingRemoteDesktopViewport = null
-          void applyStreamViewport(stream, stream.client, viewport).catch(() => {})
+          void applyMultiplexStreamViewport(state, stream, stream.client, viewport).catch(() => {})
         }
       }
     }

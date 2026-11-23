@@ -1,3 +1,4 @@
+import { parseExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import {
   TerminalIdentityRawInputs,
   TerminalIdentityReadContext
@@ -198,6 +199,28 @@ export abstract class OrcaRuntimeWithBuildPtyTerminalSummary extends OrcaRuntime
   protected hasMailboxTerminalHandle(handle: string): boolean {
     const named = this.getLivePtyForHandle(handle)?.pty ?? this.getRetainedHandlePty(handle)
     return this.handles.has(handle) || named !== undefined
+  }
+
+  resolvePluginTerminalSurface(handle: string, hostId?: string) {
+    const host = parseExecutionHostId(hostId)
+    if (hostId !== undefined && (!host || host.kind === 'runtime')) {
+      return null
+    }
+    const live = this.getLivePtyForHandle(handle)
+    if (host?.kind === 'ssh' && live?.pty.connectionId !== host.targetId) {
+      return null
+    }
+    if (host?.kind === 'local' && live?.pty.connectionId) {
+      return null
+    }
+    return live?.pty.connected
+      ? {
+          ptyId: live.pty.ptyId,
+          worktreeId: live.pty.worktreeId,
+          paneKey: this.paneOfPty(live.pty).paneKey ?? '',
+          launchAgent: live.pty.launchAgent
+        }
+      : null
   }
 
   protected getLivePtyForHandle(

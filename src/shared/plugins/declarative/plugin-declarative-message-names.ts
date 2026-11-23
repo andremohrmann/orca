@@ -32,10 +32,11 @@ export const PLUGIN_DECLARATIVE_MESSAGES = {
 } as const
 
 /** Grows with the component catalog, so plugins can feature-detect with `ui.catalog`. */
-export const PLUGIN_DECLARATIVE_CATALOG_VERSION = 4
+export const PLUGIN_DECLARATIVE_CATALOG_VERSION = 5
 
 /** Each catalog component's prop names, mirrored by the zod catalog (parity-tested). */
 export const PLUGIN_DECLARATIVE_COMPONENT_PROPS = {
+  TerminalSurface: ['terminalId', 'hostId', 'label', 'rows'],
   Stack: ['gap', 'align'],
   Row: ['gap', 'align', 'justify', 'wrap'],
   Text: ['tone', 'muted', 'size', 'weight', 'truncate'],

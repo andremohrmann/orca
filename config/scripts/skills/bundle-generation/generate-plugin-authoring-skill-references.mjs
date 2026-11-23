@@ -161,6 +161,7 @@ function renderTesting({ testing }) {
     'Test kit (`orca/testing`)',
     [
       '`ORCA plugin test` runs `*.test.ts(x)` files in Node with `orca` and `orca/testing` resolved to what this Orca ships, and plugin sources (panels and the worker `main`) loaded as Orca loads them. Every act resolves once the panel or worker has settled: `await` it and never add sleeps.',
+      "Use `ORCA plugin test <dir> --max-workers 1` to run test files sequentially. The positive integer cap is passed to either Node or the plugin's Vitest runner; it does not rely on `NODE_OPTIONS`.",
       ''
     ],
     [
@@ -281,7 +282,7 @@ function renderHostApi(sources, { frame, worker }) {
         '',
         ...capabilities.PLUGIN_CAPABILITY_KINDS.map(
           (kind) =>
-            `- ${code(kind)} (since ${capabilities.PLUGIN_CAPABILITY_SINCE[kind]}): ${capabilities.PLUGIN_CAPABILITY_DESCRIPTIONS[kind]}`
+            `- ${code(kind)} (${capabilities.PLUGIN_CUSTOM_CAPABILITIES[kind] ? `custom host build ${capabilities.PLUGIN_CUSTOM_CAPABILITIES[kind]}; no official release floor` : `since ${capabilities.PLUGIN_CAPABILITY_SINCE[kind]}`}): ${capabilities.PLUGIN_CAPABILITY_DESCRIPTIONS[kind]}`
         ),
         ''
       ],
@@ -302,7 +303,7 @@ function renderEvents({ events, eventContribution, typeText }, { services, frame
   const { REFERENCE_TYPE_TEXT, zodTypeText } = typeText
   const workerEvents = eventContribution.PLUGIN_EVENT_NAMES.map(
     (name) =>
-      `- ${code(name)} (${eventContribution.PLUGIN_EVENT_CAPABILITY[name] ? `capability ${code(eventContribution.PLUGIN_EVENT_CAPABILITY[name])}` : 'no capability'}; since ${eventContribution.PLUGIN_EVENT_SINCE[name]}): ${events.PLUGIN_EVENT_SUMMARIES[name]}\n  ${code(zodTypeText(events.PLUGIN_EVENT_PAYLOAD_SCHEMAS[name], 'output', REFERENCE_TYPE_TEXT))}`
+      `- ${code(name)} (${eventContribution.PLUGIN_EVENT_CAPABILITY[name] ? `capability ${code(eventContribution.PLUGIN_EVENT_CAPABILITY[name])}` : 'no capability'}; ${eventContribution.PLUGIN_CUSTOM_EVENTS[name] ? `custom host build ${eventContribution.PLUGIN_CUSTOM_EVENTS[name]}; no official release floor` : `since ${eventContribution.PLUGIN_EVENT_SINCE[name]}`}): ${events.PLUGIN_EVENT_SUMMARIES[name]}\n  ${code(zodTypeText(events.PLUGIN_EVENT_PAYLOAD_SCHEMAS[name], 'output', REFERENCE_TYPE_TEXT))}`
   )
   return document(
     'Events',

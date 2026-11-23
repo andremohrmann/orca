@@ -96,6 +96,7 @@ export async function runPluginTests(options: {
   files: readonly string[]
   appRoot?: string
   quietStdout?: boolean
+  maxWorkers?: number
   node?: PluginTestNode
 }): Promise<{ runner: PluginTestRunner; code: number; node: PluginTestNode['source'] }> {
   const testing = pluginTestingFiles(options.appRoot)
@@ -112,13 +113,23 @@ export async function runPluginTests(options: {
     }
     const config = join(configDir, 'vitest.config.mjs')
     await writeFile(config, pluginVitestConfig(testing))
-    args = [selected.entry, 'run', '--config', config, '--root', options.dir, ...options.files]
+    args = [
+      selected.entry,
+      'run',
+      '--config',
+      config,
+      '--root',
+      options.dir,
+      ...(options.maxWorkers === undefined ? [] : [`--maxWorkers=${options.maxWorkers}`]),
+      ...options.files
+    ]
   } else {
     args = [
       '--enable-source-maps',
       '--import',
       pathToFileURL(testing.register).href,
       '--test',
+      ...(options.maxWorkers === undefined ? [] : [`--test-concurrency=${options.maxWorkers}`]),
       ...options.files
     ]
   }

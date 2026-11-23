@@ -5,7 +5,7 @@ import { rename, rm, writeFile } from 'node:fs/promises'
 
 const WINDOWS_RENAME_RETRY_DELAYS_MS = [50, 100, 150, 200, 250]
 
-export type PluginAtomicWriteOptions = { mode?: number }
+export type PluginAtomicWriteOptions = { mode?: number; assertPublish?: () => void }
 
 export async function writePluginFileAtomically(
   target: string,
@@ -15,7 +15,7 @@ export async function writePluginFileAtomically(
   const temporary = `${target}.${process.pid}.${randomUUID()}.tmp`
   try {
     await writeFile(temporary, contents, { encoding: 'utf8', mode: options?.mode })
-    await renamePluginFileWithWindowsRetry(temporary, target)
+    await renamePluginFileWithWindowsRetry(temporary, target, options?.assertPublish)
   } finally {
     await rm(temporary, { force: true }).catch(() => undefined)
   }
@@ -23,10 +23,12 @@ export async function writePluginFileAtomically(
 
 export async function renamePluginFileWithWindowsRetry(
   source: string,
-  target: string
+  target: string,
+  assertPublish?: () => void
 ): Promise<void> {
   for (let attempt = 0; ; attempt += 1) {
     try {
+      assertPublish?.()
       await rename(source, target)
       return
     } catch (error) {

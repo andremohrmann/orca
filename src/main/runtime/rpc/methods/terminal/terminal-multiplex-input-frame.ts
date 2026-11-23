@@ -7,7 +7,10 @@ import type {
   TerminalInputSequenceLedger,
   TerminalInputWriteOutcome
 } from './terminal-input-sequence-ledger'
-import type { TerminalMultiplexConnection } from './terminal-multiplex-connection'
+import {
+  isMultiplexStreamAttached,
+  type TerminalMultiplexConnection
+} from './terminal-multiplex-connection'
 import type { TerminalMultiplexStream } from './terminal-stream-types'
 
 export function handleMultiplexInputFrame(
@@ -28,7 +31,11 @@ export function handleMultiplexInputFrame(
       return 'applied'
     }
     const claimed = await inputClaimTail
-    if (!claimed || isTerminalInputLockedForClient(runtime, stream.ptyId, stream.client)) {
+    if (
+      !isMultiplexStreamAttached(state, stream) ||
+      !claimed ||
+      isTerminalInputLockedForClient(runtime, stream.ptyId, stream.client)
+    ) {
       return 'applied'
     }
     const outcome = await sendTerminalStreamInput(runtime, {

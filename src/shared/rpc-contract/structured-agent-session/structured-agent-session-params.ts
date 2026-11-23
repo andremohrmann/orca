@@ -188,6 +188,14 @@ export const SetOptionParams = z.strictObject({
 
 export const OptionsParams = z.object({ sessionId: SessionId }).strict()
 export const RevealParams = OptionsParams.extend({
+  expectedOpen: z.literal(true).optional(),
+  expectedWorkspace: z
+    .object({
+      workspaceId: z.string().min(1).max(4096),
+      hostId: z.string().min(1).max(4096).optional()
+    })
+    .strict()
+    .optional(),
   botLinkTarget: BotLinkOpenTargetSchema.optional(),
   navigation: z.literal('caller').optional()
 }).strict()

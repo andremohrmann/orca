@@ -1,3 +1,4 @@
+import { findFrameContribution } from './plugin-frame-contribution'
 import {
   panelActionCallSchema,
   type PluginFrameEntry
@@ -52,13 +53,24 @@ type LoadedPluginPanel = {
 }
 
 export class PluginPanelController {
+  private readonly sessionClosedListeners = new Set<() => void>()
+  onSessionClosed(listener: () => void): () => void {
+    this.sessionClosedListeners.add(listener)
+    return () => this.sessionClosedListeners.delete(listener)
+  }
+
   private readonly sessions: PluginPanelSessions
   private readonly boundOwnerSignals = new WeakSet<AbortSignal>()
   private readonly panelAdmission: PluginPanelCallAdmission
 
   constructor(private readonly options: PluginPanelControllerOptions) {
     this.panelAdmission = options.panelAdmission ?? createPluginPanelCallAdmission()
-    this.sessions = new PluginPanelSessions((panelId) => options.onSessionClosed?.(panelId))
+    this.sessions = new PluginPanelSessions((panelId) => {
+      options.onSessionClosed?.(panelId)
+      for (const listener of this.sessionClosedListeners) {
+        listener()
+      }
+    })
   }
 
   /** The live, still-approved panel behind an owner's session: what its push channel serves. */
@@ -320,16 +332,4 @@ export class PluginPanelController {
 
 function panelCaller(binding: ResolvedPluginPanelSession): PluginPanelCaller {
   return { id: binding.publicId, surface: binding.surface, contributionId: binding.contributionId }
-}
-
-function findFrameContribution(
-  plugin: ValidDiscoveredPlugin,
-  surface: PluginPanelSessionBinding['surface'],
-  id: string
-): { entry: string; ui?: string; frame?: string } | null {
-  const list =
-    surface === 'panel'
-      ? plugin.manifest.contributes.panels
-      : plugin.manifest.contributes.customEditors
-  return list.find((entry) => entry.id === id) ?? null
 }

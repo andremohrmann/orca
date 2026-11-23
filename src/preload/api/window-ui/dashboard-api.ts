@@ -1,3 +1,4 @@
+import type { PluginTerminalSurfaceApi } from '../../../shared/plugins/frames/plugin-terminal-surface'
 import type {
   DashboardRevealAgentArgs,
   DashboardSnapshot
@@ -23,6 +24,8 @@ export type DashboardApi = {
 }
 
 export type TerminalPreviewApi = {
+  releaseFit?: (ptyId: string) => Promise<void>
+  pluginSurface?: PluginTerminalSurfaceApi
   connect: (
     ptyId: string,
     opts?: { scrollbackRows?: number }

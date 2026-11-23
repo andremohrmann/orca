@@ -1,3 +1,4 @@
+import { registerPluginTerminalSurfaceHandlers } from './plugin-terminal-surface'
 import { ipcMain, type WebContents } from 'electron'
 import type {
   TerminalPreviewConnectResult,
@@ -24,6 +25,7 @@ function isTerminalPreviewRenderer(sender: WebContents): boolean {
 }
 /** Pop-out terminal transport with an atomic snapshot/live boundary. */
 export function registerTerminalPreviewHandlers(runtime: OrcaRuntimeService): void {
+  registerPluginTerminalSurfaceHandlers(runtime)
   ipcMain.removeHandler('terminalPreview:connect')
   ipcMain.removeHandler('terminalPreview:unsubscribe')
   ipcMain.removeHandler('terminalPreview:input')

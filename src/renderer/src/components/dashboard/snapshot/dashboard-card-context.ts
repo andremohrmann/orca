@@ -14,6 +14,9 @@ import {
 } from '../../right-sidebar/hosted-review/folder-checks/parent-pr-checks-github-pr-cache'
 import { canUseParentPrChecksHostedReviewCacheEntry } from '../../right-sidebar/hosted-review/folder-checks/parent-pr-checks-hosted-review-cache'
 import type { Translate } from '@/i18n/use-translate'
+import type { HostedReviewProvider } from '../../../../../shared/source-control/hosted-review/hosted-review-contracts'
+
+type DashboardCachedReview = DashboardCardReview & { provider: HostedReviewProvider }
 
 export type DashboardCardContextState = Partial<
   Pick<AppState, 'hostedReviewCache' | 'prCache' | 'settings' | 'workspaceStatuses'>
@@ -40,7 +43,7 @@ function resolveReview(
   repo: Repo | null,
   worktree: Worktree,
   t?: Translate
-): DashboardCardReview | undefined {
+): DashboardCachedReview | undefined {
   if (!repo || !state.hostedReviewCache || !state.prCache || repo.kind === 'folder') {
     return undefined
   }
@@ -62,7 +65,11 @@ function resolveReview(
     hostedReview &&
     canUseParentPrChecksHostedReviewCacheEntry(worktree, hostedReview, hostedReviewEntry, t)
   ) {
-    return { number: hostedReview.number, state: hostedReview.state }
+    return {
+      provider: hostedReview.provider,
+      number: hostedReview.number,
+      state: hostedReview.state
+    }
   }
   const prEntry = getParentPrChecksGitHubPRCacheEntry({
     prCache: state.prCache,
@@ -73,7 +80,17 @@ function resolveReview(
   const review = canUseParentPrChecksGitHubPRCacheEntry(worktree, prEntry, hostedReviewEntry)
     ? hostedReviewInfoFromGitHubPRInfo(prEntry.data)
     : undefined
-  return review ? { number: review.number, state: review.state } : undefined
+  return review ? { provider: 'github', number: review.number, state: review.state } : undefined
+}
+
+export function resolveDashboardWorkspaceReview(
+  state: DashboardCardContextState,
+  repo: Repo | null,
+  worktree: Worktree,
+  t?: Translate
+): { hasReview: boolean; review: DashboardCachedReview | undefined } {
+  const review = resolveReview(state, repo, worktree, t)
+  return { hasReview: hasLinkedReview(worktree) || review !== undefined, review }
 }
 
 export function resolveDashboardCardContext(
@@ -87,11 +104,11 @@ export function resolveDashboardCardContext(
       ? state.workspaceStatuses
       : DEFAULT_WORKSPACE_STATUSES
   const workspaceStatusId = getWorkspaceStatus(worktree, statuses)
-  const review = resolveReview(state, repo, worktree, t)
+  const { hasReview, review } = resolveDashboardWorkspaceReview(state, repo, worktree, t)
   return {
     workspaceStatus:
       statuses.find((status) => status.id === workspaceStatusId) ?? DEFAULT_WORKSPACE_STATUSES[0],
-    review,
-    hasReview: hasLinkedReview(worktree) || review !== undefined
+    review: review ? { number: review.number, state: review.state } : undefined,
+    hasReview
   }
 }

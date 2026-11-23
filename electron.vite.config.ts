@@ -293,6 +293,7 @@ export const electronViteConfig: UserConfig = {
         input: {
           index: resolve('src/renderer/index.html'),
           popout: resolve('src/renderer/popout.html'),
+          pluginPopout: resolve('src/renderer/plugin-popout.html'),
           space: resolve('src/renderer/space.html'),
           web: resolve('src/renderer/web-index.html')
         }

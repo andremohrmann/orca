@@ -1,6 +1,7 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import { isTrustedMainRendererSender } from '../../ipc/renderer-requests/main-renderer-sender-trust'
 import { isDashboardPopoutRenderer } from '../dashboard-popout-window'
+import { isPluginPopoutRenderer } from '../../plugins/windows/plugin-window-service'
 
 let trustedClipboardRendererWebContentsId: number | null = null
 
@@ -15,8 +16,12 @@ export function assertTrustedClipboardSender(event: IpcMainInvokeEvent): void {
 }
 
 export function assertTrustedClipboardTextSender(event: IpcMainInvokeEvent): void {
-  // Dashboard popouts need text clipboard authority only; never extend it to images, files or remote operations.
-  if (!isTrustedClipboardRenderer(event.sender) && !isDashboardPopoutRenderer(event.sender)) {
+  // Owned terminal containers need text only; guests, images and files retain separate authority.
+  if (
+    !isTrustedClipboardRenderer(event.sender) &&
+    !isDashboardPopoutRenderer(event.sender) &&
+    !isPluginPopoutRenderer(event.sender)
+  ) {
     throw new Error('Unauthorized clipboard IPC sender')
   }
 }

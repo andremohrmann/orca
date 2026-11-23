@@ -28,13 +28,16 @@ export const PLUGIN_CAPABILITY_KINDS = [
   'workspace:create',
   'automation:read',
   'automation:write',
-  'history:read'
+  'history:read',
+  'quota:read',
+  'agent:summary',
+  'window:own'
 ] as const
 
 export type PluginCapabilityKind = (typeof PLUGIN_CAPABILITY_KINDS)[number]
 
 /** The release each capability arrived in; engines.orca must cover every one a plugin asks for. */
-export const PLUGIN_CAPABILITY_SINCE: Record<PluginCapabilityKind, string> = {
+export const PLUGIN_CAPABILITY_SINCE: Partial<Record<PluginCapabilityKind, string>> = {
   'workspace:read': PLUGIN_SCHEMA_SINCE_V1,
   'workspace:write': PLUGIN_HOST_ACTIONS_SINCE,
   'agent:read': PLUGIN_MANIFEST_V2_SINCE,
@@ -50,6 +53,13 @@ export const PLUGIN_CAPABILITY_SINCE: Record<PluginCapabilityKind, string> = {
   'automation:read': PLUGIN_HOST_API_1_8_SINCE,
   'automation:write': PLUGIN_HOST_API_1_8_SINCE,
   'history:read': PLUGIN_HOST_API_1_9_SINCE
+}
+
+/** Custom host capabilities have no official release floor; engines cannot guarantee them. */
+export const PLUGIN_CUSTOM_CAPABILITIES: Partial<Record<PluginCapabilityKind, string>> = {
+  'quota:read': 'andre-dashboard-v1',
+  'agent:summary': 'andre-dashboard-v1',
+  'window:own': 'andre-dashboard-v1'
 }
 
 /** Format 1 capability names and what each now grants. `events:subscribe` split by event domain. */
@@ -81,6 +91,12 @@ export const PLUGIN_CAPABILITY_DESCRIPTIONS: Record<PluginCapabilityKind, string
   'workspace:write':
     'Open and rename your workspaces, hide projects from the sidebar or show them again, focus their terminals, open their files in Orca, and run its built-in commands',
   'agent:read': 'Get notified when agent status changes',
+  'quota:read':
+    'Read display-safe provider quota windows, reset times and refresh status; never account credentials',
+  'agent:summary':
+    'Read bounded agent conversation excerpts, prompts, replies, pending questions, attention, completed turns and parent-child relationships',
+  'window:own':
+    'Open and close this plugin’s own panel windows, change their opacity where supported, and request startup presentation; Orca asks before opening or changing presentation preferences',
   'agent:launch': 'Start and resume agents in your workspaces, local and SSH',
   'terminal:send':
     'Open terminals, close the ones it opened or that are in your focused workspace, and type and run commands in your terminals, local and SSH',

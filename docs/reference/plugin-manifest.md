@@ -32,7 +32,7 @@ Add `"$schema": "https://raw.githubusercontent.com/stablyai/orca/main/docs/schem
 | `contributes` | object | no | 1.4.160 | What the plugin adds to Orca. Every point defaults to empty. |
 | `contributes.panels` | [PanelContribution](#panelcontribution)[] | no | 1.4.160 | Sidebar panels. At most 64. |
 | `contributes.commands` | [CommandContribution](#commandcontribution)[] | no | 1.4.160 | Command palette entries. At most 256. |
-| `contributes.events` | [EventContribution](#eventcontribution)[] | no | 1.4.160 | Events delivered to the plugin worker. At most 5. |
+| `contributes.events` | [EventContribution](#eventcontribution)[] | no | 1.4.160 | Events delivered to the plugin worker. At most 7. |
 | `contributes.hooks` | [HookContribution](#hookcontribution)[] | no | 1.4.248 | Hooks the worker runs before or after Orca acts; Orca waits only on plugins that list one. At most 8. |
 | `contributes.languagePacks` | [LanguagePackContribution](#languagepackcontribution)[] | no | 1.4.160 | Interface translations. At most 16. |
 | `contributes.keybindings` | [KeybindingContribution](#keybindingcontribution)[] | no | 1.4.160 | Keyboard shortcuts for contributed commands. At most 256. |
@@ -89,7 +89,7 @@ An event subscription. Requires `main`, the `trusted-worker` execution profile a
 
 | Field | Type | Required | Since | Description |
 | --- | --- | --- | --- | --- |
-| `on` | `"workspace.created"` \| `"workspace.removed"` \| `"agent.status.changed"` \| `"workspace.changed"` \| `"editor.typography.changed"` | yes | 1.4.160 | Event delivered to the plugin worker. |
+| `on` | `"workspace.created"` \| `"workspace.removed"` \| `"agent.status.changed"` \| `"workspace.changed"` \| `"editor.typography.changed"` \| `"provider.usageChanged"` \| `"agents.summariesChanged"` | yes | 1.4.160 | Event delivered to the plugin worker. |
 
 ## HookContribution
 
@@ -237,7 +237,7 @@ A host API the plugin may call once the user consents.
 
 | Field | Type | Required | Since | Description |
 | --- | --- | --- | --- | --- |
-| `kind` | `"workspace:read"` \| `"workspace:write"` \| `"agent:read"` \| `"agent:launch"` \| `"terminal:send"` \| `"terminal:read"` \| `"notifications:show"` \| `"storage:own"` \| `"secrets:own"` \| `"settings:own"` \| `"appearance:write"` \| `"workspace:create"` \| `"automation:read"` \| `"automation:write"` \| `"history:read"` | yes | 1.4.160 | Capability granted on user consent. |
+| `kind` | `"workspace:read"` \| `"workspace:write"` \| `"agent:read"` \| `"agent:launch"` \| `"terminal:send"` \| `"terminal:read"` \| `"notifications:show"` \| `"storage:own"` \| `"secrets:own"` \| `"settings:own"` \| `"appearance:write"` \| `"workspace:create"` \| `"automation:read"` \| `"automation:write"` \| `"history:read"` \| `"quota:read"` \| `"agent:summary"` \| `"window:own"` | yes | 1.4.160 | Capability granted on user consent. |
 
 ## Screenshot
 

@@ -15,6 +15,18 @@ export function installMultiplexSubscribeFrame(state: TerminalMultiplexConnectio
       return
     }
     const request = parsed.data
+    if (request.capabilities?.viewportLease === 1) {
+      const target = state.runtime.describePluginTerminalSurface(request.terminal)
+      if (
+        !target ||
+        target.worktreeId !== request.previewTarget?.worktreeId ||
+        target.incarnationId !== request.previewTarget.incarnationId ||
+        target.profileKey !== request.previewTarget.profileKey
+      ) {
+        state.sendStreamError(request.streamId, 'terminal_handle_stale')
+        return
+      }
+    }
     const resolution = resolveMultiplexSubscribePty(state, request)
     const ptyId =
       typeof resolution === 'string' || resolution === null ? resolution : await resolution

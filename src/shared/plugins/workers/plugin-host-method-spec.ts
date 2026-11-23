@@ -10,6 +10,8 @@ export type PluginHostMethodSpec<
   summary: string
   /** Host API minor the method appeared in (`0` for the first set); `api.minor` is the highest. */
   since: number
+  /** Available in this custom host build only; not an official Orca release guarantee. */
+  customBuild?: string
   /** Minor in which panels and editors gained a method workers had since `since`. */
   framesSince?: number
   /** Minor in which each optional param was added. Why: an added param is new surface a plugin

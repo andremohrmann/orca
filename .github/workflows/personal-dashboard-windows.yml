@@ -1,0 +1,97 @@
+name: Personal dashboard Windows artifact
+
+on:
+  push:
+    branches:
+      - andremohrmann/dashboard-plugin-host-api
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-dashboard-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'andremohrmann/orca' && github.ref == 'refs/heads/andremohrmann/dashboard-plugin-host-api'
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      ORCA_BACKGROUND_LAUNCH: '1'
+      ORCA_BUILD_COMMIT: ${{ github.sha }}
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify the clean upstream ancestry
+        shell: bash
+        run: |
+          git fetch --no-tags origin 923b19d805857c54a6fa8e0f24c39d2e501ba043
+          git merge-base --is-ancestor 923b19d805857c54a6fa8e0f24c39d2e501ba043 HEAD
+
+      - uses: ./.github/actions/install-node-dependencies
+        with:
+          native-runtime: node
+          persist-native-cache: 'false'
+          cache-electron-package: 'true'
+
+      - uses: ./.github/actions/prepare-windows-package-rust
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Check changed source
+        shell: bash
+        run: timeout 900 pnpm check:changed --serial --base=923b19d805857c54a6fa8e0f24c39d2e501ba043
+
+      - name: Set the personal artifact version
+        shell: pwsh
+        run: |
+          $personalVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($personalVersion -notmatch '^\d+\.\d+\.\d+-andre\.\d+$') { throw 'Expected an explicit personal source version' }
+          "ORCA_LOCAL_BUILD_VERSION=$personalVersion" >> $env:GITHUB_ENV
+
+      - name: Build using upstream packaging scripts
+        shell: pwsh
+        run: |
+          pnpm build:release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm ensure:electron-runtime
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --win --x64 --publish never
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Record unsigned artifact provenance
+        shell: pwsh
+        run: |
+          $installer = Get-Item -LiteralPath dist/orca-windows-setup.exe
+          if ($installer.Length -eq 0) { throw 'Installer is empty' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer.FullName
+          if ($signature.Status -ne 'NotSigned') { throw "Expected an unsigned personal artifact, got $($signature.Status)" }
+          $digest = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          [ordered]@{
+            repository = $env:GITHUB_REPOSITORY
+            source = $env:GITHUB_SHA
+            version = $env:ORCA_LOCAL_BUILD_VERSION
+            contract = 'andre-dashboard-v1'
+            contractVersion = 1
+            signature = 'unsigned'
+            installer = $installer.Name
+            sha256 = $digest
+            run = $env:GITHUB_RUN_ID
+          } | ConvertTo-Json | Set-Content -LiteralPath dist/personal-build.json -Encoding utf8
+          "$digest  $($installer.Name)" | Set-Content -LiteralPath dist/personal-build.sha256 -Encoding ascii
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: personal-dashboard-windows-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/orca-windows-setup.exe
+            dist/orca-windows-setup.exe.blockmap
+            dist/personal-build.json
+            dist/personal-build.sha256

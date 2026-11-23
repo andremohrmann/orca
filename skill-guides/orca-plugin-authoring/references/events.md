@@ -16,6 +16,10 @@ List each in `contributes.events` (`{ "on": "<event>" }`), with `main`, the `tru
   `{ context: { workspaceId?: string; branch: string; displayName: string; terminals: { id: string; title?: string }[] } | null }`
 - `editor.typography.changed` (no capability; since 1.4.257): What Orca's file editor uses changed (a setting or the editor zoom); the payload is what `editor.readTypography` now answers. Needs no capability.
   `{ fontFamily: string; cssFontFamily: string; fontSize: number; fontWeight: string; lineHeight: number; fontLigatures: boolean; wordWrap: "on" | "off"; minimap: boolean }`
+- `provider.usageChanged` (capability `quota:read`; custom host build andre-dashboard-v1; no official release floor): Custom andre-dashboard-v1: this execution host published new quota/account state; re-read provider.usage. No account data is carried.
+  `{ invalidated: true }`
+- `agents.summariesChanged` (capability `agent:summary`; custom host build andre-dashboard-v1; no official release floor): Custom andre-dashboard-v1: agent status or desktop attention publication changed; re-read agents.summaries. No conversation data is carried.
+  `{ invalidated: true }`
 
 ## Frame events (`orca.on(event, handler)` in HTML panels and custom editors)
 

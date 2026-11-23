@@ -27,6 +27,7 @@ export function installMultiplexCleanup(state: TerminalMultiplexConnection): voi
     stream.unsubscribeResize()
     stream.unsubscribeFit()
     stream.unsubscribeDriver()
+    stream.unsubscribeProfile?.()
     stream.unregisterBinaryHandler()
     streams.delete(streamId)
     state.flushAllAckPendingOutput()

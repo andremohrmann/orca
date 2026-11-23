@@ -232,6 +232,14 @@ declare module 'orca' {
     required?: boolean
   }
   export const Stack: OrcaComponent<StackProps>
+  /** Custom andre-dashboard-v1 build only (catalog 5); terminal:read to view, terminal:send for input. */
+  export type TerminalSurfaceProps = Leaf & {
+    terminalId: string
+    hostId?: string
+    label: string
+    rows?: number
+  }
+  export const TerminalSurface: OrcaComponent<TerminalSurfaceProps>
   export const Row: OrcaComponent<RowProps>
   export const Text: OrcaComponent<TextProps>
   export const Heading: OrcaComponent<HeadingProps>
@@ -296,4 +304,5 @@ declare module 'orca' {
     | 'Skeleton'
     | 'RelativeTime'
     | 'Box'
+    | 'TerminalSurface'
 }

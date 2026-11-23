@@ -1,3 +1,4 @@
+import { bindTerminalSurfacePlugins } from '../terminal-views/plugin-terminal-surface'
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import type { Store } from '../../persistence/loading-store/store'
@@ -96,6 +97,7 @@ export function registerPluginHandlers(
   pluginService: PluginService,
   marketplaceServices?: PluginMarketplaceHandlerServices
 ): void {
+  bindTerminalSurfacePlugins(pluginService)
   // All handlers must await startup discovery to avoid returning a pre-discovery empty list.
   ipcMain.handle('plugins:list', async () => listPluginsForClients(pluginService))
   ipcMain.handle('plugins:getInstalledManifest', async (_event, args: unknown) => {

@@ -349,7 +349,7 @@
               "notifications:show"
             ]
           ],
-          "maxItems": 15,
+          "maxItems": 18,
           "type": "array",
           "items": {
             "type": "string",
@@ -368,7 +368,10 @@
               "workspace:create",
               "automation:read",
               "automation:write",
-              "history:read"
+              "history:read",
+              "quota:read",
+              "agent:summary",
+              "window:own"
             ]
           }
         },

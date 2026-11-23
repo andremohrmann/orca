@@ -9,6 +9,8 @@ import {
 } from '../workers/plugin-host-api'
 import { PLUGIN_HOST_HAS_SINCE, pluginHostMethodRelease } from '../workers/plugin-host-api-releases'
 import { stripScriptComments } from './plugin-script-comment-stripping'
+import { PLUGIN_CUSTOM_CAPABILITIES } from '../capabilities/plugin-capabilities'
+import { PLUGIN_CUSTOM_EVENTS } from '../contributions/plugin-event-contribution'
 
 /** What reading one plugin file gave: its text, why it was not read, or null when absent. */
 export type PluginCodeRead = { text: string } | { skipped: string } | null
@@ -242,6 +244,22 @@ export async function pluginHostCallFindings(
   const guardWorks = satisfiesOrcaEngineRange(declared, `>=${PLUGIN_HOST_HAS_SINCE}`)
   const errors: string[] = []
   const warnings: string[] = []
+  for (const { on } of manifest.contributes.events) {
+    const build = PLUGIN_CUSTOM_EVENTS[on]
+    if (build) {
+      warnings.push(
+        `event ${on} requires custom host build ${build}; no official Orca release floor guarantees it`
+      )
+    }
+  }
+  for (const { kind } of manifest.capabilities) {
+    const build = PLUGIN_CUSTOM_CAPABILITIES[kind]
+    if (build) {
+      warnings.push(
+        `capability ${kind} requires custom host build ${build}; no official Orca release floor guarantees it`
+      )
+    }
+  }
   for (const call of firstPer(calls, (c) => c.name)) {
     const spec = getPluginHostMethodSpec(call.name)
     let failure: string | null = null
@@ -275,6 +293,11 @@ export async function pluginHostCallFindings(
       continue
     }
     const needs = pluginHostMethodRelease(spec, call.surface)
+    if (spec.customBuild) {
+      warnings.push(
+        `${call.file}: host method "${call.name}" requires custom host build ${spec.customBuild}; no official Orca release floor guarantees it; check orca.host.has('${call.name}') before calling`
+      )
+    }
     if (
       needs !== null &&
       !satisfiesOrcaEngineRange(declared, `>=${needs}`) &&

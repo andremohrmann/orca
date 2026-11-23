@@ -35,6 +35,7 @@ export const TERMINAL_SEND_APPROVAL_GUARD_RUNTIME_CAPABILITY =
   'terminal.send-approval-guard.v1' as const
 
 export const TERMINAL_RUNTIME_CAPABILITIES = [
+  'terminal.plugin-preview.v1',
   TERMINAL_ORDERED_INPUT_CAPABILITY,
   TERMINAL_LIMIT_RUNTIME_CAPABILITY,
   'terminal.binary-stream.v1',

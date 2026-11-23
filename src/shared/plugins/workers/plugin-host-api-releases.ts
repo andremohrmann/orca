@@ -37,5 +37,8 @@ export function pluginHostMethodRelease(
   entry: PluginHostMethodSpec,
   surface: PluginSurface
 ): string | null {
+  if (entry.customBuild) {
+    return null
+  }
   return PLUGIN_HOST_API_MINOR_SINCE[pluginHostMethodSinceFor(entry, surface)] ?? null
 }

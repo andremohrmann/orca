@@ -45,6 +45,9 @@ export function createPluginHostCallScope(
   log?: (line: string) => void
 ): PluginHostCallScope {
   const manifestRevision = JSON.stringify(admitted.manifest)
+  const contentHash = admitted.contentHash
+  const consentFingerprint = admitted.consentFingerprint
+  const devRevision = admitted.devRevision
   return {
     callerWebContentsId: caller?.webContentsId,
     signal: caller?.signal,
@@ -52,11 +55,15 @@ export function createPluginHostCallScope(
     panel: caller?.panel,
     pluginName: admitted.manifest.name,
     assertActive() {
+      caller?.signal?.throwIfAborted()
       // A refresh in flight is not a revocation; disable, consent, kill list and removal are.
       const current = findApprovedPlugin(admitted.pluginKey, true)
       if (
         !current ||
         current.rootDir !== admitted.rootDir ||
+        current.contentHash !== contentHash ||
+        current.consentFingerprint !== consentFingerprint ||
+        current.devRevision !== devRevision ||
         JSON.stringify(current.manifest) !== manifestRevision
       ) {
         throw pluginHostCallRevoked()

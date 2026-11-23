@@ -92,11 +92,17 @@ export const PLUGIN_EVENT_PAYLOAD_SCHEMAS = {
   'workspace.removed': workspaceRemovedPayloadSchema,
   'agent.status.changed': agentStatusChangedPayloadSchema,
   'workspace.changed': workspaceChangedPayloadSchema,
-  'editor.typography.changed': pluginEditorTypographySchema
+  'editor.typography.changed': pluginEditorTypographySchema,
+  'provider.usageChanged': z.object({ invalidated: z.literal(true) }),
+  'agents.summariesChanged': z.object({ invalidated: z.literal(true) })
 } satisfies Record<PluginEventName, z.ZodType>
 
 /** One line per event for the generated reference and author typings. */
 export const PLUGIN_EVENT_SUMMARIES: Record<PluginEventName, string> = {
+  'provider.usageChanged':
+    'Custom andre-dashboard-v1: this execution host published new quota/account state; re-read provider.usage. No account data is carried.',
+  'agents.summariesChanged':
+    'Custom andre-dashboard-v1: agent status or desktop attention publication changed; re-read agents.summaries. No conversation data is carried.',
   'workspace.created':
     'A worktree workspace was created; `workspaceListId` (host API 1.7) is the id `workspace.list` gives it.',
   'workspace.removed':

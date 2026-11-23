@@ -29,6 +29,8 @@ import { PLUGIN_WORKSPACE_ACTION_HANDLERS } from './plugin-host-workspace-method
 import { PLUGIN_TERMINAL_ACTION_HANDLERS } from './plugin-host-terminal-method-bindings'
 import { PLUGIN_WORKSPACE_CREATE_HANDLERS } from './plugin-host-workspace-create-bindings'
 import { PLUGIN_AUTOMATION_HANDLERS } from './plugin-host-automation-bindings'
+import { PLUGIN_DASHBOARD_HANDLERS } from './plugin-host-dashboard-bindings'
+import { PLUGIN_WINDOW_HANDLERS } from './plugin-host-window-bindings'
 import { PLUGIN_AGENT_HISTORY_HANDLERS } from './plugin-host-agent-history-bindings'
 import { PLUGIN_PROJECT_VISIBILITY_HANDLERS } from './plugin-host-project-visibility-binding'
 import {
@@ -39,6 +41,7 @@ import {
 import type { PluginAppearanceService } from '../../appearance/plugin-appearance-service'
 import type { PluginEditorTypographySource } from '../../appearance/plugin-editor-typography'
 import { PluginHostCallError } from './plugin-host-call-scope'
+import { PLUGIN_CUSTOM_CONTRACT } from '../../../../shared/plugins/workers/plugin-host-custom-contract'
 import type {
   PluginActionConfirmation,
   PluginConfirmationSubject
@@ -139,6 +142,7 @@ const worktreeShowAnswer = z.object({ worktree: z.object({ id: z.string() }) })
 const OK = { ok: true } as const
 
 const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
+  'host.customContract': bind(api['host.customContract'], async () => PLUGIN_CUSTOM_CONTRACT),
   'appearance.read': bind(api['appearance.read'], async (_params, { services }) => {
     if (!services.appearance) {
       throw new PluginHostCallError('unavailable', 'desktop appearance service is unavailable')
@@ -278,7 +282,9 @@ const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
   ...PLUGIN_TERMINAL_ACTION_HANDLERS,
   ...PLUGIN_WORKSPACE_CREATE_HANDLERS,
   ...PLUGIN_AUTOMATION_HANDLERS,
-  ...PLUGIN_AGENT_HISTORY_HANDLERS
+  ...PLUGIN_AGENT_HISTORY_HANDLERS,
+  ...PLUGIN_DASHBOARD_HANDLERS,
+  ...PLUGIN_WINDOW_HANDLERS
 }
 
 function requireDesktop(services: PluginHostServices): PluginDesktopFrameServices {

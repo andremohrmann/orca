@@ -33,7 +33,34 @@ export const pluginViewReplySchema: z.ZodType<PluginViewReply> = z.union([
     requestId: z.string().max(128),
     ok: z.literal(true),
     panel: drawnPanelSchema.optional(),
-    restored: z.boolean().optional()
+    restored: z.boolean().optional(),
+    agentTarget: z
+      .object({
+        publicWorkspaceId: z.string().min(1).max(4096),
+        worktreeId: z.string().min(1).max(4096),
+        hostId: z.string().min(1).max(4096),
+        orcaSessionId: z.string().min(1).max(4096),
+        sessionId: z.string().min(1).max(4096),
+        tabId: z.string().min(1).max(4096)
+      })
+      .nullable()
+      .optional(),
+    revealed: z.boolean().optional(),
+    workspaceReview: z
+      .object({
+        worktreeId: z.string().min(1).max(4096),
+        executionHostId: z.string().min(1).max(4096),
+        hasReview: z.boolean(),
+        review: z
+          .object({
+            provider: z.enum(['github', 'gitlab', 'bitbucket', 'azure-devops', 'gitea']),
+            number: z.number().int().positive(),
+            state: z.enum(['open', 'closed', 'merged', 'draft'])
+          })
+          .nullable()
+      })
+      .nullable()
+      .optional()
   }),
   z.object({
     requestId: z.string().max(128),

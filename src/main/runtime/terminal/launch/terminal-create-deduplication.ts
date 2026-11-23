@@ -1,3 +1,5 @@
+import { buildPluginTerminalPreviewTarget } from '../query/terminal-plugin-input-profile'
+import type { TerminalPluginPreviewTarget } from '../../../../shared/terminal/stream/terminal-plugin-preview-contract'
 import { agentPromptRidesLaunchCommand } from '../../../../shared/agent-launch/startup/tui-agent-startup'
 import type { SessionOptionValue } from '../../../../shared/native-chat/input/native-chat-session-options'
 import type { TerminalWorkspaceCreationEvidence } from './terminal-workspace-scope'
@@ -154,6 +156,17 @@ export abstract class OrcaRuntimeWithTerminalCreateDeduplication extends OrcaRun
       title: session.title || null,
       surface: 'background'
     }
+  }
+
+  describePluginTerminalSurface(handle: string): TerminalPluginPreviewTarget | null {
+    const live = this.getLivePtyForHandle(handle)
+    return live?.pty.connected
+      ? buildPluginTerminalPreviewTarget(
+          handle,
+          live.pty,
+          this.getPtyExecutionHostMetadata(live.pty.ptyId)
+        )
+      : null
   }
 
   getPtyExecutionHostMetadata(

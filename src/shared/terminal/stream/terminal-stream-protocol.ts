@@ -36,7 +36,9 @@ export enum TerminalStreamOpcode {
   // Host->client, empty payload; at most once per pause, when the host first discards output for a paused stream. Sent only after `outputPauseDropNotice` negotiation.
   PausedOutputDropped = 19,
   // Client->host; negotiated per stream like SetOutputPaused.
-  SetOutputCadence = 20
+  SetOutputCadence = 20,
+  ReleaseViewport = 21,
+  ViewportAck = 22
 }
 
 export type TerminalInputAckKind = 'applied' | 'delivery-unknown' | 'resend'
@@ -170,6 +172,8 @@ function isTerminalStreamOpcode(value: number): value is TerminalStreamOpcode {
     value === TerminalStreamOpcode.WriteUnavailable ||
     value === TerminalStreamOpcode.InputAck ||
     value === TerminalStreamOpcode.PausedOutputDropped ||
-    value === TerminalStreamOpcode.SetOutputCadence
+    value === TerminalStreamOpcode.SetOutputCadence ||
+    value === TerminalStreamOpcode.ReleaseViewport ||
+    value === TerminalStreamOpcode.ViewportAck
   )
 }

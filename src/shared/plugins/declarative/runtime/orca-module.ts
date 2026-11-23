@@ -89,6 +89,7 @@ export const { plugin, storage, settings, secrets } = createOrcaDataSdk(
 )
 
 // Catalog tags: JSX `<Stack>` compiles to a reference, so authors import these by name.
+export const TerminalSurface = 'TerminalSurface'
 export const Stack = 'Stack'
 export const Row = 'Row'
 export const Text = 'Text'

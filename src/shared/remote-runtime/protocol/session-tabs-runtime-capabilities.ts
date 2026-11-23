@@ -1,5 +1,8 @@
 import { QODER_OWNED_TERMINAL_CREATE_CAPABILITY } from '../../agent-launch/startup/qoder-terminal-create-capability'
 
+export const SESSION_TABS_ACTIVATE_EXISTING_AGENT_RUNTIME_CAPABILITY =
+  'session-tabs.activate-existing-agent.v1' as const
+
 // Complete split-parent placement agrees across headed/runtime-owned hosts; legacy clients must wait for the snapshot.
 export const SESSION_TABS_SPLIT_GROUP_PLACEMENT_RUNTIME_CAPABILITY =
   'session-tabs.split-group-placement.v1' as const
@@ -53,6 +56,7 @@ export const SESSION_TERMINAL_SCROLLBACK_READ_RUNTIME_CAPABILITY =
 export const TERMINAL_AGENT_ID_RUNTIME_CAPABILITY = 'terminal.agent-id.v1' as const
 
 export const SESSION_TABS_RUNTIME_CAPABILITIES = [
+  SESSION_TABS_ACTIVATE_EXISTING_AGENT_RUNTIME_CAPABILITY,
   QODER_OWNED_TERMINAL_CREATE_CAPABILITY,
   SESSION_TAB_CLOSE_INTENT_RUNTIME_CAPABILITY,
   SESSION_TAB_CLOSE_FORCE_RUNTIME_CAPABILITY,

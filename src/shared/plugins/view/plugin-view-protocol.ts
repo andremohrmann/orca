@@ -77,6 +77,29 @@ export type PluginViewRequestBody =
   | { kind: 'run-action'; action: PluginCommandAliasActionId }
   /** A plugin worker's `workspace.open` of a folder workspace, which the runtime cannot activate. */
   | { kind: 'open-folder-workspace'; folderWorkspaceId: string }
+  | { kind: 'read-workspace-review'; worktreeId: string; executionHostId: string }
+  | { kind: 'resolve-existing-agent'; workspaceId: string; orcaSessionId: string }
+  | { kind: 'focus-existing-agent'; target: PluginExistingAgentTarget }
+
+export type PluginExistingAgentTarget = {
+  publicWorkspaceId: string
+  worktreeId: string
+  hostId: string
+  orcaSessionId: string
+  sessionId: string
+  tabId: string
+}
+
+export type PluginWorkspaceReview = {
+  worktreeId: string
+  executionHostId: string
+  hasReview: boolean
+  review: {
+    provider: 'github' | 'gitlab' | 'bitbucket' | 'azure-devops' | 'gitea'
+    number: number
+    state: 'open' | 'closed' | 'merged' | 'draft'
+  } | null
+}
 
 export type PluginViewReplay = {
   tree: PluginDeclarativeNode | null
@@ -113,7 +136,15 @@ export type PluginViewDrawnPanel = {
 
 export type PluginViewReply =
   /** `restored`: on `end-capture` after `--act`, whether the panel's atoms were put back. */
-  | { requestId: string; ok: true; panel?: PluginViewDrawnPanel; restored?: boolean }
+  | {
+      requestId: string
+      ok: true
+      panel?: PluginViewDrawnPanel
+      restored?: boolean
+      agentTarget?: PluginExistingAgentTarget | null
+      revealed?: boolean
+      workspaceReview?: PluginWorkspaceReview | null
+    }
   | { requestId: string; ok: false; code: string; message: string }
 
 /** The renderer could not show the view; `code` is a stable reason callers may branch on. */

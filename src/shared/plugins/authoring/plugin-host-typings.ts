@@ -62,18 +62,16 @@ export function renderPluginHostMethodMembers(
       const addedParams = Object.entries(spec.paramsSince ?? {})
         .map(([param, minor]) => `; \`${param}\` since ${version(minor)}`)
         .join('')
-      const since = `Since host API ${version(spec.since)}${frames}${addedParams}.`
+      const since = spec.customBuild
+        ? `Custom host build ${spec.customBuild}, contract ${version(spec.since)}. No official release availability; check host.has.`
+        : `Since host API ${version(spec.since)}${frames}${addedParams}.`
       const deprecated =
         spec.deprecatedSince === undefined
           ? ''
           : ` @deprecated since ${version(spec.deprecatedSince)}.`
       return [
         docComment(indent, `${spec.summary} ${since}${deprecated}`),
-        `${indent}${JSON.stringify(name)}: {\n`,
-        `${indent}  params: ${paramsText}\n`,
-        `${indent}  result: ${result}\n`,
-        `${indent}  surfaces: ${union(spec.surfaces)}\n`,
-        `${indent}}\n`
+        `${indent}${JSON.stringify(name)}: HostMethod<${paramsText}, ${result}, ${union(spec.surfaces)}>\n`
       ].join('')
     })
     .join('')
@@ -135,6 +133,7 @@ declare module 'orca/host' {
   }
   export type HostCallOptions = { signal?: AbortSignal }
   export type HostSurface = 'worker' | 'panel' | 'editor'
+  export type HostMethod<P, R, S extends HostSurface> = { params: P; result: R; surfaces: S }
 
   export type HostMethods = {
 ${renderPluginHostMethodMembers('    ')}  }

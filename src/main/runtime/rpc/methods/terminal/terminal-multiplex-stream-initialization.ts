@@ -1,3 +1,5 @@
+import { retireChangedTerminalPreviewProfile } from './terminal-multiplex-preview-profile'
+import { createTerminalViewportSubscriptionKey } from './terminal-stream-viewport-lease'
 import {
   TerminalStreamOpcode,
   encodeTerminalStreamJson
@@ -26,7 +28,10 @@ export async function initializeMultiplexStream(
 ): Promise<TerminalMultiplexStream | null> {
   const { runtime, connectionId, streams, registerBinaryStreamHandler } = state
   const isMobile = request.client?.type === 'mobile'
-  const remoteDesktopSubscriptionKey = `multiplex:${connectionId}:${request.streamId}`
+  const remoteDesktopSubscriptionKey = createTerminalViewportSubscriptionKey(
+    connectionId!,
+    request.streamId
+  )
   const supportsOutputCadence =
     request.capabilities?.outputCadence === 1 &&
     // Field rollback without a release: clients then see a host without the capability.
@@ -50,6 +55,8 @@ export async function initializeMultiplexStream(
     inputSessionId: request.capabilities?.inputAck === 1 ? (request.inputSessionId ?? null) : null,
     outputPaused: false,
     supportsOutputCadence,
+    previewTarget: request.previewTarget,
+    supportsViewportLease: request.capabilities?.viewportLease === 1,
     supportsDesktopViewportClaims: request.capabilities?.desktopViewportClaims === 1,
     desktopClaimTail: Promise.resolve(true),
     registeredRemoteDesktopDriver: false,
@@ -103,6 +110,9 @@ export async function initializeMultiplexStream(
   onInstalled(stream)
 
   const unsubscribeStreamData = runtime.subscribeToTerminalData(ptyId, (data, meta) => {
+    if (retireChangedTerminalPreviewProfile(state, stream)) {
+      return
+    }
     if (!isMultiplexStreamAttached(state, stream)) {
       return
     }

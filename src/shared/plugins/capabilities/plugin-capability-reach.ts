@@ -11,7 +11,9 @@ const WORKER_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<PluginCapabilityKi
   'workspace:create',
   'automation:read',
   'automation:write',
-  'history:read'
+  'history:read',
+  'quota:read',
+  'agent:summary'
 ])
 
 /** Whether a plugin of this profile can ever exercise the capability, so consent may name it. */

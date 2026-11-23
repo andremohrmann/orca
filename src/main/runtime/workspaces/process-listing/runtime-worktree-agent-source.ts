@@ -1,3 +1,4 @@
+import type { AgentAttentionTurn } from '../../../../shared/agent-status/lifecycle/agent-attention-turn'
 import type { StructuredHostStatus } from '../../../../shared/agent-hook-listener/listener-event'
 import type { AgentStatusIpcPayload } from '../../../../shared/agent-status/contracts/agent-status-ipc-payload'
 import type { ParsedAgentStatusPayload } from '../../../../shared/agent-status/contracts/agent-status-types'
@@ -22,6 +23,10 @@ export type RuntimeWorktreeAgentSource = Pick<AgentStatusIpcPayload, 'subagents'
   /** Names the provider session whose saved title the row may wear. */
   providerSessionId?: string
   orcaSessionId?: string
+  attentionTurn?: AgentAttentionTurn
+  pendingQuestion?: string
+  turnEndedAt?: number
+  turnEndDisposition?: 'identified' | 'ambiguous'
   prompt: string
   lastAssistantMessage: string | null
   toolName: string | null

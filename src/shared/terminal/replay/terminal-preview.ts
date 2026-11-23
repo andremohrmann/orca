@@ -1,3 +1,4 @@
+import type { DashboardCardTerminalInput } from '../../agent-status/presentation/dashboard-snapshot'
 export type TerminalPreviewSnapshot = {
   data: string
   cols: number
@@ -16,6 +17,7 @@ export type TerminalPreviewReplayChunk = {
 }
 
 export type TerminalPreviewConnectResult = {
+  terminalInput?: DashboardCardTerminalInput
   snapshot: TerminalPreviewSnapshot | null
   /** Live bytes captured while the snapshot was being serialized. */
   replay: TerminalPreviewReplayChunk[]

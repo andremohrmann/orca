@@ -63,14 +63,19 @@ export class TerminalPreviewOutputStream {
   private isDisposed = false
 
   constructor(
-    readonly contents: WebContents,
+    readonly contents: Pick<WebContents, 'id' | 'send' | 'isDestroyed'>,
     readonly ptyId: string,
     private readonly releaseRawView: () => void,
-    private readonly onDispose: (stream: TerminalPreviewOutputStream) => void
+    private readonly onDispose: (stream: TerminalPreviewOutputStream) => void,
+    private readonly delivery?: { channel: string; allowed: () => boolean }
   ) {}
 
   get disposed(): boolean {
     return this.isDisposed
+  }
+
+  get unacknowledgedBytes(): number {
+    return this.inFlightBytes
   }
 
   setDataSubscription(unsubscribe: () => void): void {
@@ -86,6 +91,13 @@ export class TerminalPreviewOutputStream {
       clearTimeout(this.batchTimer)
       this.batchTimer = null
     }
+    this.initialPending = []
+    this.initialPendingBytes = 0
+    this.batchChunks = []
+    this.batchBytes = 0
+    this.pendingBatches = []
+    this.pendingBatchBytes = 0
+    this.inFlightBytes = 0
     this.unsubscribeData()
     this.releaseRawView()
     this.onDispose(this)
@@ -164,12 +176,12 @@ export class TerminalPreviewOutputStream {
   }
 
   private send(payload: TerminalPreviewDataPayload): boolean {
-    if (this.isDisposed || this.contents.isDestroyed()) {
+    if (this.isDisposed || this.contents.isDestroyed() || this.delivery?.allowed() === false) {
       this.dispose()
       return false
     }
     try {
-      this.contents.send('terminalPreview:data', payload)
+      this.contents.send(this.delivery?.channel ?? 'terminalPreview:data', payload)
       return true
     } catch {
       this.dispose()

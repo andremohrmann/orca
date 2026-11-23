@@ -85,6 +85,7 @@ export const WorktreeTeardownMissingTerminalsParams = WorktreeDetectedListParams
 })
 
 export const WorktreePsParams = z.object({
+  worktreeId: z.string().min(1).max(4096).optional(),
   limit: OptionalFiniteNumber,
   afterSnapshotId: z.string().min(1).max(128).nullable().optional(),
   // Opt-in: the caller holds afterSnapshotId's rows and can rebuild a catalog from rowsFromBase; older hosts ignore it.

@@ -12,8 +12,12 @@ export const TerminalMultiplexSubscribeFrame = TerminalHandle.extend({
     })
     .optional(),
   viewport: TerminalViewport.optional(),
+  previewTarget: z
+    .object({ worktreeId: z.string(), incarnationId: z.string(), profileKey: z.string().max(2048) })
+    .optional(),
   capabilities: z
     .object({
+      viewportLease: z.literal(1).optional(),
       ackOutput: z.literal(1).optional(),
       ackOutputSourceRanges: z.literal(1).optional(),
       desktopViewportClaims: z.literal(1).optional(),

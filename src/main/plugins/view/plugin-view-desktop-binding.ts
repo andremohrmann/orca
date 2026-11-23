@@ -8,8 +8,14 @@ import {
 } from '../panels/guest-isolation/plugin-frame-guest-diagnostics'
 import { createPluginViewDesktop } from './plugin-view-desktop'
 import { isPluginShotWindowShown } from './plugin-shot-policy'
-import { setPluginHostRendererRequest } from './plugin-host-renderer-actions'
+import {
+  setPluginHostRendererRequest,
+  setPluginExistingAgentReveal
+} from './plugin-host-renderer-actions'
 import { requestPluginViewFromRenderer } from './plugin-view-renderer-relay'
+import { revealPluginExistingAgent } from './plugin-existing-agent-reveal'
+import type { PluginRuntimeRpc } from '../workers/host-api/plugin-host-runtime-call'
+import { PluginHostCallError } from '../workers/host-api/plugin-host-call-scope'
 
 const HOST_ACTION_TIMEOUT_MS = 10_000
 
@@ -18,12 +24,14 @@ const HOST_ACTION_TIMEOUT_MS = 10_000
 export function bindPluginDesktopViews(
   serveMode: boolean,
   service: PluginService,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  runtimeRpc?: PluginRuntimeRpc
 ): void {
   setPluginFrameGuestLogSink((pluginKey) => service.captureLog(pluginKey))
   if (serveMode) {
     setPluginViewForRpc(null)
     setPluginHostRendererRequest(null)
+    setPluginExistingAgentReveal(null)
     return
   }
   // The one main window, so a worker's editor.open and commands.run always reach the same one.
@@ -32,6 +40,19 @@ export function bindPluginDesktopViews(
     return window && !window.isDestroyed()
       ? requestPluginViewFromRenderer(window.webContents, body, HOST_ACTION_TIMEOUT_MS)
       : null
+  })
+  setPluginExistingAgentReveal((input, scope, pluginId) => {
+    const window = getMainWindow()
+    if (!window || window.isDestroyed()) {
+      throw new PluginHostCallError('unavailable', 'Orca has no window open to reveal this chat')
+    }
+    return revealPluginExistingAgent(
+      input,
+      scope,
+      (body) => requestPluginViewFromRenderer(window.webContents, body, HOST_ACTION_TIMEOUT_MS),
+      runtimeRpc,
+      pluginId
+    )
   })
   setPluginViewForRpc(
     createPluginViewDesktop({

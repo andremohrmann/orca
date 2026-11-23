@@ -22,13 +22,23 @@ import {
   requireStructuredHost
 } from '../creation/structured-agent-session-gate'
 import {
+  captureStructuredSessionSurface,
   structuredSessionSurfaceIsCurrent,
   type StructuredSessionSurface
 } from '../../../../agent-session/lifecycle/structured-agent-session-close'
+import { structuredSessionSurfaceIsOpen } from '../../../../agent-session/lifecycle/structured-session-open-surface'
 import { RevealParams } from '../../../../../../shared/rpc-contract/structured-agent-session/structured-agent-session-params'
 import '../../../../../../shared/rpc-contract/structured-agent-session/structured-agent-session-continue-params'
 import '../../../../../../shared/rpc-contract/structured-agent-session/structured-agent-session-rename-params'
 import '../../../../../../shared/rpc-contract/structured-agent-session/structured-agent-session-queued-edit-params'
+
+const NO_OPEN_CHAT = {
+  ok: false as const,
+  refusal: {
+    code: 'agent_session_identity_required' as const,
+    message: 'This chat is no longer open.'
+  }
+}
 
 export const STRUCTURED_AGENT_SESSION_REVEAL_METHODS = [
   defineMethod({
@@ -51,11 +61,28 @@ export const STRUCTURED_AGENT_SESSION_REVEAL_METHODS = [
           worktreeId: params.botLinkTarget.worktreeId
         })
       }
+      let requiredOpen: StructuredSessionSurface | null = null
+      const remainsOpen = () => {
+        const host = getStructuredAgentSessionHost()
+        return (
+          !params.expectedOpen ||
+          Boolean(
+            host &&
+            structuredSessionSurfaceIsOpen(host, params.sessionId, requiredOpen, ctx.runtime)
+          )
+        )
+      }
       let publication: StructuredSessionSurface | null = null
       let revealed: StructuredAgentSessionReveal
       try {
         const host = requireStructuredHost(ctx)
         requireStructuredAgentAudience(ctx, host.sessionAgent(params.sessionId) ?? '')
+        if (params.expectedOpen) {
+          requiredOpen = captureStructuredSessionSurface(host, params.sessionId, ctx.runtime)
+          if (!remainsOpen()) {
+            return NO_OPEN_CHAT
+          }
+        }
         revealed = await host.revealSession(params.sessionId)
       } catch (error) {
         // Translate only typed host refusal codes; genuine faults must not masquerade as missing chats.
@@ -101,10 +128,20 @@ export const STRUCTURED_AGENT_SESSION_REVEAL_METHODS = [
           throw new StructuredWorkspaceUnavailable('obsolete')
         }
         workspace = await ctx.runtime.prepareStructuredAgentSessionRevealWorkspace(record.location)
+        const expected = params.expectedWorkspace
+        const matchesExpected = () =>
+          !expected ||
+          (record.location.workspaceId === expected.workspaceId &&
+            (expected.hostId === undefined || record.location.executionHostId === expected.hostId))
+        if (!matchesExpected()) {
+          throw new StructuredWorkspaceUnavailable('obsolete')
+        }
         const location = JSON.stringify(record.location)
         const current = () => {
           const now = host.deps.store.getConversation(revealed.sessionId)
           return (
+            remainsOpen() &&
+            matchesExpected() &&
             workspace!.current() &&
             getStructuredAgentSessionHost() === host &&
             now?.provider === record.provider &&
@@ -112,6 +149,7 @@ export const STRUCTURED_AGENT_SESSION_REVEAL_METHODS = [
           )
         }
         const check = () => {
+          ctx.plugin?.assertActive?.()
           if (params.botLinkTarget) {
             assertBotLinkOpenAuthority(ctx.runtime, params.botLinkTarget, {
               sessionId: revealed.sessionId,
@@ -174,6 +212,9 @@ export const STRUCTURED_AGENT_SESSION_REVEAL_METHODS = [
         const { sessionId, workspaceId, agent, readable } = revealed
         return { ok: true as const, sessionId, workspaceId, agent, readable }
       } catch (error) {
+        if (!effects && !remainsOpen()) {
+          return NO_OPEN_CHAT
+        }
         if (!effects && !(error instanceof StructuredWorkspaceUnavailable)) {
           throw error
         }

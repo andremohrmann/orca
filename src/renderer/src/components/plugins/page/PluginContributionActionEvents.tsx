@@ -15,6 +15,16 @@ export function usePluginWorkerEvents(plugin: PluginHostListEntry | null): Plugi
 
 function eventTitle(event: PluginEventName, t: Translate = translate): string {
   switch (event) {
+    case 'provider.usageChanged':
+      return t(
+        'auto.components.settings.PluginContributionActionEvents.providerUsageChanged',
+        'When provider quota changes'
+      )
+    case 'agents.summariesChanged':
+      return t(
+        'auto.components.settings.PluginContributionActionEvents.agentSummariesChanged',
+        'When agent summaries change'
+      )
     case 'workspace.created':
       return t(
         'auto.components.settings.PluginContributionActionEvents.worktreeCreated',

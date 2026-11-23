@@ -79,6 +79,8 @@ export type TerminalMultiplexStream = {
   outputPaused: boolean
   supportsOutputCadence: boolean
   supportsDesktopViewportClaims: boolean
+  previewTarget?: { worktreeId: string; incarnationId: string; profileKey: string }
+  supportsViewportLease: boolean
   desktopClaimTail: Promise<boolean>
   // Only this stream's floor may be released on detach.
   registeredRemoteDesktopDriver: boolean
@@ -111,6 +113,7 @@ export type TerminalMultiplexStream = {
   unsubscribeData: () => void
   unsubscribeResize: () => void
   unsubscribeFit: () => void
+  unsubscribeProfile?: () => void
   unsubscribeDriver: () => void
   unregisterBinaryHandler: () => void
   // Abort on detach: runtime releases exit-waiters only on real PTY exit, so long-lived agents would leak them.

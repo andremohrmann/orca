@@ -34,6 +34,7 @@ function parseArgs(argv) {
   const options = {
     force: false,
     related: false,
+    serial: false,
     base: null,
     maxWorkers: null,
     stepTimeoutMs: DEFAULT_STEP_TIMEOUT_MINUTES * 60_000
@@ -45,6 +46,8 @@ function parseArgs(argv) {
       options.force = true
     } else if (argument === '--related') {
       options.related = true
+    } else if (argument === '--serial') {
+      options.serial = true
     } else if (argument.startsWith('--base=')) {
       options.base = argument.slice('--base='.length)
     } else if (/^--max-?workers=\d+$/i.test(argument)) {
@@ -53,7 +56,7 @@ function parseArgs(argv) {
       options.stepTimeoutMs = Number(argument.split('=')[1]) * 60_000
     } else {
       throw new Error(
-        `Unknown option ${argument}. Use --force, --related, --base=<ref>, --maxWorkers=<n>, --timeout=<minutes>.`
+        `Unknown option ${argument}. Use --force, --related, --serial, --base=<ref>, --maxWorkers=<n>, --timeout=<minutes>.`
       )
     }
   }
@@ -185,7 +188,7 @@ function buildWorkspacePackages(root, env) {
   }
 }
 
-function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive }) {
+function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive, serial }) {
   const node = process.execPath
   const oxlint = resolveOxcCliInvocation('oxlint', 'oxlint', root)
   const oxfmt = resolveOxcCliInvocation('oxfmt', 'oxfmt', root)
@@ -201,7 +204,11 @@ function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive 
           'config/scripts/typecheck/project-execution/run-typecheck-projects-in-parallel.mjs',
           ...plan.typecheckProjects.map((config) => `--project=${config}`),
           // A worker cap means a shared host; 4 checkers cut typecheck CPU by about a third.
-          ...(maxWorkers ? [`--checkers=${Math.max(2, Number(maxWorkers) * 2)}`] : [])
+          ...(serial
+            ? ['--serial']
+            : maxWorkers
+              ? [`--checkers=${Math.max(2, Number(maxWorkers) * 2)}`]
+              : [])
         ])
       ]
     })
@@ -259,6 +266,7 @@ function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive 
         steps: [
           step(oxfmt.command, [
             ...oxfmt.prefixArgs,
+            ...(serial ? ['--threads=1'] : []),
             '--check',
             '--no-error-on-unmatched-pattern',
             ...(fitsCommandLine(existing) ? existing : ['.'])
@@ -277,6 +285,7 @@ function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive 
         steps: [
           step(oxlint.command, [
             ...oxlint.prefixArgs,
+            ...(serial ? ['--threads=1'] : []),
             '--quiet',
             '--no-error-on-unmatched-pattern',
             ...(wholeTree ? [] : lintable)
@@ -289,6 +298,7 @@ function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive 
                 step(bun(), [
                   '--smol',
                   ...oxlint.prefixArgs,
+                  ...(serial ? ['--threads=1'] : []),
                   '--config',
                   'config/oxlint-anti-slop.json',
                   '--deny-warnings',
@@ -305,7 +315,11 @@ function buildTasks(root, plan, { files, mergeBase, maxWorkers, bun, transitive 
       name: check.name,
       steps: [
         check.oxlint
-          ? step(oxlint.command, [...oxlint.prefixArgs, ...check.oxlint])
+          ? step(oxlint.command, [
+              ...oxlint.prefixArgs,
+              ...(serial ? ['--threads=1'] : []),
+              ...check.oxlint
+            ])
           : step(check.runtime === 'bun' ? bun() : node, check.args)
       ]
     })
@@ -409,16 +423,17 @@ export async function main(root, argv) {
   const tasks = buildTasks(root, plan, {
     files,
     mergeBase,
-    maxWorkers: options.maxWorkers,
+    maxWorkers: options.serial ? '1' : options.maxWorkers,
     bun,
-    transitive: options.related
+    transitive: options.related,
+    serial: options.serial
   })
   console.log(
     `check:changed: ${files.length} changed file(s) since ${ref} (${mergeBase.slice(0, 10)}); running ${tasks.length} check(s).`
   )
 
   // Typecheck and tests lead the queue: they take longest, so the short checks fill in around them.
-  const concurrency = Math.max(3, Math.floor(availableParallelism() / 3))
+  const concurrency = options.serial ? 1 : Math.max(3, Math.floor(availableParallelism() / 3))
   const running = new Map()
   // Why: output is buffered until a task ends, so long test runs would otherwise look hung.
   const heartbeat = setInterval(() => {

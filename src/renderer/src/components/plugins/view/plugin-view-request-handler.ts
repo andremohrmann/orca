@@ -1,4 +1,5 @@
 import { pluginPanelTabKey } from '../../../../../shared/plugins/frames/plugin-tab-key'
+import { readPluginWorkspaceReview } from './plugin-workspace-review'
 import {
   PLUGIN_VIEW_NO_WORKSPACE_CODE,
   PLUGIN_VIEW_NOT_SHOWN_CODE,
@@ -36,6 +37,10 @@ import { captureOpenEditor } from './plugin-view-editor-capture'
 import { planEditorShotCleanup, runEditorShotCleanup } from './plugin-view-editor-shot-cleanup'
 import { captureChrome } from './plugin-view-chrome-capture'
 import { pickWorkspaceToShow } from './plugin-view-workspace-pick'
+import {
+  resolvePluginExistingAgent,
+  focusPluginExistingAgent
+} from './plugin-existing-agent-target'
 import {
   openFolderWorkspace,
   openWorkspaceFile,
@@ -226,6 +231,8 @@ export async function handlePluginViewRequest(
 ): Promise<PluginViewReply> {
   try {
     switch (request.kind) {
+      case 'read-workspace-review':
+        return readPluginWorkspaceReview(request)
       case 'open-panel':
         return await openPanel(request)
       case 'open-editor':
@@ -236,6 +243,10 @@ export async function handlePluginViewRequest(
         return await captureChrome(request)
       case 'open-file':
         return openWorkspaceFile(request)
+      case 'resolve-existing-agent':
+        return await resolvePluginExistingAgent(request)
+      case 'focus-existing-agent':
+        return focusPluginExistingAgent(request)
       case 'run-action':
         return runBuiltInAction(request)
       case 'open-folder-workspace':

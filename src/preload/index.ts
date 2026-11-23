@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import { pluginPopoutApi, PLUGIN_POPOUT_ARGUMENT } from './renderer/plugin-popout-api'
 import { HIDDEN_WINDOW_FRAME_PUMP_STOP_CHANNEL } from '../shared/app-lifecycle/windows/hidden-window-frame-pump'
 import { installHiddenWindowFramePump } from './renderer/hidden-window-frame-pump'
 import type { PreloadApi } from './api-types'
@@ -215,13 +216,14 @@ const api = {
   speech: speechApi
 } satisfies PreloadApi
 
+const pluginPopout = process.argv.includes(PLUGIN_POPOUT_ARGUMENT)
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('api', api)
+    contextBridge.exposeInMainWorld('api', pluginPopout ? pluginPopoutApi(api) : api)
   } catch (error) {
     console.error(error)
   }
-} else {
+} else if (!pluginPopout) {
   window.api = api
 }
 

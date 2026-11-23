@@ -1,9 +1,14 @@
 import { z } from 'zod'
+import { isPluginExternalUrl } from './plugin-external-url'
+export { isPluginExternalUrl, PLUGIN_EXTERNAL_URL_PROTOCOLS } from './plugin-external-url'
 import type { PluginSurface } from '../frames/plugin-protocol'
 import * as stored from './plugin-host-api-storage-schemas'
 import { PLUGIN_PANEL_BRIDGE_API } from './plugin-host-api-panel-methods'
 import { PLUGIN_WORKER_ACTIONS_API } from './plugin-host-api-worker-actions'
+import { PLUGIN_DASHBOARD_API } from './plugin-host-api-dashboard'
+import { PLUGIN_WINDOW_API } from './plugin-host-api-window'
 import { PLUGIN_EDITOR_TYPOGRAPHY_API } from './plugin-host-api-editor-typography'
+import { PLUGIN_CUSTOM_CONTRACT_API } from './plugin-host-custom-contract'
 import {
   PLUGIN_TERMINAL_ID_MAX_LENGTH,
   pluginWorkspaceContextSchema
@@ -74,7 +79,6 @@ export const PLUGIN_FRAME_USER_METHODS = {
 } as const
 
 export const PLUGIN_EXTERNAL_URL_MAX_LENGTH = 8192
-export const PLUGIN_EXTERNAL_URL_PROTOCOLS: readonly string[] = ['http:', 'https:', 'mailto:']
 export const PLUGIN_SAVE_AS_MAX_BYTES = 64 * 1024 * 1024
 
 const shellOpenExternalParams = z.strictObject({
@@ -109,14 +113,6 @@ const filesSaveAsParams = z.strictObject({
 })
 /** The chosen path never reaches the plugin; a cancelled dialog is a result, not an error. */
 const filesSaveAsResult = z.object({ status: z.enum(['saved', 'cancelled']) })
-
-export function isPluginExternalUrl(url: string): boolean {
-  try {
-    return PLUGIN_EXTERNAL_URL_PROTOCOLS.includes(new URL(url).protocol)
-  } catch {
-    return false
-  }
-}
 
 export const PLUGIN_HOST_API = {
   'workspace.readContext': spec({
@@ -287,8 +283,11 @@ export const PLUGIN_HOST_API = {
     result: filesSaveAsResult
   }),
   ...PLUGIN_PANEL_BRIDGE_API,
+  ...PLUGIN_CUSTOM_CONTRACT_API,
   ...PLUGIN_WORKER_ACTIONS_API,
-  ...PLUGIN_EDITOR_TYPOGRAPHY_API
+  ...PLUGIN_EDITOR_TYPOGRAPHY_API,
+  ...PLUGIN_DASHBOARD_API,
+  ...PLUGIN_WINDOW_API
 }
 
 export type PluginHostApi = typeof PLUGIN_HOST_API

@@ -52,13 +52,14 @@ export const PLUGIN_AUTHORING_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['plugin', 'test'],
     summary: "Run a plugin's own tests on this machine, unsandboxed: only for code you trust",
-    usage: 'orca plugin test [dir] [--json]',
-    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'dir'],
+    usage: 'orca plugin test [dir] [--max-workers <n>] [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'dir', 'max-workers'],
     positionalArgs: ['dir'],
     notes: [
       "Not sandboxed: this runs the plugin's code and tests on this machine with your user's full access, outside Orca's plugin sandbox. Run it only on code you trust.",
       'Runs every *.test.ts(x) (also .mts, .js, .jsx, .mjs) under the folder, skipping node_modules, .orca, dist and dot-folders. The folder defaults to the current one.',
       "Uses Node's built-in test runner (node:test), or the plugin's own vitest when it has one in node_modules. No config: `orca` and `orca/testing` resolve to the files this Orca ships, and sources are transpiled and imported exactly as Orca loads them.",
+      '--max-workers is a positive integer limiting test workers for either runner; use --max-workers 1 to run files sequentially.',
       'Runs on the `node` on PATH when it is 20.6 or newer, else on the Node built into Orca, so no Node install is needed. It does not reach the Orca app.',
       "Exit code: the runner's (0 when every test passes). With --json the runner output goes to stderr and one result object to stdout."
     ],

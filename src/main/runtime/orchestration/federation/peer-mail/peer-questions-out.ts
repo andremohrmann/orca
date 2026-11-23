@@ -60,9 +60,9 @@ export function settlePeerQuestionsOut(
     db.db
       .prepare(
         `UPDATE peer_questions_out SET awaiting = NULL
-         WHERE conversation_id = ?1 AND awaiting = 1 AND (message_id = ?2 OR thread_id = ?2)`
+         WHERE conversation_id = ? AND awaiting = 1 AND (message_id = ? OR thread_id = ?)`
       )
-      .run(conversationId, reply.threadId)
+      .run(conversationId, reply.threadId, reply.threadId)
   }
 }
 
@@ -87,9 +87,9 @@ export function tellUnpairedPeerQuestions(
   const waiting = db.db
     .prepare(
       `SELECT message_id, conversation_id, asker, thread_id FROM peer_questions_out
-       WHERE environment_id = ?1 AND awaiting = 1 AND (?2 IS NULL OR peer_fingerprint <> ?2)`
+       WHERE environment_id = ? AND awaiting = 1 AND (? IS NULL OR peer_fingerprint <> ?)`
     )
-    .all(params.environmentId, pairing)
+    .all(params.environmentId, pairing, pairing)
   for (const row of waiting) {
     const id = String(row.message_id)
     const conversation = db.getPeerMailConversation(String(row.conversation_id))

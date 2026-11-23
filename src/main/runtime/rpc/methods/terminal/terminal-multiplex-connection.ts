@@ -114,8 +114,21 @@ export type TerminalMultiplexConnection = TerminalMultiplexConnectionBase &
   TerminalMultiplexSubscribeFrame
 
 export function isMultiplexStreamAttached(
-  state: Pick<TerminalMultiplexConnection, 'closed' | 'streams'>,
+  state: Pick<TerminalMultiplexConnection, 'closed' | 'streams'> &
+    Partial<Pick<TerminalMultiplexConnection, 'runtime'>>,
   stream: TerminalMultiplexStream
 ): boolean {
-  return !state.closed && state.streams.get(stream.streamId) === stream
+  if (state.closed || state.streams.get(stream.streamId) !== stream) {
+    return false
+  }
+  if (stream.supportsViewportLease) {
+    const target = state.runtime?.describePluginTerminalSurface(stream.terminal)
+    return (
+      !!target &&
+      target.worktreeId === stream.previewTarget?.worktreeId &&
+      target.incarnationId === stream.previewTarget?.incarnationId &&
+      target.profileKey === stream.previewTarget?.profileKey
+    )
+  }
+  return true
 }

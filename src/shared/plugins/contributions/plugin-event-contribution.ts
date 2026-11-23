@@ -16,19 +16,26 @@ export const PLUGIN_EVENT_NAMES = [
   'workspace.removed',
   'agent.status.changed',
   'workspace.changed',
-  'editor.typography.changed'
+  'editor.typography.changed',
+  'provider.usageChanged',
+  'agents.summariesChanged'
 ] as const
 export const PLUGIN_EVENT_SUBSCRIPTION_LIMIT = PLUGIN_EVENT_NAMES.length
 
 export type PluginEventName = (typeof PLUGIN_EVENT_NAMES)[number]
 
 /** The release each event arrived in; engines.orca must cover every one a plugin subscribes to. */
-export const PLUGIN_EVENT_SINCE: Record<PluginEventName, string> = {
+export const PLUGIN_EVENT_SINCE: Partial<Record<PluginEventName, string>> = {
   'workspace.created': PLUGIN_MANIFEST_V2_SINCE,
   'workspace.removed': PLUGIN_MANIFEST_V2_SINCE,
   'agent.status.changed': PLUGIN_SCHEMA_SINCE_V1,
   'workspace.changed': PLUGIN_PANEL_BRIDGE_SINCE,
   'editor.typography.changed': PLUGIN_EDITOR_TYPOGRAPHY_SINCE
+}
+
+export const PLUGIN_CUSTOM_EVENTS: Partial<Record<PluginEventName, string>> = {
+  'provider.usageChanged': 'andre-dashboard-v1',
+  'agents.summariesChanged': 'andre-dashboard-v1'
 }
 
 /** Format 1 event names, rewritten on parse and still dispatched to handlers registered under them. */
@@ -44,7 +51,9 @@ export const PLUGIN_EVENT_CAPABILITY: Record<PluginEventName, PluginCapabilityKi
   'workspace.removed': 'workspace:read',
   'agent.status.changed': 'agent:read',
   'workspace.changed': 'workspace:read',
-  'editor.typography.changed': null
+  'editor.typography.changed': null,
+  'provider.usageChanged': 'quota:read',
+  'agents.summariesChanged': 'agent:summary'
 }
 
 /** Whether a plugin with these grants (null: not approved) may hear `event`. */

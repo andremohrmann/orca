@@ -1,3 +1,7 @@
+import {
+  pluginTerminalIdSchema,
+  PLUGIN_HOST_ID_MAX_LENGTH
+} from '../workers/plugin-host-api-workspace-methods'
 import { z } from 'zod'
 import { PLUGIN_PANEL_ICONS } from '../contributions/plugin-panel-contribution'
 import { PLUGIN_DECLARATIVE_LIMITS as LIMITS } from './plugin-declarative-limits'
@@ -158,6 +162,17 @@ const linkProps = z
 const codeProps = z.object({ block: flag }).strict()
 
 export const PLUGIN_DECLARATIVE_CATALOG = {
+  TerminalSurface: component(
+    z
+      .object({
+        terminalId: pluginTerminalIdSchema,
+        hostId: z.string().min(1).max(PLUGIN_HOST_ID_MAX_LENGTH).optional(),
+        label: requiredLabel,
+        rows: z.number().int().min(3).max(80).optional()
+      })
+      .strict(),
+    'none'
+  ),
   Stack: component(stackProps, 'any'),
   Row: component(rowProps, 'any'),
   Text: component(textProps, 'inline'),
@@ -214,7 +229,8 @@ export const PLUGIN_DECLARATIVE_INTERACTIVE_COMPONENTS: ReadonlySet<string> =
     'Collapsible',
     'Table',
     'Tree',
-    'Markdown'
+    'Markdown',
+    'TerminalSurface'
   ])
 /** Components that hold only one child type, and that child's only parent. */
 export const PLUGIN_DECLARATIVE_SLOT_CHILDREN = { items: 'ListItem', tabs: 'Tab' } as const

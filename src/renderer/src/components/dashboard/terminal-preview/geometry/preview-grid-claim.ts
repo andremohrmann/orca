@@ -5,10 +5,11 @@ import { terminalPreviewApiFor } from '../transport/terminal-preview-api'
 const FIT_REQUEST_DEBOUNCE_MS = 200
 /** Claim the dialog-sized PTY grid once per target size; unchanged requests must not fight a host or phone reclaiming geometry. */
 export function createPreviewGridClaim(args: {
+  api?: typeof window.api.terminalPreview
   ptyId: string
   container: HTMLElement
   getTerminal: () => Terminal | null
-}): { schedule: () => void; dispose: () => void } {
+}): { schedule: () => void; reclaim: () => void; dispose: () => void } {
   let lastRequestedFit: string | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
@@ -46,7 +47,7 @@ export function createPreviewGridClaim(args: {
     }
     lastRequestedFit = fitKey
     // Successful claims trigger resync with the new grid; rejected claims keep the scaled fallback correct.
-    void terminalPreviewApiFor(args.ptyId)
+    void (args.api ?? terminalPreviewApiFor(args.ptyId))
       .fit(args.ptyId, cols, rows)
       .catch(() => undefined)
   }
@@ -66,6 +67,10 @@ export function createPreviewGridClaim(args: {
 
   return {
     schedule,
+    reclaim: () => {
+      lastRequestedFit = null
+      schedule()
+    },
     dispose: (): void => {
       disposed = true
       if (timer) {

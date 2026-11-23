@@ -1,3 +1,4 @@
+import { usePluginTerminalSurface } from './use-plugin-terminal-surface'
 import React, { useCallback, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { PLUGIN_DECLARATIVE_MESSAGES } from '../../../../../../shared/plugins/declarative/plugin-declarative-message-names'
 import type { PluginFrameGuest } from '../../../../../../shared/plugins/frames/plugin-frame-bridge'
@@ -93,6 +94,7 @@ export function PluginDeclarativePanel({
     frame?.addEventListener('did-start-loading', resetDocument)
     return () => frame?.removeEventListener('did-start-loading', resetDocument)
   }, [frameKey, resetDocument])
+  const resolveTerminalSurface = usePluginTerminalSurface(sessionToken)
   const loadImage = usePluginDeclarativeImages(sessionToken)
   const sessionTokenRef = useRef(sessionToken)
   useLayoutEffect(() => {
@@ -179,6 +181,7 @@ export function PluginDeclarativePanel({
         onEvent={onEvent}
         onOpenLink={onOpenLink}
         onLoadImage={loadImage}
+        resolveTerminalSurface={resolveTerminalSurface}
         gestures={gestures}
       />
     </div>

@@ -1,3 +1,4 @@
+import { retireChangedTerminalPreviewProfile } from './terminal-multiplex-preview-profile'
 import { sendMobileResizeRestream } from './terminal-snapshot-publication'
 import { updateViewportForClient } from './terminal-viewport-update'
 import {
@@ -17,6 +18,11 @@ export function activateMultiplexStream(
   const { runtime, streams, emit } = state
   const { ptyId } = stream
   const { isMobile, size } = published
+  if (stream.supportsViewportLease) {
+    stream.unsubscribeProfile = runtime.onAgentListChanged(() => {
+      retireChangedTerminalPreviewProfile(state, stream)
+    })
+  }
   if (!isMobile) {
     stream.unsubscribeFit = runtime.subscribeToFitOverrideChanges(ptyId, (event) => {
       const mode =

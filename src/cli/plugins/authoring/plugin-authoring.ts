@@ -141,6 +141,17 @@ export const PLUGIN_AUTHORING_HANDLERS: Record<string, CommandHandler> = {
     )
   },
   'plugin test': async (ctx) => {
+    const workerFlag = ctx.flags.get('max-workers')
+    const maxWorkers = workerFlag === undefined ? undefined : Number(workerFlag)
+    if (
+      workerFlag !== undefined &&
+      (typeof workerFlag !== 'string' ||
+        !/^\d+$/.test(workerFlag) ||
+        !Number.isSafeInteger(maxWorkers) ||
+        (maxWorkers ?? 0) < 1)
+    ) {
+      throw new RuntimeClientError('invalid_argument', '--max-workers must be a positive integer.')
+    }
     const dir = resolveLocalPluginPath(ctx, optionalString(ctx.flags, 'dir') ?? '.', 'test')
     const files = await findPluginTestFiles(dir).catch((error: unknown) => {
       throw new RuntimeClientError(
@@ -155,7 +166,7 @@ export const PLUGIN_AUTHORING_HANDLERS: Record<string, CommandHandler> = {
         ]
       })
     }
-    const result = await runPluginTests({ dir, files, quietStdout: ctx.json })
+    const result = await runPluginTests({ dir, files, quietStdout: ctx.json, maxWorkers })
     if (result.code !== 0) {
       throw new RuntimeClientError(
         'plugin_tests_failed',

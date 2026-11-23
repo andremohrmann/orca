@@ -1,3 +1,4 @@
+import { createPluginDashboardInvalidations } from '../events/plugin-dashboard-invalidations'
 import type { PluginEventName } from '../../../shared/plugins/contributions/plugin-event-contribution'
 import type { AgentStatusOrchestrationContext } from '../../../shared/agent-status/contracts/agent-status-types'
 import { savedWorkspaceCatalog } from '../../persistence/profile-save-domains'
@@ -92,12 +93,19 @@ export function pluginRuntimeDelegate(
 export function bindPluginRuntime(
   service: PluginService,
   runtime: OrcaRuntimeService,
-  hookServer: { getStatusSnapshot(): readonly PluginAgentStatusRow[] },
+  hookServer: {
+    getStatusSnapshot(): readonly PluginAgentStatusRow[]
+    subscribeEnrichedStatus?(listener: () => void): () => void
+  },
   methods: DispatcherOptions['methods']
 ): PluginRuntimeDelegate {
   const statuses = () => hookServer.getStatusSnapshot()
   const delegate = pluginRuntimeDelegate(runtime, statuses, pluginRuntimeRpc(runtime, methods))
   service.setRuntimeDelegate(delegate)
+  const invalidations = createPluginDashboardInvalidations(service)
+  runtime.getUsageRateLimits()?.onStateChange(invalidations.quota)
+  runtime.onAgentListChanged(invalidations.agents)
+  hookServer.subscribeEnrichedStatus?.(invalidations.agents)
   installPluginHookRunner(service, runtime)
   installPluginOpenedTerminalPruning(service)
   installPluginAutomationOwnershipEnd(service, runtime)
@@ -213,6 +221,7 @@ export function watchPluginWorkspaceContext(input: {
   events: PluginEvents
   onSessionWritten: (listener: () => void) => () => void
   onStateWritten: (listener: (domains: readonly string[] | undefined) => void) => () => void
+  onUIChanged?: (listener: () => void) => () => void
   delayMs?: number
 }): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -233,6 +242,8 @@ export function watchPluginWorkspaceContext(input: {
   const schedule = (): void => {
     timer ??= setTimeout(() => void check(), input.delayMs ?? WORKSPACE_CHANGE_DEBOUNCE_MS)
   }
+  const attentionInvalidations = createPluginDashboardInvalidations(input.events)
+  const stopUI = input.onUIChanged?.(attentionInvalidations.agents)
   const stopSession = input.onSessionWritten(schedule)
   // A folder workspace rename reaches the context through the catalog, not the session.
   const stopCatalog = input.onStateWritten((domains) => {
@@ -243,6 +254,7 @@ export function watchPluginWorkspaceContext(input: {
   return () => {
     stopSession()
     stopCatalog()
+    stopUI?.()
     if (timer) {
       clearTimeout(timer)
     }

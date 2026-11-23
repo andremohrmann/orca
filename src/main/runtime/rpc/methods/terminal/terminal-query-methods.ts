@@ -1,3 +1,4 @@
+import { terminalPreviewTargetParams } from '../../../../../shared/terminal/stream/terminal-plugin-preview-contract'
 import { defineMethod } from '../../core'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../shared/workspace-layout/layout-owner-switch'
 import { remoteFileContentBudget } from '../files/files-remote-content-budget'
@@ -22,6 +23,18 @@ import {
 } from '../../../../../shared/rpc-contract/terminal/terminal-unary-params'
 
 export const TERMINAL_QUERY_METHODS = [
+  defineMethod({
+    name: 'terminal.previewTarget',
+    permission: 'workspace',
+    params: terminalPreviewTargetParams,
+    handler: (params, { runtime }) => {
+      const target = runtime.describePluginTerminalSurface(params.terminal)
+      if (!target) {
+        throw new Error('terminal_handle_stale')
+      }
+      return target
+    }
+  }),
   defineMethod({
     name: 'terminal.list',
     permission: 'workspace',

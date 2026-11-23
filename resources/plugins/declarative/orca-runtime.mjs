@@ -376,8 +376,9 @@ var PLUGIN_DECLARATIVE_MESSAGES = {
   /** host → guest, `{ document }`: put the atoms back to the last `ui.snapshot`. */
   restore: "ui.restore"
 };
-var PLUGIN_DECLARATIVE_CATALOG_VERSION = 4;
+var PLUGIN_DECLARATIVE_CATALOG_VERSION = 5;
 var PLUGIN_DECLARATIVE_COMPONENT_PROPS = {
+  TerminalSurface: ["terminalId", "hostId", "label", "rows"],
   Stack: ["gap", "align"],
   Row: ["gap", "align", "justify", "wrap"],
   Text: ["tone", "muted", "size", "weight", "truncate"],
@@ -1494,6 +1495,7 @@ var { host, api, env, shell, files, on, ui } = sdk;
 var { plugin, storage, settings, secrets } = createOrcaDataSdk(
   () => runtime?.bridge ?? globalBridge()
 );
+var TerminalSurface = "TerminalSurface";
 var Stack = "Stack";
 var Row = "Row";
 var Text = "Text";
@@ -1570,6 +1572,7 @@ export {
   Tab,
   Table,
   Tabs,
+  TerminalSurface,
   Text,
   Textarea,
   Toolbar,

@@ -208,9 +208,9 @@
         },
         "events": {
           "default": [],
-          "description": "Events delivered to the plugin worker. At most 5.",
+          "description": "Events delivered to the plugin worker. At most 7.",
           "x-orca-since": "1.4.160",
-          "maxItems": 5,
+          "maxItems": 7,
           "type": "array",
           "items": {
             "$ref": "#/$defs/EventContribution"
@@ -737,7 +737,9 @@
             "workspace.removed",
             "agent.status.changed",
             "workspace.changed",
-            "editor.typography.changed"
+            "editor.typography.changed",
+            "provider.usageChanged",
+            "agents.summariesChanged"
           ],
           "description": "Event delivered to the plugin worker.",
           "x-orca-since": "1.4.160",
@@ -1585,7 +1587,10 @@
             "workspace:create",
             "automation:read",
             "automation:write",
-            "history:read"
+            "history:read",
+            "quota:read",
+            "agent:summary",
+            "window:own"
           ],
           "description": "Capability granted on user consent.",
           "x-orca-since": "1.4.160",

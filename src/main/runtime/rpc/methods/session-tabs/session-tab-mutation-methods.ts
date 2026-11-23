@@ -1,6 +1,7 @@
 import { assertBotLinkOpenAuthority } from '../../../../bots/bot-link-open-authority'
 import { resolveRuntimeNavigationTarget } from '../../../../../shared/remote-runtime/session-graph/runtime-navigation'
 import { resolveChatTabActivation } from '../../../session-tabs/chat/agent-session-tab-identity'
+import { assertExistingAgentActivationTarget } from '../../../session-tabs/chat/existing-agent-tab-activation'
 import { commitLeafMoveAndRekey } from '../../../../ipc/pty/ipc/leaf-move'
 import type { OrcaRuntimeService } from '../../../orca-runtime'
 import type { MovedPanePlacement } from '../../../session-tabs/layout/headless-pane-move-to-new-tab'
@@ -23,7 +24,10 @@ export const SESSION_TAB_MUTATION_METHODS = [
     name: 'session.tabs.activate',
     permission: 'workspace',
     params: BotLinkActivateTab,
-    handler: async (params, { runtime, clientKind, pairedDeviceId, clientCapabilities }) => {
+    handler: async (
+      params,
+      { runtime, clientKind, pairedDeviceId, clientCapabilities, plugin, signal }
+    ) => {
       const botLinkTarget = params.botLinkTarget
       const inventory = await runtime.listMobileSessionTabs(params.worktree, pairedDeviceId, {
         includeAgentSenders: false
@@ -34,9 +38,23 @@ export const SESSION_TAB_MUTATION_METHODS = [
         assertProjectedSessionTabVisible(visible, tabId)
       }
       const result = await runtime.activateMobileSessionTab(params.worktree, tabId, params.leafId, {
-        ...(botLinkTarget
+        ...(botLinkTarget || plugin || signal || params.expectedAgentSessionId
           ? {
               beforeActivate: (target: { sessionId?: string; worktreeId: string }) => {
+                plugin?.assertActive?.()
+                signal?.throwIfAborted()
+                assertExistingAgentActivationTarget(
+                  params.expectedAgentSessionId
+                    ? {
+                        sessionId: params.expectedAgentSessionId,
+                        worktreeId: params.expectedWorktreeId
+                      }
+                    : undefined,
+                  target
+                )
+                if (!botLinkTarget) {
+                  return
+                }
                 if (params.navigation !== 'caller' || !pairedDeviceId || !target.sessionId) {
                   throw new Error('forbidden')
                 }

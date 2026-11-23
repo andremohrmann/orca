@@ -21,7 +21,10 @@ const repoListAnswer = z.object({
 export type PluginAutomationRefusal = { reason: 'cancelled' | 'consent-unavailable' | 'changed' }
 
 /** What a question asks; Orca adds which automation it is about. */
-export type PluginAutomationQuestion = DistributiveOmit<PluginConfirmationSubject, 'automation'>
+export type PluginAutomationQuestion = DistributiveOmit<
+  Extract<PluginConfirmationSubject, { automation: PluginConfirmationAutomation }>,
+  'automation'
+>
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 
 async function showAutomation(

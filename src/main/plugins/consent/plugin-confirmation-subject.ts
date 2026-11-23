@@ -16,6 +16,9 @@ export type PluginConfirmationAutomation = {
 
 /** What a plugin asks the person to allow; Orca writes the question, so a plugin cannot word it. */
 export type PluginConfirmationSubject =
+  | { kind: 'window.open'; panelId: string; presentation: 'panel' | 'popout' }
+  | { kind: 'window.setOpacity'; panelId: string; opacity: number }
+  | { kind: 'window.setStartup'; panelId: string; presentation: 'panel' | 'popout' | null }
   | {
       kind: 'automation.update'
       automation: PluginConfirmationAutomation

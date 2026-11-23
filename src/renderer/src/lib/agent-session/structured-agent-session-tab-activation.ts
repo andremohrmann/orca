@@ -32,6 +32,7 @@ export function activateStructuredAgentSessionTab(args: {
   worktreeId: string
   tabId: string
   target?: RuntimeClientTarget
+  ownerAlreadyActivated?: true
 }): boolean {
   const state = useAppStore.getState()
   const tab = (state.unifiedTabsByWorktree[args.worktreeId] ?? []).find(
@@ -49,7 +50,9 @@ export function activateStructuredAgentSessionTab(args: {
   state.activateTab(tab.id, { worktreeId: args.worktreeId })
   state.setActiveTabType('agent-session', args.worktreeId)
   requestNativeChatComposerFocus(tab.id)
-  activateStructuredAgentSessionTabOnOwner(args.worktreeId, tab.entityId, args.target)
+  if (!args.ownerAlreadyActivated) {
+    activateStructuredAgentSessionTabOnOwner(args.worktreeId, tab.entityId, args.target)
+  }
   return true
 }
 
