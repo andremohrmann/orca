@@ -52,6 +52,8 @@ export const CONSUMERS = new Map([
         'ownerInputs',
         'createStructuredSessionMembership',
         'createStructuredSessionStatusBurst',
+        // Registers a drain callback; never reads or enumerates tab maps.
+        'registerAgentPresentationDrain',
         'sameCapturedInput',
         'sameStatusInput',
         'sameSemanticTab',
