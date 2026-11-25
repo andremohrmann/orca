@@ -42,13 +42,16 @@ export function createPluginHostCallScope(
   admitted: ValidDiscoveredPlugin,
   findApprovedPlugin: FindApprovedPlugin,
   caller: PluginHostCaller | undefined,
-  log?: (line: string) => void
+  log?: (line: string) => void,
+  getAuthorizationEpoch?: () => string | null
 ): PluginHostCallScope {
+  const authorizationEpoch = getAuthorizationEpoch?.()
   const manifestRevision = JSON.stringify(admitted.manifest)
   const contentHash = admitted.contentHash
   const consentFingerprint = admitted.consentFingerprint
   const devRevision = admitted.devRevision
   return {
+    authorizationEpoch: authorizationEpoch ?? undefined,
     callerWebContentsId: caller?.webContentsId,
     signal: caller?.signal,
     log,
@@ -59,6 +62,7 @@ export function createPluginHostCallScope(
       // A refresh in flight is not a revocation; disable, consent, kill list and removal are.
       const current = findApprovedPlugin(admitted.pluginKey, true)
       if (
+        (getAuthorizationEpoch && getAuthorizationEpoch() !== authorizationEpoch) ||
         !current ||
         current.rootDir !== admitted.rootDir ||
         current.contentHash !== contentHash ||
@@ -76,6 +80,7 @@ export function resolvePluginServiceHostCallPolicy(input: {
   pluginKey: string
   caller: PluginHostCaller | undefined
   findApprovedPlugin: FindApprovedPlugin
+  getAuthorizationEpoch?: (pluginKey: string) => string | null
   runtimeDelegate: PluginRuntimeDelegate | null
   pluginsDataDir: string
   desktop: PluginDesktopFrameServices | null | undefined
@@ -112,7 +117,10 @@ export function resolvePluginServiceHostCallPolicy(input: {
           plugin,
           input.findApprovedPlugin,
           input.caller,
-          input.log?.(plugin.pluginKey)
+          input.log?.(plugin.pluginKey),
+          input.getAuthorizationEpoch
+            ? () => input.getAuthorizationEpoch!(plugin.pluginKey)
+            : undefined
         )
       : undefined
   }

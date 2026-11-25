@@ -24,8 +24,9 @@ export function schemaTypeText(schema: JsonSchema, options: SchemaTypeTextOption
   if (schema.enum) {
     return schema.enum.map((value) => JSON.stringify(value)).join(' | ')
   }
-  if (schema.anyOf) {
-    return schema.anyOf.map(text).join(' | ')
+  const alternatives = schema.anyOf ?? schema.oneOf
+  if (alternatives) {
+    return alternatives.map(text).join(' | ')
   }
   if (schema.type === 'array') {
     const item = text(Array.isArray(schema.items) ? undefined : schema.items)

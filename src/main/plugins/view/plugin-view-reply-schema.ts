@@ -1,3 +1,5 @@
+import { pluginAgentPresentationRelayPageSchema } from '../../../shared/plugins/view/plugin-agent-presentation-relay'
+import { pluginAgentPresentationResultSchema } from '../../../shared/plugins/workers/plugin-host-api-agent-presentation'
 import { z } from 'zod'
 import type { PluginViewReply } from '../../../shared/plugins/view/plugin-view-protocol'
 import {
@@ -46,6 +48,8 @@ export const pluginViewReplySchema: z.ZodType<PluginViewReply> = z.union([
       .nullable()
       .optional(),
     revealed: z.boolean().optional(),
+    agentPresentation: pluginAgentPresentationResultSchema.optional(),
+    agentPresentationPage: pluginAgentPresentationRelayPageSchema.optional(),
     workspaceReview: z
       .object({
         worktreeId: z.string().min(1).max(4096),

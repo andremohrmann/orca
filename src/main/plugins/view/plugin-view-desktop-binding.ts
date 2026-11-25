@@ -35,10 +35,15 @@ export function bindPluginDesktopViews(
     return
   }
   // The one main window, so a worker's editor.open and commands.run always reach the same one.
-  setPluginHostRendererRequest((body) => {
+  setPluginHostRendererRequest((body, options) => {
     const window = getMainWindow()
     return window && !window.isDestroyed()
-      ? requestPluginViewFromRenderer(window.webContents, body, HOST_ACTION_TIMEOUT_MS)
+      ? requestPluginViewFromRenderer(
+          window.webContents,
+          body,
+          Math.min(HOST_ACTION_TIMEOUT_MS, options?.timeoutMs ?? HOST_ACTION_TIMEOUT_MS),
+          options?.signal
+        )
       : null
   })
   setPluginExistingAgentReveal((input, scope, pluginId) => {

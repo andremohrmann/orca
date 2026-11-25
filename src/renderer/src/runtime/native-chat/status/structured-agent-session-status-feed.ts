@@ -28,6 +28,7 @@ import {
 export type StructuredAgentSessionStatusFeedOwner = {
   activate: () => () => void
   /** The live map, updated in place: read entries, never use its identity as a change signal. */
+  getReadiness: () => { generation: number; successful: boolean }
   getSnapshot: () => AgentSessionStatusSnapshot
   getNamingSnapshot: () => AgentSessionConversationNames
   getAssociationRevision: () => number
@@ -65,6 +66,7 @@ function createOwner(target: RuntimeClientTarget): OwnedStatusFeed {
   const activations = new Set<symbol>()
   let sleepResolved = false
   let generation = 0
+  let successfulSnapshot = false
   let handle: { unsubscribe: () => void } | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let reconnectAttempt = 0
@@ -74,6 +76,9 @@ function createOwner(target: RuntimeClientTarget): OwnedStatusFeed {
     let wholeHost = false
     if (event.type === 'snapshot') {
       // Naming metadata precedes the full status snapshot and says nothing about Sleep.
+      if (event.namingActiveSessionIds === undefined) {
+        successfulSnapshot = true
+      }
       const resolvesSleep = !sleepResolved && event.namingActiveSessionIds === undefined
       sleepResolved ||= resolvesSleep
       // Resolving Sleep or first learning naming activity answers for every session, listed or not.
@@ -147,6 +152,7 @@ function createOwner(target: RuntimeClientTarget): OwnedStatusFeed {
       return
     }
     generation += 1
+    successfulSnapshot = false
     namingActiveSessionIds = null
     confirmedSessions.clear()
     revokeAgentSessionStatusLiveInPlace(snapshot)
@@ -226,6 +232,7 @@ function createOwner(target: RuntimeClientTarget): OwnedStatusFeed {
   }
   const stop = (): void => {
     generation += 1
+    successfulSnapshot = false
     clearReconnect()
     dropHandle()
     reconnectAttempt = 0
@@ -253,6 +260,7 @@ function createOwner(target: RuntimeClientTarget): OwnedStatusFeed {
         }
       }
     },
+    getReadiness: () => ({ generation, successful: successfulSnapshot }),
     getSnapshot: () => snapshot,
     getNamingSnapshot: () => names,
     getAssociationRevision: () => associations.revision,

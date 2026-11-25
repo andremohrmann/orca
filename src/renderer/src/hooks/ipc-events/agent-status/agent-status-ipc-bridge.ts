@@ -1,3 +1,4 @@
+import { registerAgentPresentationDrain } from '@/runtime/agent-presentation-read-boundary'
 import type { AgentStatusIpcPayload } from '../../../../../shared/agent-status/contracts/agent-status-ipc-payload'
 import { syncAgentHookCompletionNotificationsForStoreUpdate } from '../../../components/terminal-pane/agent-completion/hook-lane/agent-hook-completion-notifications'
 import { registerAgentStatusListeners } from './agent-status-listeners'
@@ -137,7 +138,7 @@ export function registerAgentStatusIpcBridge(unsubs: (() => void)[]): AgentStatu
           return
         }
         applyAgentStatusBatch(entries.map((data) => ({ data, replay: true })))
-        startupSnapshot.settle()
+        startupSnapshot.settle(true)
         const getMigrationUnsupportedSnapshot =
           window.api.agentStatus.getMigrationUnsupportedSnapshot
         if (typeof getMigrationUnsupportedSnapshot !== 'function') {
@@ -280,9 +281,18 @@ export function registerAgentStatusIpcBridge(unsubs: (() => void)[]): AgentStatu
     syncAgentHookCompletionNotificationsForStoreUpdate(state, previousState)
   })
 
+  const releaseReadBoundary = registerAgentPresentationDrain('hook', () => {
+    if (disposed || isFlushingAgentStatuses) {
+      return false
+    }
+    flushLiveAgentStatusBurst()
+    flushPendingAgentStatuses()
+    return pendingAgentStatusEvents.length === 0
+  })
   return {
     disposeAsyncState: () => {
       disposed = true
+      releaseReadBoundary()
       startupSnapshot.dispose()
       snapshotRequestId += 1
       if (pendingAgentStatusRetryTimer !== null) {

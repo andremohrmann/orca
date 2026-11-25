@@ -36,15 +36,15 @@ export function createFreshnessScheduler(deps: FreshnessSchedulerDeps): Freshnes
     }
     timer = null
   }
-  const update = (key: string, entry: AgentStatusEntry | undefined, now: number): void => {
+  const update = (key: string, entry: AgentStatusEntry | undefined): void => {
     agentStatusFreshnessScanCounters.entryVisits++
     const hook = entry
       ? agentStatusEvidenceObservedAt(entry) + AGENT_STATUS_STALE_AFTER_MS
       : -Infinity
     const completed = entry ? agentEntryCompletionAt(entry) : null
     const completion = completed === null ? -Infinity : completed + AGENT_STATUS_STALE_AFTER_MS
-    deadlines.set(`hook\0${key}`, hook >= now ? hook : undefined)
-    deadlines.set(`completion\0${key}`, completion >= now ? completion : undefined)
+    deadlines.set(`hook\0${key}`, Number.isFinite(hook) ? hook : undefined)
+    deadlines.set(`completion\0${key}`, Number.isFinite(completion) ? completion : undefined)
   }
   const reconcile = (): void => {
     const next = deps.getStatusEntries()
@@ -53,9 +53,8 @@ export function createFreshnessScheduler(deps: FreshnessSchedulerDeps): Freshnes
     }
     deadlines.clear()
     agentStatusFreshnessScanCounters.fullScans++
-    const now = Date.now()
     for (const [key, entry] of next) {
-      update(key, entry, now)
+      update(key, entry)
     }
     source = next
   }
@@ -64,6 +63,7 @@ export function createFreshnessScheduler(deps: FreshnessSchedulerDeps): Freshnes
     const now = Date.now()
     const due = deadlines.takeDue(now)
     reconcile()
+    due.push(...deadlines.takeDue(now))
     if (due.length) {
       deps.bumpEpochs([...new Set(due.map((key) => key.slice(key.indexOf('\0') + 1)))])
     }
@@ -89,7 +89,7 @@ export function createFreshnessScheduler(deps: FreshnessSchedulerDeps): Freshnes
       deps.bumpEpochs([...new Set(due.map((key) => key.slice(key.indexOf('\0') + 1)))])
     }
     for (const change of changes) {
-      update(change.paneKey, change.current, now)
+      update(change.paneKey, change.current)
     }
     scheduleDeferred()
   }

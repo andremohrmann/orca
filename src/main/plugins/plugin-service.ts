@@ -1,3 +1,5 @@
+import { refreshPluginService } from './activation/plugin-service-refresh'
+import { PluginAuthorizationLifetimes } from './activation/plugin-authorization-lifetimes'
 import type { PluginEventName } from '../../shared/plugins/contributions/plugin-event-contribution'
 import {
   capabilityKinds,
@@ -8,7 +10,6 @@ import type {
   PluginConsentLists
 } from '../../shared/plugins/approval/plugin-consent-state'
 import {
-  discoverPlugins,
   getPluginsDataDir,
   getUserPluginsDir,
   type DiscoveredPlugin,
@@ -63,6 +64,7 @@ export class PluginService {
   private refreshChain: Promise<void> = Promise.resolve()
   private contentPacksReady = false
   private disposed = false
+  private readonly authorizationLifetimes = new PluginAuthorizationLifetimes()
   private readonly installed = new PluginInstallationState({
     pluginsDir: () => getUserPluginsDir(this.options.userDataPath),
     deactivate: (pluginKey) => this.workerController.deactivate(pluginKey),
@@ -88,6 +90,11 @@ export class PluginService {
         pluginKey,
         caller,
         findApprovedPlugin: resolveApproved,
+        getAuthorizationEpoch: (key) =>
+          this.authorizationLifetimes.epochFor(
+            key,
+            this.disposed ? null : this.findApprovedPlugin(key, true)
+          ),
         runtimeDelegate: this.runtimeDelegate,
         pluginsDataDir: getPluginsDataDir(this.options.userDataPath),
         desktop: this.options.getDesktopFrameServices?.(),
@@ -150,11 +157,19 @@ export class PluginService {
     await waitForPluginRefreshSettlement(() => this.refreshChain)
   }
 
+  private retireAuthorizationDeniedBy(approved: (plugin: ValidDiscoveredPlugin) => boolean): void {
+    this.authorizationLifetimes.retainApproved((key) => {
+      const plugin = this.findValidPlugin(key)
+      return Boolean(plugin && approved(plugin) && !pluginPolicyBlockError(this.options, key))
+    })
+  }
+
   refresh(): Promise<void> {
     // Snapshot off→on transitions so reconciliation cannot miss worker/panel revocation.
     const enabled = this.options.isPluginSystemEnabled()
     const devPaths = this.options.getDevPluginPaths()
     const consentLists = snapshotPluginConsentLists(this.options)
+    this.retireAuthorizationDeniedBy((plugin) => isPluginApproved(enabled, plugin, consentLists))
     return this.enqueue(() => this.performRefresh(enabled, devPaths, consentLists))
   }
 
@@ -170,45 +185,22 @@ export class PluginService {
     devPaths: string[],
     consentLists: PluginConsentLists
   ): Promise<void> {
-    if (this.disposed) {
-      return
-    }
-    this.contentPacksReady = false
-    if (!enabled) {
-      this.panels.revokeAll()
-    }
-    const next = enabled
-      ? await discoverPlugins({
-          pluginsDir: getUserPluginsDir(this.options.userDataPath),
-          devPluginPaths: devPaths,
-          hostVersion: this.options.hostVersion
-        })
-      : []
-    if (this.disposed) {
-      return
-    }
-    // Publish identity before shutdown so triggers cannot restart old code.
-    this.installed.discovered = next
-    await this.contentPacks.reconcile(
-      next,
-      (plugin) => isPluginApproved(enabled, plugin, consentLists),
-      this.options.getKeybindings?.()
-    )
-    this.contentPacksReady = true
-    const nextSpecs = collectApprovedWorkerSpecs(next, (plugin) => this.isRuntimeApproved(plugin))
-    // Notify before slow shutdown so feature-off unmounts panels immediately.
-    this.notifyChanged(true)
-    await this.workerController.reconcile(nextSpecs, (key) => this.findValidPlugin(key))
-    if (this.disposed) {
-      return
-    }
-    this.housekeeping.sync({
+    return refreshPluginService({
+      service: this,
+      installed: this.installed,
+      workers: this.workerController,
+      housekeeping: this.housekeeping,
+      isDisposed: () => this.disposed,
+      setReady: (ready) => {
+        this.contentPacksReady = ready
+      },
+      retireDeniedBy: (approved) => this.retireAuthorizationDeniedBy(approved),
+      isRuntimeApproved: (plugin) => this.isRuntimeApproved(plugin),
+      notifyChanged: (changed) => this.notifyChanged(changed),
       enabled,
       devPaths,
-      reapIdle: () => this.workerController.reapIdle(),
-      refresh: () => void this.refresh()
+      consentLists
     })
-    this.notifyChanged(false)
   }
 
   getDiscovered(): readonly DiscoveredPlugin[] {
@@ -304,16 +296,19 @@ export class PluginService {
   }
 
   removePlugin(pluginKey: string, remove: () => Promise<void>): Promise<void> {
-    return this.enqueue(() => this.installed.remove(pluginKey, remove))
+    const finish = this.authorizationLifetimes.beginDeparture(pluginKey)
+    return this.enqueue(() => this.installed.remove(pluginKey, remove)).finally(finish)
   }
 
   async deactivatePlugin(pluginKey: string): Promise<void> {
+    this.authorizationLifetimes.retire(pluginKey)
     await this.workerController.deactivate(pluginKey)
     this.notifyChanged(false)
   }
 
   /** Reconcile consent/enablement without rereading files or starting workers. */
   async reconcileActivationState(): Promise<void> {
+    this.retireAuthorizationDeniedBy((plugin) => this.activationState(plugin) === 'approved')
     return this.enqueue(() => this.performActivationStateReconciliation())
   }
 
@@ -334,6 +329,7 @@ export class PluginService {
 
   async dispose(): Promise<void> {
     this.disposed = true
+    this.authorizationLifetimes.clear()
     this.housekeeping.dispose()
     this.panels.dispose()
     this.panelBridge.dispose()

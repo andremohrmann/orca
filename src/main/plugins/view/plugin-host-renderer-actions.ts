@@ -1,3 +1,8 @@
+import type {
+  PluginAgentPresentationRead,
+  PluginAgentPresentationReply,
+  PluginAgentPresentationRelayPage
+} from '../../../shared/plugins/view/plugin-agent-presentation-relay'
 import {
   PLUGIN_VIEW_NO_WORKSPACE_CODE,
   type PluginViewReply,
@@ -10,6 +15,14 @@ import type { PluginHostCallScope } from '../workers/host-api/plugin-host-call-s
 
 /** What a worker's `editor.open` and `commands.run` ask of Orca's window. */
 export type PluginHostRendererActions = {
+  readAgentPresentation?(
+    input: PluginAgentPresentationRead,
+    scope: PluginHostCallScope,
+    timeoutMs: number
+  ): Promise<{
+    result: PluginAgentPresentationReply
+    page: PluginAgentPresentationRelayPage
+  } | null>
   openFile(worktreeId: string, relativePath: string): Promise<void>
   runAction(action: PluginCommandAliasActionId): Promise<void>
   openFolderWorkspace(folderWorkspaceId: string): Promise<void>
@@ -32,7 +45,8 @@ export function setPluginExistingAgentReveal(next: ExistingAgentReveal | null): 
 
 /** Sends one request to the main window's renderer; null when there is no window to ask. */
 export type PluginHostRendererRequest = (
-  body: PluginViewRequestBody
+  body: PluginViewRequestBody,
+  options?: { signal?: AbortSignal; timeoutMs?: number }
 ) => Promise<PluginViewReply> | null
 
 // Set by the desktop app's view binding (Electron stays out of this module); null in headless serve.
@@ -40,6 +54,27 @@ let request: PluginHostRendererRequest | null = null
 
 export function setPluginHostRendererRequest(next: PluginHostRendererRequest | null): void {
   request = next
+}
+
+async function readAgentPresentation(
+  input: PluginAgentPresentationRead,
+  scope: PluginHostCallScope,
+  timeoutMs: number
+) {
+  scope.assertActive()
+  const pending = request?.(
+    { kind: 'read-agent-presentation', ...input },
+    { signal: scope.signal, timeoutMs }
+  )
+  if (!pending) {
+    return null
+  }
+  const reply = await pending
+  scope.assertActive()
+  if (!reply.ok || !reply.agentPresentation || !reply.agentPresentationPage) {
+    return null
+  }
+  return { result: reply.agentPresentation, page: reply.agentPresentationPage }
 }
 
 async function readWorkspaceReview(input: {
@@ -82,6 +117,7 @@ export function getPluginHostRendererActions(): PluginHostRendererActions | null
   return request
     ? {
         readWorkspaceReview,
+        readAgentPresentation,
         ...(existingAgentReveal ? { revealExistingAgent: existingAgentReveal } : {}),
         openFile: (worktreeId, relativePath) =>
           ask({ kind: 'open-file', worktreeId, relativePath }),

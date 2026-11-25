@@ -1,5 +1,6 @@
 type SnapshotSignal = {
   ready: boolean
+  successful: boolean
   claimed: boolean
   promise: Promise<void>
   resolve: () => void
@@ -10,7 +11,7 @@ function createSignal(): SnapshotSignal {
   const promise = new Promise<void>((done) => {
     resolve = done
   })
-  return { ready: false, claimed: false, promise, resolve }
+  return { ready: false, successful: false, claimed: false, promise, resolve }
 }
 
 let current = createSignal()
@@ -19,10 +20,14 @@ export function isAgentStatusStartupSnapshotReady(): boolean {
   return current.ready
 }
 
+export function isAgentStatusStartupSnapshotSuccessful(): boolean {
+  return current.successful
+}
+
 /** Coordinates the bridge's existing replay; it retains no agent rows. */
 export function registerAgentStatusStartupSnapshot(): {
   reset: () => void
-  settle: () => void
+  settle: (successful?: boolean) => void
   dispose: () => void
 } {
   if (current.claimed) {
@@ -41,10 +46,11 @@ export function registerAgentStatusStartupSnapshot(): {
       owned.claimed = true
       current = owned
     },
-    settle: () => {
+    settle: (successful = false) => {
       if (current !== owned) {
         return
       }
+      owned.successful = successful
       owned.ready = true
       owned.resolve()
     },

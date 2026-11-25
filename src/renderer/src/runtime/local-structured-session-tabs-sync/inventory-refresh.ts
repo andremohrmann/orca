@@ -3,7 +3,8 @@ import { refreshLocalRuntimeCapabilities } from '../hosts/capabilities/local-run
 import {
   isCurrentLocalStructuredSessionGeneration,
   latchLocalStructuredSessionRestore,
-  localStructuredSessionGeneration
+  localStructuredSessionGeneration,
+  markLocalStructuredInventorySuccessful
 } from './inventory-generation-fence'
 import { applyStructuredSessionTabSnapshots } from './snapshot-apply'
 import {
@@ -79,6 +80,9 @@ export function refreshLocalStructuredSessionTabs(
           authoritative: options.authoritative === true || result.authoritative === true,
           authoritativeInventory
         })
+        if (result.authoritative === true && Array.isArray(result.snapshots)) {
+          markLocalStructuredInventorySuccessful(expectedGeneration, response._meta.runtimeId)
+        }
       }
       return snapshots
     })

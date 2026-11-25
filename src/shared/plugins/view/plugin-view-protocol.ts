@@ -1,3 +1,8 @@
+import type {
+  PluginAgentPresentationRead,
+  PluginAgentPresentationReply,
+  PluginAgentPresentationRelayPage
+} from './plugin-agent-presentation-relay'
 /**
  * Main asks the desktop renderer to show a plugin panel or editor (`orca plugin open`) and, for
  * `orca plugin shot`, to report where the drawn panel sits so main can capture that rect. Only
@@ -77,6 +82,7 @@ export type PluginViewRequestBody =
   | { kind: 'run-action'; action: PluginCommandAliasActionId }
   /** A plugin worker's `workspace.open` of a folder workspace, which the runtime cannot activate. */
   | { kind: 'open-folder-workspace'; folderWorkspaceId: string }
+  | ({ kind: 'read-agent-presentation' } & PluginAgentPresentationRead)
   | { kind: 'read-workspace-review'; worktreeId: string; executionHostId: string }
   | { kind: 'resolve-existing-agent'; workspaceId: string; orcaSessionId: string }
   | { kind: 'focus-existing-agent'; target: PluginExistingAgentTarget }
@@ -143,6 +149,8 @@ export type PluginViewReply =
       restored?: boolean
       agentTarget?: PluginExistingAgentTarget | null
       revealed?: boolean
+      agentPresentation?: PluginAgentPresentationReply
+      agentPresentationPage?: PluginAgentPresentationRelayPage
       workspaceReview?: PluginWorkspaceReview | null
     }
   | { requestId: string; ok: false; code: string; message: string }

@@ -1,3 +1,4 @@
+import { PLUGIN_AGENT_PRESENTATION_HANDLERS } from './plugin-host-agent-presentation-binding'
 import { z } from 'zod'
 import {
   isPluginHostMethodName,
@@ -284,6 +285,7 @@ const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
   ...PLUGIN_AUTOMATION_HANDLERS,
   ...PLUGIN_AGENT_HISTORY_HANDLERS,
   ...PLUGIN_DASHBOARD_HANDLERS,
+  ...PLUGIN_AGENT_PRESENTATION_HANDLERS,
   ...PLUGIN_WINDOW_HANDLERS
 }
 

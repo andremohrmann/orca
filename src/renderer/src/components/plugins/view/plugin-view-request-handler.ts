@@ -1,3 +1,4 @@
+import { readPluginAgentPresentation } from './plugin-agent-presentation'
 import { pluginPanelTabKey } from '../../../../../shared/plugins/frames/plugin-tab-key'
 import { readPluginWorkspaceReview } from './plugin-workspace-review'
 import {
@@ -231,6 +232,8 @@ export async function handlePluginViewRequest(
 ): Promise<PluginViewReply> {
   try {
     switch (request.kind) {
+      case 'read-agent-presentation':
+        return await readPluginAgentPresentation(request)
       case 'read-workspace-review':
         return readPluginWorkspaceReview(request)
       case 'open-panel':

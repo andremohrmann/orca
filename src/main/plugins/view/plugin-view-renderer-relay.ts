@@ -15,8 +15,12 @@ export const PLUGIN_VIEW_RENDERER_UNAVAILABLE = 'renderer_unavailable'
 export function requestPluginViewFromRenderer(
   webContents: WebContents,
   body: PluginViewRequestBody,
-  timeoutMs: number
+  timeoutMs: number,
+  signal?: AbortSignal
 ): Promise<PluginViewReply> {
+  if (signal?.aborted) {
+    return Promise.reject(signal.reason)
+  }
   if (webContents.isDestroyed()) {
     return Promise.reject(new Error(PLUGIN_VIEW_RENDERER_UNAVAILABLE))
   }
@@ -54,10 +58,18 @@ export function requestPluginViewFromRenderer(
         finish({ reply: parsed.data })
       }
     }
+    const onAbort = (): void =>
+      finish({ error: Object.assign(new Error('Request cancelled'), { name: 'AbortError' }) })
+    signal?.addEventListener('abort', onAbort, { once: true })
+    releases.push(() => signal?.removeEventListener('abort', onAbort))
     const onGone = (): void => finish({ error: new Error(PLUGIN_VIEW_RENDERER_UNAVAILABLE) })
     releases.push(
       addFanoutListener(ipcMain, PLUGIN_VIEW_REPLY_CHANNEL, onReply),
-      addFanoutListeners(webContents, ['destroyed', 'render-process-gone'], onGone)
+      addFanoutListeners(
+        webContents,
+        ['destroyed', 'render-process-gone', 'did-start-loading'],
+        onGone
+      )
     )
     try {
       webContents.send(PLUGIN_VIEW_REQUEST_CHANNEL, { ...body, requestId })

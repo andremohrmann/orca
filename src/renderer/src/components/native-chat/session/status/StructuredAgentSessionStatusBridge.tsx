@@ -1,3 +1,4 @@
+import { registerAgentPresentationDrain } from '@/runtime/agent-presentation-read-boundary'
 import { createStructuredSessionStatusBurst } from './structured-agent-session-status-burst'
 import { useEffect } from 'react'
 import { projectStatus } from './structured-agent-session-status-projection'
@@ -374,8 +375,16 @@ function installStatusProjection(): () => void {
     })
   )
   boundary(() => reconcile(false))
+  const releaseReadBoundary = registerAgentPresentationDrain('structured', () => {
+    if (disposed || draining) {
+      return false
+    }
+    burst.flush()
+    return true
+  })
   return () => {
     disposed = true
+    releaseReadBoundary()
     burst.dispose()
     unsubscribeApp()
     unsubscribeLaunch()

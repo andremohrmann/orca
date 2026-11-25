@@ -8,6 +8,7 @@ import type { PluginPanelCaller } from '../../../../shared/plugins/workers/plugi
  */
 export type PluginHostCallScope = {
   assertActive(): void
+  authorizationEpoch?: string
   /** The WebContents whose frame made the call (desktop IPC only): dialogs and budgets bind to it. */
   callerWebContentsId?: number
   /** The plugin's display name, for prompts Orca shows on its behalf. */

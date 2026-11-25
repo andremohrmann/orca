@@ -5,7 +5,7 @@ import type { PluginSurface } from '../frames/plugin-protocol'
 import * as stored from './plugin-host-api-storage-schemas'
 import { PLUGIN_PANEL_BRIDGE_API } from './plugin-host-api-panel-methods'
 import { PLUGIN_WORKER_ACTIONS_API } from './plugin-host-api-worker-actions'
-import { PLUGIN_DASHBOARD_API } from './plugin-host-api-dashboard'
+import { PLUGIN_PERSONAL_DASHBOARD_API } from './plugin-host-api-personal-dashboard'
 import { PLUGIN_WINDOW_API } from './plugin-host-api-window'
 import { PLUGIN_EDITOR_TYPOGRAPHY_API } from './plugin-host-api-editor-typography'
 import { PLUGIN_CUSTOM_CONTRACT_API } from './plugin-host-custom-contract'
@@ -34,9 +34,7 @@ export {
 /**
  * Host API 1 (`pluginApi: 1`) — the separately-versioned public facade plugins call. Every
  * method carries params AND result schemas plus capability/mutation metadata;
- * handlers (bound in main) delegate to runtime services. The raw runtime-RPC
- * registry is never exposed: its methods have no result schemas and evolve at
- * internal velocity.
+ * Main handlers delegate to runtime services; the raw runtime-RPC registry is never exposed.
  *
  * This table is the single source of truth for the capability gate, which surfaces
  * (worker, panel, editor) may call what, the generated reference and the plugin SDK.
@@ -286,7 +284,7 @@ export const PLUGIN_HOST_API = {
   ...PLUGIN_CUSTOM_CONTRACT_API,
   ...PLUGIN_WORKER_ACTIONS_API,
   ...PLUGIN_EDITOR_TYPOGRAPHY_API,
-  ...PLUGIN_DASHBOARD_API,
+  ...PLUGIN_PERSONAL_DASHBOARD_API,
   ...PLUGIN_WINDOW_API
 }
 

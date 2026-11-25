@@ -6,6 +6,7 @@ import type {
 import { structuredAgentSessionOwnerInputs } from '../session-ownership/structured-agent-session-owner'
 import type { Tab } from '../../../../../shared/workspace-layout/tab-groups/tab-types'
 import { agentSenderAliasParts, assembleAgentSenderAliases } from './agent-sender-alias-projection'
+import { locateAgentSendersForPane } from './agent-sender-pane-candidates'
 import {
   HostPartDraft,
   merge,
@@ -308,4 +309,17 @@ export function readAgentSender(
 ): LocatedAgentSender | null | undefined {
   reads?.add(SENDER_CHANNEL + key(host, identity))
   return lookup(senderIndex(state), host, identity)
+}
+
+/** Exact reverse lookup through the same ambiguity and rival-host checks as sender navigation. */
+export function readAgentSendersForPane(
+  state: AppState,
+  host: string,
+  worktreeId: string,
+  paneKey: string
+): readonly LocatedAgentSender[] | null {
+  const index = senderIndex(state)
+  return locateAgentSendersForPane(index.parts, host, worktreeId, paneKey, (home, identity) =>
+    lookup(index, home, identity)
+  )
 }

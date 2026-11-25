@@ -30,3 +30,19 @@ export function latchLocalStructuredSessionRestore(start: () => Promise<void>): 
   })
   return restorePromise
 }
+
+let successfulInventory: { generation: number; runtimeId: string } | null = null
+export function markLocalStructuredInventorySuccessful(
+  generation: number,
+  runtimeId: string
+): void {
+  if (isCurrentLocalStructuredSessionGeneration(generation) && runtimeId) {
+    successfulInventory = { generation, runtimeId }
+  }
+}
+export function hasLocalStructuredInventorySuccessful(runtimeId: string): boolean {
+  return (
+    successfulInventory?.generation === syncGeneration &&
+    successfulInventory.runtimeId === runtimeId
+  )
+}
