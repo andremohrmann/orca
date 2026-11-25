@@ -1,3 +1,4 @@
+import { noteTerminalWebglAtlasTyping } from '@/lib/pane-manager/terminal-rendering/terminal-webgl-atlas-rebuild-interaction'
 import type { Terminal } from '@xterm/xterm'
 import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { executeTerminalPastePlan } from '@/components/terminal-pane/input/paste/terminal-paste-executor'
@@ -27,7 +28,7 @@ export function createPreviewClipboardPaster(deps: {
   getTerminal: () => Terminal | null
   getTerminalInput: () => DashboardCardTerminalInput | null
   getTerminalLinks: () => DashboardCardTerminalLinks | null
-  writePty: (data: string) => boolean | Promise<boolean>
+  writeInput: (data: string) => boolean | Promise<boolean>
   isDisposed: () => boolean
 }): (activeElementAtDispatch: Element | null, source: PreviewTerminalPasteSource) => Promise<void> {
   return async (activeElementAtDispatch, source) => {
@@ -77,7 +78,10 @@ export function createPreviewClipboardPaster(deps: {
       const execution = await executeTerminalPastePlan(plan, {
         // Why: stream large pastes so neither terminal transport receives one huge payload.
         pasteText: (value, pasteOptions) => pasteTerminalText(pasteTerminal, value, pasteOptions),
-        writePty: deps.writePty,
+        writePty: (data) => {
+          noteTerminalWebglAtlasTyping()
+          return deps.writeInput(data)
+        },
         isTargetCurrent: targetIsCurrent,
         // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
         canContinue: () => true

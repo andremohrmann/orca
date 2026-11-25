@@ -4,7 +4,7 @@ import { compareVersions, isPrereleaseVersion, isValidVersion } from './updater-
 import {
   FETCH_TIMEOUT_MS,
   getPlatformManifestReadiness,
-  requestGitHubReleaseHead
+  requestReleaseHead
 } from './updater-release-readiness'
 import {
   applyReleaseDelay,
@@ -76,7 +76,7 @@ export async function fetchLatestStableReleaseTag(): Promise<string | null> {
   try {
     // Resolve only the release-page redirect; installer redirects continue on to signed storage URLs.
     const latestUrl = `https://github.com/${updateFeedInfo.repo}/releases/latest`
-    const response = await requestGitHubReleaseHead(latestUrl)
+    const response = await requestReleaseHead(latestUrl)
     if (!response?.redirectUrl || response.statusCode < 300 || response.statusCode >= 400) {
       return null
     }

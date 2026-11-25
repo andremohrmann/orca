@@ -11,6 +11,7 @@ import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { useAppStore } from '@/store/index'
 import type { MacOptionAsAlt } from '@/components/terminal-pane/input/keyboard/terminal-option-shortcut-policy'
 import { subscribeToTerminalUserInput } from '@/components/terminal-pane/input/terminal-user-input-signal'
+import { noteTerminalWebglAtlasTyping } from '@/lib/pane-manager/terminal-rendering/terminal-webgl-atlas-rebuild-interaction'
 import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/clipboard/terminal-native-copy-gutter'
 import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
 import type { DashboardPreviewLinkSource } from '../dashboard/terminal-preview/links/dashboard-preview-http-actions'
@@ -80,6 +81,8 @@ export function openStandaloneTerminal(args: StandaloneTerminalArgs): Standalone
     const signaledUserInput = pendingUserInputSignals > 0
     if (signaledUserInput) {
       pendingUserInputSignals--
+      // Typing here holds atlas rebuilds of the pane terminals mounted behind this view.
+      noteTerminalWebglAtlasTyping()
     }
     // Why: core's signal distinguishes real input from parser replies, so typing survives live replay without forwarding synthetic CPR/DA bytes.
     if (!args.answersQueries && (userInputDisposable ? !signaledUserInput : replayDepth > 0)) {
@@ -94,7 +97,7 @@ export function openStandaloneTerminal(args: StandaloneTerminalArgs): Standalone
   })
   const pasteClipboardText = createPreviewClipboardPaster({
     ptyId: args.sessionKey,
-    writePty: args.sendInput,
+    writeInput: args.sendInput,
     container,
     getTerminal: () => (disposed ? null : terminal),
     getTerminalInput: args.getTerminalInput,
