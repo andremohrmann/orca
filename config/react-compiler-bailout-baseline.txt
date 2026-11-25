@@ -576,7 +576,6 @@
 1 src/renderer/src/components/agent/launch-menu/use-new-tab-agent-menu-rows.ts
 1 src/renderer/src/components/tab-bar/create-entry/use-omnibox-browser-history.ts
 2 src/renderer/src/components/tab-bar/create-entry/use-open-tab-search.ts
-1 src/renderer/src/components/tab-bar/create-menu/use-tab-bar-create-menu-controller.ts
 2 src/renderer/src/components/tab-bar/model/use-tab-bar-item-actions.ts
 1 src/renderer/src/components/tab-group/drag/useTabDragSplit.ts
 1 src/renderer/src/components/task-page/github/cache/use-task-page-github-cache-reconciliation.ts
