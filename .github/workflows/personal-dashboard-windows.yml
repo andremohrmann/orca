@@ -31,8 +31,8 @@ jobs:
       - name: Verify the clean upstream ancestry
         shell: bash
         run: |
-          git fetch --no-tags origin 923b19d805857c54a6fa8e0f24c39d2e501ba043
-          git merge-base --is-ancestor 923b19d805857c54a6fa8e0f24c39d2e501ba043 HEAD
+          git fetch --no-tags origin a91fc0a676e324b2630a78bdc6d885f513cc9d88
+          git merge-base --is-ancestor a91fc0a676e324b2630a78bdc6d885f513cc9d88 HEAD
 
       - uses: ./.github/actions/install-node-dependencies
         with:
@@ -45,7 +45,7 @@ jobs:
 
       - name: Check changed source
         shell: bash
-        run: timeout 900 pnpm check:changed --serial --base=923b19d805857c54a6fa8e0f24c39d2e501ba043
+        run: timeout 900 pnpm check:changed --serial --base=a91fc0a676e324b2630a78bdc6d885f513cc9d88
 
       - name: Set the personal artifact version
         shell: pwsh

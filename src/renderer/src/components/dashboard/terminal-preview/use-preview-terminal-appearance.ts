@@ -7,7 +7,7 @@ import { syncPreviewTerminalLigatures } from '../../standalone-terminal/renderin
 export function usePreviewTerminalAppearance(
   terminalRef: RefObject<Terminal | null>,
   settings: GlobalSettings | null,
-  terminalFontReady: boolean,
+  terminalFontLoadKey: string,
   macOptionIsMeta: boolean
 ): void {
   useEffect(() => {
@@ -16,5 +16,5 @@ export function usePreviewTerminalAppearance(
       Object.assign(terminal.options, buildPreviewAppearanceOptions(settings, macOptionIsMeta))
       syncPreviewTerminalLigatures(terminal, settings)
     }
-  }, [terminalRef, settings, terminalFontReady, macOptionIsMeta])
+  }, [terminalRef, settings, terminalFontLoadKey, macOptionIsMeta])
 }

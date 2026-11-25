@@ -16,7 +16,7 @@ import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailabl
 import { resolveEffectiveTerminalAppearance } from '@/lib/terminal/appearance/terminal-theme'
 import { cn } from '@/lib/class-names'
 import { useAppStore } from '@/store/index'
-import { usePluginFontReady } from '@/store/plugins/appearance/plugin-fonts'
+import { usePluginFontLoadKey } from '@/store/plugins/appearance/plugin-fonts'
 import { createPreviewGridClaim } from './geometry/preview-grid-claim'
 import { createPreviewBoxFit } from './geometry/preview-terminal-box-fit'
 import { openStandaloneTerminal } from '../../standalone-terminal/open-standalone-terminal'
@@ -74,7 +74,7 @@ export function AgentTerminalPreview({
   const linkSourceRef = useRef(linkSource)
   const browserForegroundRef = useRef(onBrowserForeground)
   const settings = useAppStore((state) => state.settings)
-  const terminalFontReady = usePluginFontReady(settings?.terminalFontFamily)
+  const terminalFontLoadKey = usePluginFontLoadKey(settings?.terminalFontFamily)
   const systemPrefersDark = useSystemPrefersDark()
   const macOptionAsAlt = useEffectiveMacOptionAsAlt(settings?.terminalMacOptionAsAlt)
   // Read live settings without terminal remount, PTY reconnect or snapshot repaint.
@@ -368,7 +368,12 @@ export function AgentTerminalPreview({
     settings?.terminalLigatures
   ])
 
-  usePreviewTerminalAppearance(terminalRef, settings, terminalFontReady, macOptionAsAlt === 'true')
+  usePreviewTerminalAppearance(
+    terminalRef,
+    settings,
+    terminalFontLoadKey,
+    macOptionAsAlt === 'true'
+  )
 
   return (
     // Fix the box to the viewport so snapshot geometry cannot resize the dialog; fit/clip the true PTY frame at its cursor end.

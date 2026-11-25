@@ -42,7 +42,8 @@ export async function refreshPluginService(input: RefreshInput): Promise<void> {
     ? await discoverPlugins({
         pluginsDir: getUserPluginsDir(service.options.userDataPath),
         devPluginPaths: devPaths,
-        hostVersion: service.options.hostVersion
+        hostVersion: service.options.hostVersion,
+        requiredPluginKeys: consentLists.requiredPlugins
       })
     : []
   if (input.isDisposed()) {
