@@ -2,7 +2,7 @@ import type { TabBarCreateMenuController } from './tab-bar-create-menu-contract'
 
 import { useAgentLaunchPickerInventorySource } from '../../agent/use-agent-launch-picker-inventory'
 import type { AgentPickerEntry } from '../../../../../shared/agent-launch/picker/agent-launch-picker'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { launchWarpTab } from '@/lib/launch-warp-tab'
 import type { WindowsTerminalCapabilities } from '@/runtime/hosts/capabilities/windows-terminal-capabilities'
 import { useTabAgentMenuLaunch } from '../../agent/launch-menu/AgentMenuItems'
@@ -86,14 +86,7 @@ export function useTabBarCreateMenuController({
     newTabMenuOpen && showAgentLaunchItems,
     selectedPickerAgent
   )
-  const pendingNewTabMenuFocusRef = useRef<{ focus: () => void; synchronous?: true } | null>(null)
-  const pendingNewTabMenuFocusAnimationRef = useRef<number | null>(null)
-  const pendingNewTabMenuFocusRetryRef = useRef<number | null>(null)
-  const terminalFocusController = createNewTabMenuTerminalFocusController({
-    pendingFocusRef: pendingNewTabMenuFocusRef,
-    pendingAnimationRef: pendingNewTabMenuFocusAnimationRef,
-    pendingRetryRef: pendingNewTabMenuFocusRetryRef
-  })
+  const [terminalFocusController] = useState(createNewTabMenuTerminalFocusController)
   const queueNewActiveTerminalFocusAfterNewTabMenuClose =
     terminalFocusController.queueNewActiveTerminalFocusAfterClose
   const queueTerminalTabFocusAfterNewTabMenuClose =
@@ -197,18 +190,14 @@ export function useTabBarCreateMenuController({
     }
     return false
   }
-  const menuFocusUnmountRef = useRef<((node: HTMLDivElement | null) => void) | null>(null)
-  if (menuFocusUnmountRef.current === null) {
-    menuFocusUnmountRef.current = (node: HTMLDivElement | null): void => {
-      if (node !== null) {
-        return
+  const clearPendingNewTabMenuFocusOnUnmount = useCallback(
+    (node: HTMLDivElement | null): void => {
+      if (node === null) {
+        terminalFocusController.clearPendingFocus()
       }
-      // Why: cancel the delayed focus handoff via this root ref cleanup, avoiding an otherwise cleanup-only React Effect.
-      pendingNewTabMenuFocusRef.current = null
-      terminalFocusController.clearPendingFocusAnimation()
-      terminalFocusController.clearPendingFocusRetry()
-    }
-  }
+    },
+    [terminalFocusController]
+  )
   useEffect(() => {
     if (!newTabMenuOpen) {
       return
@@ -237,7 +226,7 @@ export function useTabBarCreateMenuController({
     handleSelectCreateMenuOption,
     launchAgentFromNewTabEntry,
     runPendingNewTabMenuFocusAfterClose: terminalFocusController.runPendingFocusAfterClose,
-    clearPendingNewTabMenuFocusOnUnmount: menuFocusUnmountRef.current,
+    clearPendingNewTabMenuFocusOnUnmount: clearPendingNewTabMenuFocusOnUnmount,
     queueNewActiveTerminalFocusAfterNewTabMenuClose,
     queueTerminalTabFocusAfterNewTabMenuClose,
     queueFocusAfterNewTabMenuClose,

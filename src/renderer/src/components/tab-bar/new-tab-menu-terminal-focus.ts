@@ -1,4 +1,3 @@
-import type { MutableRefObject } from 'react'
 import { focusTerminalTabSurface } from '@/components/terminal-pane/input/focus/focus-terminal-tab-surface'
 import { useAppStore } from '../../store'
 
@@ -7,13 +6,8 @@ const NEW_TAB_MENU_TERMINAL_FOCUS_TIMEOUT_MS = 5000
 
 type PendingNewTabMenuFocus = { focus: () => void; synchronous?: true }
 
-type NewTabMenuTerminalFocusRefs = {
-  pendingFocusRef: MutableRefObject<PendingNewTabMenuFocus | null>
-  pendingAnimationRef: MutableRefObject<number | null>
-  pendingRetryRef: MutableRefObject<number | null>
-}
-
 export type NewTabMenuTerminalFocusController = {
+  clearPendingFocus: () => void
   clearPendingFocusAnimation: () => void
   clearPendingFocusRetry: () => void
   queueNewActiveTerminalFocusAfterClose: () => void
@@ -24,24 +18,23 @@ export type NewTabMenuTerminalFocusController = {
   runPendingFocusAfterClose: () => void
 }
 
-export function createNewTabMenuTerminalFocusController({
-  pendingFocusRef,
-  pendingAnimationRef,
-  pendingRetryRef
-}: NewTabMenuTerminalFocusRefs): NewTabMenuTerminalFocusController {
+export function createNewTabMenuTerminalFocusController(): NewTabMenuTerminalFocusController {
+  let pendingFocus: PendingNewTabMenuFocus | null = null
+  let pendingAnimation: number | null = null
+  let pendingRetry: number | null = null
   const clearPendingFocusAnimation = (): void => {
-    if (pendingAnimationRef.current === null) {
+    if (pendingAnimation === null) {
       return
     }
-    cancelAnimationFrame(pendingAnimationRef.current)
-    pendingAnimationRef.current = null
+    cancelAnimationFrame(pendingAnimation)
+    pendingAnimation = null
   }
   const clearPendingFocusRetry = (): void => {
-    if (pendingRetryRef.current === null) {
+    if (pendingRetry === null) {
       return
     }
-    window.clearTimeout(pendingRetryRef.current)
-    pendingRetryRef.current = null
+    window.clearTimeout(pendingRetry)
+    pendingRetry = null
   }
   const focusNewActiveTerminalWhenReady = (
     previousActiveTabId: string | null,
@@ -60,8 +53,8 @@ export function createNewTabMenuTerminalFocusController({
     if (now >= expiresAt) {
       return
     }
-    pendingRetryRef.current = window.setTimeout(() => {
-      pendingRetryRef.current = null
+    pendingRetry = window.setTimeout(() => {
+      pendingRetry = null
       focusNewActiveTerminalWhenReady(previousActiveTabId, expiresAt, Date.now())
     }, NEW_TAB_MENU_TERMINAL_FOCUS_RETRY_MS)
   }
@@ -81,23 +74,29 @@ export function createNewTabMenuTerminalFocusController({
   const queueFocusAfterClose = (focus: () => void, synchronous?: true): void => {
     clearPendingFocusAnimation()
     clearPendingFocusRetry()
-    pendingFocusRef.current = { focus, synchronous }
+    pendingFocus = { focus, synchronous }
   }
   const runPendingFocusAfterClose = (): void => {
-    const pendingFocus = pendingFocusRef.current
-    pendingFocusRef.current = null
+    const focus = pendingFocus
+    pendingFocus = null
     clearPendingFocusAnimation()
     clearPendingFocusRetry()
-    if (pendingFocus?.synchronous) {
-      pendingFocus.focus()
-    } else if (pendingFocus) {
-      pendingAnimationRef.current = requestAnimationFrame(() => {
-        pendingAnimationRef.current = null
-        pendingFocus.focus()
+    if (focus?.synchronous) {
+      focus.focus()
+    } else if (focus) {
+      pendingAnimation = requestAnimationFrame(() => {
+        pendingAnimation = null
+        focus.focus()
       })
     }
   }
+  const clearPendingFocus = (): void => {
+    pendingFocus = null
+    clearPendingFocusAnimation()
+    clearPendingFocusRetry()
+  }
   return {
+    clearPendingFocus,
     clearPendingFocusAnimation,
     clearPendingFocusRetry,
     queueNewActiveTerminalFocusAfterClose,
