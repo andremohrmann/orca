@@ -13,6 +13,7 @@ export type DashboardSnapshotState = Pick<
   | 'agentStatusByPaneKey'
   | 'migrationUnsupportedByPtyId'
   | 'runtimeAgentOrchestrationByPaneKey'
+  | 'remoteAgentOrchestrationByHost'
   | 'terminalLayoutsByTabId'
   | 'ptyIdsByTabId'
   | 'runtimePaneTitlesByTabId'

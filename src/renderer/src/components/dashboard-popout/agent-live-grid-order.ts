@@ -67,3 +67,16 @@ export function moveLiveCardBefore(
 export function orderedPaneKeys(cards: DashboardCard[]): string[] {
   return cards.map((card) => card.paneKey)
 }
+
+export function nextLiveCard(
+  slots: (DashboardCard | null)[],
+  focusedPaneKey: string | null,
+  offset: number
+): DashboardCard | undefined {
+  const cards = slots.filter((card) => card !== null)
+  const index = Math.max(
+    0,
+    cards.findIndex((card) => card.paneKey === focusedPaneKey)
+  )
+  return cards[(index + offset + cards.length) % cards.length]
+}

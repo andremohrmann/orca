@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import { placeLiveCards, toggleLivePin } from './agent-live-grid-pins'
+import { normalizeAgentDashboardLiveLayout } from '../../../../shared/agent-dashboard-live-layout'
 import { mergeLiveOrder, moveLiveCardBefore, sortedLiveCards } from './agent-live-grid-order'
 
 function card(paneKey: string, overrides: Partial<DashboardCard> = {}): DashboardCard {
@@ -46,5 +48,24 @@ describe('agent live grid order', () => {
     expect(
       moveLiveCardBefore([card('a'), card('b'), card('c')], 'c', 'a').map((item) => item.paneKey)
     ).toEqual(['c', 'a', 'b'])
+  })
+  it('keeps saved pins in their slots through sorting, removal and restoration', () => {
+    const layout = normalizeAgentDashboardLiveLayout(
+      JSON.parse(JSON.stringify(toggleLivePin({}, 'b', 2)))
+    )
+    const keys = (cards: (DashboardCard | null)[]) => cards.map((item) => item?.paneKey ?? null)
+    const cards = [card('b'), card('a'), card('c')]
+    expect(keys(placeLiveCards(sortedLiveCards(cards, 'workspace'), layout.pinned))).toEqual([
+      'a',
+      'c',
+      'b'
+    ])
+    expect(keys(placeLiveCards([card('a'), card('b')], layout.pinned))).toEqual(['a', null, 'b'])
+    expect(keys(placeLiveCards([card('a')], layout.pinned))).toEqual(['a'])
+    expect(keys(placeLiveCards(cards, toggleLivePin(layout, 'b', 2).pinned))).toEqual([
+      'b',
+      'a',
+      'c'
+    ])
   })
 })

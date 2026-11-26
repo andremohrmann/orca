@@ -1,6 +1,6 @@
 param(
   [string]$Branch = 'custom/orca-dashboard-live-view',
-  [string]$Upstream = 'origin/main',
+  [string]$Upstream = 'stablyai/main',
   [string]$OutputDir = (Join-Path $env:TEMP 'orca-installer-build-custom-latest'),
   [string]$UpdateOwner = '',
   [string]$UpdateRepo = '',

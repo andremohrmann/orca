@@ -1,4 +1,13 @@
-import { GripVertical, Maximize2, Minus, Pencil, SquareArrowOutUpRight, X } from 'lucide-react'
+import {
+  GripVertical,
+  Maximize2,
+  Minus,
+  Pencil,
+  Pin,
+  PinOff,
+  SquareArrowOutUpRight,
+  X
+} from 'lucide-react'
 import type { DragEvent } from 'react'
 import { AgentStateDot } from '@/components/agent/status/AgentStateDot'
 import { Button } from '@/components/ui/button'
@@ -7,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { RepoIconGlyph } from '@/components/repo/repo-icon'
 import { AgentIcon } from '@/components/agent/icons/AgentIcon'
 import { agentTypeToIconAgent } from '../../../../shared/agent-status/presentation/agent-type-icon-agent'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import {
   dashboardCardDisplayState,
   type DashboardCard,
@@ -20,6 +29,8 @@ import { DashboardWorkspaceStatusButton } from './DashboardWorkspaceStatusButton
 
 type AgentLiveGridHeaderProps = {
   card: DashboardCard
+  pinned?: boolean
+  onTogglePin?: () => void
   title: string
   subtitle: string
   repoIcon?: RepoIcon | null
@@ -41,10 +52,14 @@ type AgentLiveGridHeaderProps = {
 
 export function AgentLiveGridHeader(props: AgentLiveGridHeaderProps): React.JSX.Element {
   const { card } = props
+  const translate = useTranslate()
+  const pinLabel = props.pinned
+    ? translate('dashboardPopout.live.unpin', 'Unpin window')
+    : translate('dashboardPopout.live.pin', 'Pin window to this position')
   return (
     <header
-      className="flex h-7 shrink-0 cursor-move items-center gap-1 border-b border-border px-1"
-      draggable={props.editingPaneKey !== card.paneKey}
+      className={`flex h-7 shrink-0 items-center gap-1 border-b border-border px-1 ${props.pinned ? '' : 'cursor-move'}`}
+      draggable={!props.pinned && props.editingPaneKey !== card.paneKey}
       onDragStart={props.onDragStart}
       onDragEnd={props.onDragEnd}
     >
@@ -99,6 +114,25 @@ export function AgentLiveGridHeader(props: AgentLiveGridHeaderProps): React.JSX.
         currentStatusId={card.workspaceStatusId}
         onAssign={(status) => props.onAssignWorkspaceStatus(card.worktreeId, status)}
       />
+      {props.onTogglePin ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant={props.pinned ? 'secondary' : 'ghost'}
+              size="icon-xs"
+              aria-pressed={props.pinned ?? false}
+              onClick={props.onTogglePin}
+              aria-label={pinLabel}
+            >
+              {props.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={4}>
+            {pinLabel}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
       <Button
         type="button"
         variant="ghost"

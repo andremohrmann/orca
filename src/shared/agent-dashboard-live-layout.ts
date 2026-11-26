@@ -3,6 +3,7 @@ export type AgentDashboardLiveSort = 'manual' | 'attention' | 'workspace' | 'rec
 
 export type AgentDashboardLiveLayout = {
   order?: string[]
+  pinned?: Record<string, number>
   minimized?: string[]
   hidden?: string[]
   names?: Record<string, string>
@@ -27,6 +28,28 @@ function stringArray(value: unknown): string[] | undefined {
     return undefined
   }
   return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+}
+
+function pinnedPositions(value: unknown): Record<string, number> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  const positions = new Set<number>()
+  const entries = Object.entries(value).filter(([key, position]) => {
+    if (
+      !key ||
+      typeof position !== 'number' ||
+      !Number.isInteger(position) ||
+      position < 0 ||
+      position > 1023 ||
+      positions.has(position)
+    ) {
+      return false
+    }
+    positions.add(position)
+    return true
+  })
+  return entries.length ? Object.fromEntries(entries) : undefined
 }
 
 function namesRecord(value: unknown): Record<string, string> | undefined {
@@ -62,6 +85,7 @@ export function normalizeAgentDashboardLiveLayout(value: unknown): AgentDashboar
   const layout = value as AgentDashboardLiveLayout
   return {
     order: stringArray(layout.order),
+    pinned: pinnedPositions(layout.pinned),
     minimized: stringArray(layout.minimized),
     hidden: stringArray(layout.hidden),
     names: namesRecord(layout.names),

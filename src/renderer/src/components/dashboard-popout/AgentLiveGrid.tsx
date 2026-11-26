@@ -1,3 +1,5 @@
+import { AgentLiveGridStateOutline } from './AgentLiveGridStateOutline'
+import { placeLiveCards, toggleLivePin } from './agent-live-grid-pins'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { formatAgentTypeLabel } from '../../../../shared/agent-status/presentation/agent-type-label'
 import type {
@@ -7,9 +9,10 @@ import type {
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/class-names'
-import { getAgentLiveGridColumns } from './agent-live-grid-layout'
+import { getAgentLiveGridColumns, getInitialLiveGridSize } from './agent-live-grid-layout'
 import {
   mergeLiveOrder,
+  nextLiveCard,
   moveLiveCardBefore,
   orderedPaneKeys,
   sortedLiveCards
@@ -38,17 +41,6 @@ type LiveDashboardCard = DashboardCard & { ptyId: string }
 
 const LIVE_GRID_PANE_MIME = 'application/x-orca-live-pane-key'
 
-function getInitialContainerSize(): { width: number; height: number } {
-  if (typeof window === 'undefined') {
-    return { width: 0, height: 0 }
-  }
-  return { width: window.innerWidth, height: window.innerHeight }
-}
-
-function rememberRestoredPane(map: Map<string, number>, paneKey: string): void {
-  map.set(paneKey, Date.now())
-}
-
 export function AgentLiveGrid({
   cards,
   repoIconsByRepoId,
@@ -75,7 +67,7 @@ export function AgentLiveGrid({
     afterMinutes: 0
   })
   const [layout, saveLayout] = useAgentLiveGridLayout()
-  const [containerSize, setContainerSize] = useState(getInitialContainerSize)
+  const [containerSize, setContainerSize] = useState(getInitialLiveGridSize)
   const [editingPaneKey, setEditingPaneKey] = useState<string | null>(null)
   const [focusedPaneKey, setFocusedPaneKey] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
@@ -120,15 +112,17 @@ export function AgentLiveGrid({
     [layout.hideClosed, minimizedPaneKeys, visibleOrderedCards]
   )
   const liveCards = visibleCards.filter((card): card is LiveDashboardCard => Boolean(card.ptyId))
+  const liveSlots = placeLiveCards(liveCards, layout.pinned)
   const closedCards = visibleCards.filter((card) => !card.ptyId)
   const minimizedCards = visibleOrderedCards.filter((card) => minimizedPaneKeys.has(card.paneKey))
   const autoMinimizeAfterMinutes = layout.autoMinimizeAfterMinutes ?? 0
-  const columns = useMemo(
-    () =>
-      getAgentLiveGridColumns(liveCards.length, containerSize.width, containerSize.height, density),
-    [containerSize.height, containerSize.width, density, liveCards.length]
+  const columns = getAgentLiveGridColumns(
+    liveSlots.length,
+    containerSize.width,
+    containerSize.height,
+    density
   )
-  const rows = Math.max(1, Math.ceil(liveCards.length / columns))
+  const rows = Math.max(1, Math.ceil(liveSlots.length / columns))
 
   useEffect(() => {
     if (focusedPaneKey && !visibleCards.some((card) => card.paneKey === focusedPaneKey)) {
@@ -193,7 +187,12 @@ export function AgentLiveGrid({
   const moveCard = (targetPaneKey: string, event?: DragEvent): void => {
     const transferredPaneKey = event?.dataTransfer.getData(LIVE_GRID_PANE_MIME)
     const sourcePaneKey = transferredPaneKey || draggedPaneKeyRef.current
-    if (!sourcePaneKey || sourcePaneKey === targetPaneKey) {
+    if (
+      !sourcePaneKey ||
+      sourcePaneKey === targetPaneKey ||
+      layout.pinned?.[sourcePaneKey] !== undefined ||
+      layout.pinned?.[targetPaneKey] !== undefined
+    ) {
       return
     }
     const next = moveLiveCardBefore(orderedCards, sourcePaneKey, targetPaneKey)
@@ -227,7 +226,7 @@ export function AgentLiveGrid({
   }
   const toggleSetValue = (key: 'minimized' | 'hidden', paneKey: string, present: boolean): void => {
     if (key === 'minimized' && !present) {
-      rememberRestoredPane(restoredAtByPaneKeyRef.current, paneKey)
+      restoredAtByPaneKeyRef.current.set(paneKey, Date.now())
     }
     saveLayout((current) => {
       const next = new Set(current[key] ?? [])
@@ -244,14 +243,10 @@ export function AgentLiveGrid({
     saveLayout((current) => ({ ...current, sort, order: orderedPaneKeys(nextCards) }))
   }
   const focusByOffset = (offset: number): void => {
-    if (visibleCards.length === 0) {
+    const next = nextLiveCard(liveSlots, focusedPaneKey, offset)
+    if (!next) {
       return
     }
-    const currentIndex = Math.max(
-      0,
-      visibleCards.findIndex((card) => card.paneKey === focusedPaneKey)
-    )
-    const next = visibleCards[(currentIndex + offset + visibleCards.length) % visibleCards.length]
     setFocusedPaneKey(next.paneKey)
     tileRefs.current.get(next.paneKey)?.focus()
   }
@@ -321,74 +316,77 @@ export function AgentLiveGrid({
             gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`
           }}
         >
-          {liveCards.map((card) => (
-            <section
-              key={card.paneKey}
-              ref={(element) => {
-                if (element) {
-                  tileRefs.current.set(card.paneKey, element)
-                } else {
-                  tileRefs.current.delete(card.paneKey)
-                }
-              }}
-              tabIndex={-1}
-              className={cn(
-                'relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-card outline-none',
-                focusedPaneKey === card.paneKey
-                  ? 'border-ring ring-[2px] ring-ring/35'
-                  : 'border-border'
-              )}
-              onPointerDown={() => setFocusedPaneKey(card.paneKey)}
-              onFocus={() => setFocusedPaneKey(card.paneKey)}
-              onDragOver={(event) => {
-                const isLiveGridDrag =
-                  draggedPaneKeyRef.current ||
-                  event.dataTransfer.types.includes(LIVE_GRID_PANE_MIME)
-                if (isLiveGridDrag) {
+          {liveSlots.map((card, position) =>
+            card ? (
+              <section
+                key={card.paneKey}
+                ref={(element) => {
+                  if (element) {
+                    tileRefs.current.set(card.paneKey, element)
+                  } else {
+                    tileRefs.current.delete(card.paneKey)
+                  }
+                }}
+                tabIndex={-1}
+                className={cn(
+                  'relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-card outline-none',
+                  focusedPaneKey === card.paneKey
+                    ? 'border-ring ring-[2px] ring-ring/35'
+                    : 'border-border'
+                )}
+                onPointerDown={() => setFocusedPaneKey(card.paneKey)}
+                onFocus={() => setFocusedPaneKey(card.paneKey)}
+                onDragOver={(event) => {
+                  const isLiveGridDrag =
+                    draggedPaneKeyRef.current ||
+                    event.dataTransfer.types.includes(LIVE_GRID_PANE_MIME)
+                  if (isLiveGridDrag) {
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                  }
+                }}
+                onDrop={(event) => {
                   event.preventDefault()
-                  event.dataTransfer.dropEffect = 'move'
-                }
-              }}
-              onDrop={(event) => {
-                event.preventDefault()
-                moveCard(card.paneKey, event)
-              }}
-            >
-              {card.bucket === 'attention' ? (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 z-10 rounded-[inherit] border-2 border-agent-question/70"
+                  moveCard(card.paneKey, event)
+                }}
+              >
+                <AgentLiveGridStateOutline card={card} />
+                <AgentLiveGridHeader
+                  card={card}
+                  pinned={layout.pinned?.[card.paneKey] !== undefined}
+                  onTogglePin={() =>
+                    saveLayout((current) => toggleLivePin(current, card.paneKey, position))
+                  }
+                  title={windowTitle(card)}
+                  subtitle={windowSubtitle(card)}
+                  repoIcon={repoIconsByRepoId?.[card.repoId]}
+                  editingPaneKey={editingPaneKey}
+                  nameDraft={nameDraft}
+                  setNameDraft={setNameDraft}
+                  beginRename={beginRename}
+                  finishRename={finishRename}
+                  cancelRenameRef={cancelRenameRef}
+                  onDragStart={(event) => {
+                    draggedPaneKeyRef.current = card.paneKey
+                    event.dataTransfer.effectAllowed = 'move'
+                    event.dataTransfer.setData(LIVE_GRID_PANE_MIME, card.paneKey)
+                  }}
+                  onDragEnd={() => {
+                    draggedPaneKeyRef.current = null
+                  }}
+                  onOpenTerminal={onOpenTerminal}
+                  onRevealAgent={onRevealAgent}
+                  onAssignWorkspaceStatus={onAssignWorkspaceStatus}
+                  statusOptions={statusOptions}
+                  onMinimize={() => toggleSetValue('minimized', card.paneKey, true)}
+                  onClose={() => toggleSetValue('hidden', card.paneKey, true)}
                 />
-              ) : null}
-              <AgentLiveGridHeader
-                card={card}
-                title={windowTitle(card)}
-                subtitle={windowSubtitle(card)}
-                repoIcon={repoIconsByRepoId?.[card.repoId]}
-                editingPaneKey={editingPaneKey}
-                nameDraft={nameDraft}
-                setNameDraft={setNameDraft}
-                beginRename={beginRename}
-                finishRename={finishRename}
-                cancelRenameRef={cancelRenameRef}
-                onDragStart={(event) => {
-                  draggedPaneKeyRef.current = card.paneKey
-                  event.dataTransfer.effectAllowed = 'move'
-                  event.dataTransfer.setData(LIVE_GRID_PANE_MIME, card.paneKey)
-                }}
-                onDragEnd={() => {
-                  draggedPaneKeyRef.current = null
-                }}
-                onOpenTerminal={onOpenTerminal}
-                onRevealAgent={onRevealAgent}
-                onAssignWorkspaceStatus={onAssignWorkspaceStatus}
-                statusOptions={statusOptions}
-                onMinimize={() => toggleSetValue('minimized', card.paneKey, true)}
-                onClose={() => toggleSetValue('hidden', card.paneKey, true)}
-              />
-              <AgentLiveGridTerminal card={card} onRevealAgent={onRevealAgent} />
-            </section>
-          ))}
+                <AgentLiveGridTerminal card={card} onRevealAgent={onRevealAgent} />
+              </section>
+            ) : (
+              <div key={`empty-${position}`} aria-hidden="true" className="bg-background" />
+            )
+          )}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">

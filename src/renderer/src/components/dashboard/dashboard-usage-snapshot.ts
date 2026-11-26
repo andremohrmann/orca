@@ -39,7 +39,6 @@ export function buildDashboardUsageSnapshot(
     [
       ['claude', rateLimits.claude],
       ['codex', rateLimits.codex],
-      ['gemini', rateLimits.gemini],
       ['antigravity', rateLimits.antigravity],
       ['opencode-go', rateLimits.opencodeGo],
       ['kimi', rateLimits.kimi],

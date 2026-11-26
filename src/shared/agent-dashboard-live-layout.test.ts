@@ -28,4 +28,19 @@ describe('normalizeAgentDashboardLiveLayout', () => {
       normalizeAgentDashboardLiveLayout({ autoMinimizeAfterMinutes: '10' }).autoMinimizeAfterMinutes
     ).toBe(0)
   })
+  it('rejects invalid or duplicate persisted slots without allocating an unbounded grid', () => {
+    expect(
+      normalizeAgentDashboardLiveLayout({
+        pinned: {
+          a: 2,
+          duplicate: 2,
+          negative: -1,
+          fraction: 1.5,
+          huge: 1e9,
+          text: '1',
+          b: 0
+        }
+      }).pinned
+    ).toEqual({ a: 2, b: 0 })
+  })
 })
