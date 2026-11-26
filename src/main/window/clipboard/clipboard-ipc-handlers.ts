@@ -12,6 +12,7 @@ import { PATH_ACCESS_DENIED_MESSAGE } from '../../ipc/filesystem/access/filesyst
 import { isENOENT } from '../../filesystem/local-file-io/filesystem-path-containment'
 import {
   assertTrustedClipboardSender,
+  assertTrustedClipboardImagePasteSender,
   assertTrustedClipboardTextSender
 } from './clipboard-ipc-sender-trust'
 import {
@@ -187,7 +188,7 @@ export function registerClipboardHandlers(
   ipcMain.handle(
     'clipboard:saveImageAsTempFile',
     async (event, args?: SaveClipboardImageAsTempFileArgs) => {
-      assertTrustedClipboardSender(event)
+      assertTrustedClipboardImagePasteSender(event, args)
       const reader = clipboardFormatSnapshot()
       const source = await readClipboardImageSource(reader)
       if (!source) {
