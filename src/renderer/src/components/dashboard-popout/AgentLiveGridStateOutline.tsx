@@ -22,12 +22,12 @@ export function AgentLiveGridStateOutline({
       className={cn(
         'pointer-events-none absolute inset-0 z-10 rounded-[inherit] border-2',
         failed
-          ? 'border-destructive/70 bg-destructive/[0.025]'
+          ? 'border-destructive/70'
           : attention
             ? 'border-agent-question/70'
             : state === 'done'
               ? 'border-status-success/70'
-              : 'border-agent-working/25 bg-agent-working/[0.025]'
+              : 'border-agent-working/25'
       )}
     />
   )
