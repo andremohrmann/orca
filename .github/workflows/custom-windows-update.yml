@@ -85,6 +85,8 @@ jobs:
 
       - name: Validate and build installer
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $mergeOptions = @()
           if ('${{ github.event_name }}' -eq 'push') {

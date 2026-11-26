@@ -230,13 +230,12 @@ function Resolve-DeletedWorkflowMergeConflicts {
 
 function Set-CustomBuildVersion {
   $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
-  $match = [regex]::Match($package.version, '^(\d+)\.(\d+)\.(\d+)')
-  if (!$match.Success) {
-    throw "package.json version '$($package.version)' is not a supported semver base."
-  }
-  $patch = [int]$match.Groups[3].Value + 1
-  $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmss')
-  $version = "$($match.Groups[1].Value).$($match.Groups[2].Value).$patch-custom.$stamp"
+  $upstreamRelease = Invoke-NativeOutput gh @(
+    'release', 'view', '--repo', 'stablyai/orca', '--json', 'tagName', '--jq', '.tagName'
+  )
+  $version = Invoke-NativeOutput node @(
+    'config/scripts/release/versioning/custom-build-version.mjs', $package.version, $upstreamRelease
+  )
   $env:ORCA_LOCAL_BUILD_VERSION = $version
   Write-Host "`n==> Custom update version $version"
 }
@@ -355,6 +354,7 @@ if (!$SkipValidation) {
     'src/shared/dashboard-native-ui-fields.test.ts',
     'src/main/updater/releases/updater-feed-policy.test.ts',
     'config/scripts/custom-fork/merge-comparison.test.mjs',
+    'config/scripts/release/versioning/custom-build-version.test.mjs',
     'src/shared/update-feed-info.test.ts'
   )
 }

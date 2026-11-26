@@ -32,6 +32,11 @@ Use pinned Corepack pnpm, Node 24 and the repository's Bun version. Run the chan
 gate against the experiment's starting commit after final edits. Do not replace
 frozen installs with lockfile regeneration. Candidate CI builds, packages and runs
 the hidden packaged-startup smoke without advancing production or publishing a release.
+Custom version stamping uses the published stable release as well as package.json:
+upstream main can retain an old package version while stable releases advance on a
+separate branch. The existing upstream dev-channel resolver chooses the next patch;
+the custom suffix keeps this a distinct fork build. Failure to read the stable tag
+stops stamping instead of silently emitting an obsolete version.
 
 The upstream cross-version wire contracts remain an explicit manual runner in this
 fork because the stock dedicated workflows are intentionally removed:

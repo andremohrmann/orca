@@ -58,6 +58,8 @@ jobs:
 
       - name: Validate and build candidate without publishing
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ./config/scripts/build-custom-orca-update.ps1 `
             -Branch custom/orca-conflict-reduction `
