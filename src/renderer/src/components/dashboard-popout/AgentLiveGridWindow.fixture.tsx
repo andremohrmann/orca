@@ -4,7 +4,11 @@ import type { DashboardCard } from '../../../../shared/agent-status/presentation
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridStateOutline } from './AgentLiveGridStateOutline'
 
-function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.JSX.Element {
+function Window({
+  state
+}: {
+  state: 'attention' | 'done' | 'working' | 'idle'
+}): React.JSX.Element {
   const [pinned, setPinned] = useState(false)
   const card: DashboardCard = {
     paneKey: state,
@@ -36,7 +40,9 @@ function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.J
             ? 'Completed build'
             : state === 'attention'
               ? 'Waiting for input'
-              : 'Updating upstream'
+              : state === 'working'
+                ? 'Updating upstream'
+                : 'Idle terminal'
         }
         subtitle=""
         editingPaneKey={null}
@@ -57,18 +63,21 @@ function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.J
           ? '$ pnpm build\nBuild complete.\n$'
           : state === 'attention'
             ? '$ deploy\nContinue? [y/N]'
-            : '$ git fetch stablyai\nReceiving objects…'}
+            : state === 'working'
+              ? '$ git fetch stablyai\nReceiving objects…'
+              : '$\nReady for a task.'}
       </pre>
     </section>
   )
 }
 export const states = defineFixture({
-  width: 1140,
+  width: 1440,
   render: () => (
-    <div className="grid grid-cols-3 gap-2 p-2">
+    <div className="grid grid-cols-4 gap-2 p-2">
       <Window state="attention" />
       <Window state="done" />
       <Window state="working" />
+      <Window state="idle" />
     </div>
   ),
   interact: (frame) => {
@@ -79,3 +88,4 @@ export const states = defineFixture({
   }
 })
 export const narrow = defineFixture({ width: 360, render: () => <Window state="done" /> })
+export const narrowWorking = defineFixture({ width: 360, render: () => <Window state="working" /> })
