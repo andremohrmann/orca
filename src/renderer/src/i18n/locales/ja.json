@@ -22492,6 +22492,10 @@
       "ssh": "SSH ホスト",
       "remoteNamed": "リモート Orca ホスト · {{host}}",
       "remote": "リモート Orca ホスト"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -26756,7 +26760,5 @@
     "moveLeft": "左へ移動",
     "moveRight": "右へ移動",
     "reset": "タブの順序をリセット"
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

@@ -22333,6 +22333,10 @@
       "ssh": "Hôte SSH",
       "remoteNamed": "Hôte Orca distant · {{host}}",
       "remote": "Hôte Orca distant"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -26221,7 +26225,5 @@
     "moveLeft": "Déplacer vers la gauche",
     "moveRight": "Déplacer vers la droite",
     "reset": "Réinitialiser l’ordre des onglets"
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

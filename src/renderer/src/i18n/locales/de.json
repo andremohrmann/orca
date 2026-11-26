@@ -22242,6 +22242,10 @@
       "ssh": "SSH-Host",
       "remoteNamed": "Entfernter Orca-Host · {{host}}",
       "remote": "Entfernter Orca-Host"
+    },
+    "live": {
+      "pin": "Fenster an dieser Position anheften",
+      "unpin": "Fenster lösen"
     }
   },
   "dashboard": {
@@ -25747,7 +25751,5 @@
     "moveLeft": "Nach links verschieben",
     "moveRight": "Nach rechts verschieben",
     "reset": "Tab-Reihenfolge zurücksetzen"
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

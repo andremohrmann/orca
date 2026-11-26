@@ -1214,6 +1214,10 @@
       "ssh": "Host SSH",
       "remoteNamed": "Host Orca remoto · {{host}}",
       "remote": "Host Orca remoto"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "browser": {
@@ -26760,7 +26764,5 @@
     "moveLeft": "Mover para a esquerda",
     "moveRight": "Mover para a direita",
     "reset": "Restaurar ordem das abas"
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

@@ -23639,6 +23639,10 @@
       "ssh": "SSH 호스트",
       "remoteNamed": "원격 Orca 호스트 · {{host}}",
       "remote": "원격 Orca 호스트"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -29052,7 +29056,5 @@
       "badJson": "붙여넣은 JSON을 확인하세요. 해석할 수 없습니다.",
       "none": "Orca가 추가할 수 있는 서버를 찾지 못했습니다. SSE 서버, 자체 OAuth 클라이언트나 도구 필터가 있는 서버, 환경에서 읽는 값(${VAR})은 지원하지 않습니다."
     }
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

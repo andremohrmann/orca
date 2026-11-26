@@ -21999,6 +21999,10 @@
       "sshNamed": "Host SSH · {{host}}",
       "remoteNamed": "Host remoto de Orca · {{host}}",
       "remote": "Host remoto de Orca"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -26194,7 +26198,5 @@
     "moveLeft": "Mover a la izquierda",
     "moveRight": "Mover a la derecha",
     "reset": "Restablecer el orden de las pestañas"
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

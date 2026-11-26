@@ -23570,6 +23570,10 @@
       "ssh": "SSH 主机",
       "remoteNamed": "远程 Orca 主机 · {{host}}",
       "remote": "远程 Orca 主机"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -30911,7 +30915,5 @@
       "none": "Orca 未找到可添加的服务器。SSE 服务器、自带 OAuth 客户端或工具筛选器的服务器，以及从环境读取的值（${VAR}）都不支持。",
       "unsupported": "这个服务器用了 SSE、自带的 OAuth 客户端，或从环境读取的值，Orca 无法按原样添加。"
     }
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

@@ -53,7 +53,6 @@ export function AgentLiveGrid({
   const containerRef = useRef<HTMLDivElement>(null)
   const tileRefs = useRef(new Map<string, HTMLElement>())
   const draggedPaneKeyRef = useRef<string | null>(null)
-  const cancelRenameRef = useRef(false)
   const restoredAtByPaneKeyRef = useRef(new Map<string, number>())
   const autoMinimizeStateRef = useRef<{
     visibleOrderedCards: DashboardCard[]
@@ -203,17 +202,15 @@ export function AgentLiveGrid({
     persistOrder(next)
   }
   const beginRename = (card: DashboardCard): void => {
-    cancelRenameRef.current = false
     setNameDraft(windowTitle(card))
     setEditingPaneKey(card.paneKey)
   }
-  const finishRename = (): void => {
+  const finishRename = (canceled = false): void => {
     if (!editingPaneKey) {
       return
     }
     const name = nameDraft.trim().slice(0, 128)
     const card = cards.find((item) => item.paneKey === editingPaneKey)
-    const canceled = cancelRenameRef.current
     saveLayout((current) => ({
       ...current,
       names: canceled || !name ? current.names : { ...current.names, [editingPaneKey]: name }
@@ -221,7 +218,6 @@ export function AgentLiveGrid({
     if (!canceled && name && card) {
       onRenameWorkspace(card.worktreeId, name)
     }
-    cancelRenameRef.current = false
     setEditingPaneKey(null)
   }
   const toggleSetValue = (key: 'minimized' | 'hidden', paneKey: string, present: boolean): void => {
@@ -365,7 +361,6 @@ export function AgentLiveGrid({
                   setNameDraft={setNameDraft}
                   beginRename={beginRename}
                   finishRename={finishRename}
-                  cancelRenameRef={cancelRenameRef}
                   onDragStart={(event) => {
                     draggedPaneKeyRef.current = card.paneKey
                     event.dataTransfer.effectAllowed = 'move'

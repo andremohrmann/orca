@@ -38,8 +38,7 @@ type AgentLiveGridHeaderProps = {
   nameDraft: string
   setNameDraft: (value: string) => void
   beginRename: (card: DashboardCard) => void
-  finishRename: () => void
-  cancelRenameRef: React.MutableRefObject<boolean>
+  finishRename: (canceled?: boolean) => void
   onDragStart: (event: DragEvent<HTMLElement>) => void
   onDragEnd: () => void
   onOpenTerminal: (card: DashboardCard) => void
@@ -87,7 +86,7 @@ export function AgentLiveGridHeader(props: AgentLiveGridHeaderProps): React.JSX.
           autoFocus
           value={props.nameDraft}
           onChange={(event) => props.setNameDraft(event.target.value)}
-          onBlur={props.finishRename}
+          onBlur={() => props.finishRename()}
           onPointerDown={(event) => event.stopPropagation()}
           onKeyDown={(event) => {
             event.stopPropagation()
@@ -95,8 +94,7 @@ export function AgentLiveGridHeader(props: AgentLiveGridHeaderProps): React.JSX.
               props.finishRename()
             }
             if (event.key === 'Escape') {
-              props.cancelRenameRef.current = true
-              props.finishRename()
+              props.finishRename(true)
             }
           }}
           aria-label={translate('dashboardPopout.live.windowName', 'Window name')}

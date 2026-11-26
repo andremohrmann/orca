@@ -24371,6 +24371,10 @@
       "ssh": "SSH sunucusu",
       "remoteNamed": "Uzak Orca ana makinesi · {{host}}",
       "remote": "Uzak Orca ana makinesi"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -31031,7 +31035,5 @@
       "differingState": "Orca bu klasör için WSL yolu ile {{drivePath}} konumunda farklı bilgiler kaydetmiş. Hiçbir değişiklik yapılmadı.",
       "projectSplit": "Bu projede dönüşüme dâhil olmayan bir repository de var. Hiçbir değişiklik yapılmadı."
     }
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

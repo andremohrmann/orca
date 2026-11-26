@@ -22963,6 +22963,10 @@
       "ssh": "SSH-хост",
       "remoteNamed": "Удалённый хост Orca · {{host}}",
       "remote": "Удалённый хост Orca"
+    },
+    "live": {
+      "pin": "Pin window to this position",
+      "unpin": "Unpin window"
     }
   },
   "dashboard": {
@@ -26553,7 +26557,5 @@
     "moveLeft": "Переместить влево",
     "moveRight": "Переместить вправо",
     "reset": "Сбросить порядок вкладок"
-  },
-  "dashboardPopout.live.pin": "Pin window to this position",
-  "dashboardPopout.live.unpin": "Unpin window"
+  }
 }

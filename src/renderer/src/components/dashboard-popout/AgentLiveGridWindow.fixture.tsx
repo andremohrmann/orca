@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { defineFixture } from '../../component-fixtures/component-fixture'
 import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
@@ -6,7 +6,6 @@ import { AgentLiveGridStateOutline } from './AgentLiveGridStateOutline'
 
 function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.JSX.Element {
   const [pinned, setPinned] = useState(false)
-  const cancelRenameRef = useRef(false)
   const card: DashboardCard = {
     paneKey: state,
     ptyId: state,
@@ -45,7 +44,6 @@ function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.J
         setNameDraft={() => {}}
         beginRename={() => {}}
         finishRename={() => {}}
-        cancelRenameRef={cancelRenameRef}
         onDragStart={() => {}}
         onDragEnd={() => {}}
         onOpenTerminal={() => {}}
