@@ -6,6 +6,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import * as esbuild from 'esbuild'
+import { localeCatalogPlugin } from './locale-catalog-module.mjs'
 import {
   MOBILE_WEB_BUNDLE_ENTRYPOINT,
   contentAssetName,
@@ -321,6 +322,7 @@ export function mobileWebAppBuildOptions(
       lucideBarrelPlugin,
       reactNativeSvgWebPlugin,
       hairlineDevicePixelPlugin,
+      localeCatalogPlugin,
       packageBuildPlugin
     ],
     resolveExtensions: [
