@@ -1,39 +1,36 @@
-import { noteTerminalWebglAtlasTyping } from '@/lib/pane-manager/terminal-rendering/terminal-webgl-atlas-rebuild-interaction'
 import type { Terminal } from '@xterm/xterm'
 import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { executeTerminalPastePlan } from '@/components/terminal-pane/input/paste/terminal-paste-executor'
 import { planTerminalPasteWithYield } from '@/components/terminal-pane/input/paste/terminal-paste-coordinator'
-import type { TerminalPasteTextOptions } from '@/components/terminal-pane/input/paste/terminal-paste-model'
 import { resolveTerminalPasteRuntime } from '@/components/terminal-pane/input/paste/terminal-paste-runtime'
+import { TERMINAL_PASTE_MAX_BYTES } from '@/components/terminal-pane/input/paste/terminal-paste-limits'
 import { pasteTerminalText } from '@/components/terminal-pane/input/paste/terminal-bracketed-paste'
-import { pasteTerminalClipboard } from '@/components/terminal-pane/clipboard/terminal-clipboard-paste'
 import { isTerminalPanePasteFocusCurrent } from '@/components/terminal-pane/input/paste/terminal-paste-target-state'
-import { getRemoteRuntimePtyEnvironmentId } from '@/runtime/hosted-terminals/identity/remote-runtime-pty-owner'
-import { parseAppSshPtyId } from '../../../../../shared/remote-runtime/ssh/ssh-pty-id'
-import type {
-  DashboardCardTerminalInput,
-  DashboardCardTerminalLinks
-} from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { DashboardCardTerminalInput } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
+import { noteTerminalWebglAtlasTyping } from '@/lib/pane-manager/terminal-rendering/terminal-webgl-atlas-rebuild-interaction'
 
 export type PreviewTerminalPasteSource = 'keyboard' | 'app-menu' | 'right-click'
 
-/**
- * Clipboard paste for the preview terminal, on the pane's coordinator: large
- * pastes stream as bounded IPC payloads, and the plan re-checks that the same
- * terminal still owns focus between chunks.
- */
+/** Stream bounded paste chunks through the pane coordinator, rechecking focus ownership between chunks. */
 export function createPreviewClipboardPaster(deps: {
+  /** Names the session for paste planning; a remote-runtime pty id routes as remote. */
   ptyId: string
+  /** Where pasted bytes go when they bypass xterm, e.g. a bracketed paste's closing marker. */
+  writeInput: (data: string) => boolean | Promise<boolean>
   container: HTMLElement
   getTerminal: () => Terminal | null
   getTerminalInput: () => DashboardCardTerminalInput | null
-  getTerminalLinks: () => DashboardCardTerminalLinks | null
-  writeInput: (data: string) => boolean | Promise<boolean>
   isDisposed: () => boolean
 }): (activeElementAtDispatch: Element | null, source: PreviewTerminalPasteSource) => Promise<void> {
   return async (activeElementAtDispatch, source) => {
+    let text: string
+    try {
+      text = await window.api.ui.readClipboardText({ maxBytes: TERMINAL_PASTE_MAX_BYTES })
+    } catch {
+      return
+    }
     const pasteTerminal = deps.getTerminal()
-    if (!pasteTerminal) {
+    if (!pasteTerminal || !text) {
       return
     }
     const targetIsCurrent = (): boolean =>
@@ -48,54 +45,32 @@ export function createPreviewClipboardPaster(deps: {
     if (!targetIsCurrent()) {
       return
     }
-    const pasteText = async (
-      text: string,
-      options?: TerminalPasteTextOptions
-    ): Promise<boolean> => {
-      const terminalInput = deps.getTerminalInput()
-      const platform = terminalInput?.hostPlatform ?? getShortcutPlatform()
-      const plan = await planTerminalPasteWithYield({
-        text,
-        source,
-        target: {
-          kind: 'terminal',
-          paneId: 0,
-          leafId: deps.ptyId,
-          ptyId: deps.ptyId,
-          runtime: resolveTerminalPasteRuntime({
-            platform,
-            ptyId: deps.ptyId
-          })
-        },
-        forceBracketedPaste: options?.forceBracketedPaste,
-        forceBracketedPasteForMultiline:
-          options?.forceBracketedPasteForMultiline ??
-          terminalInput?.forceBracketedMultilineTextPaste,
-        windowsInputRecordNewline:
-          options?.windowsInputRecordNewline ?? terminalInput?.windowsInputRecordPasteNewline,
-        terminalBracketedPasteMode: pasteTerminal.modes.bracketedPasteMode
-      })
-      const execution = await executeTerminalPastePlan(plan, {
-        // Why: stream large pastes so neither terminal transport receives one huge payload.
-        pasteText: (value, pasteOptions) => pasteTerminalText(pasteTerminal, value, pasteOptions),
-        writePty: (data) => {
-          noteTerminalWebglAtlasTyping()
-          return deps.writeInput(data)
-        },
-        isTargetCurrent: targetIsCurrent,
-        // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
-        canContinue: () => true
-      })
-      return execution.status === 'pasted'
-    }
-    const links = deps.getTerminalLinks()
-    await pasteTerminalClipboard({
-      readClipboardText: window.api.ui.readClipboardText,
-      saveClipboardImageAsTempFile: window.api.ui.saveClipboardImageAsTempFile,
-      pasteText,
-      connectionId: parseAppSshPtyId(deps.ptyId)?.connectionId ?? null,
-      runtimeEnvironmentId:
-        links?.runtimeEnvironmentId ?? getRemoteRuntimePtyEnvironmentId(deps.ptyId)
+    const terminalInput = deps.getTerminalInput()
+    const platform = terminalInput?.hostPlatform ?? getShortcutPlatform()
+    const plan = await planTerminalPasteWithYield({
+      text,
+      source,
+      target: {
+        kind: 'terminal',
+        paneId: 0,
+        leafId: deps.ptyId,
+        ptyId: deps.ptyId,
+        runtime: resolveTerminalPasteRuntime({ platform, ptyId: deps.ptyId })
+      },
+      forceBracketedPasteForMultiline: terminalInput?.forceBracketedMultilineTextPaste,
+      windowsInputRecordNewline: terminalInput?.windowsInputRecordPasteNewline,
+      terminalBracketedPasteMode: pasteTerminal.modes.bracketedPasteMode
+    })
+    await executeTerminalPastePlan(plan, {
+      pasteText: (text, options) => pasteTerminalText(pasteTerminal, text, options),
+      writePty: (data) => {
+        // Chunked pastes skip xterm's onData; they still hold atlas rebuilds like typing.
+        noteTerminalWebglAtlasTyping()
+        return deps.writeInput(data)
+      },
+      isTargetCurrent: targetIsCurrent,
+      // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
+      canContinue: () => true
     })
   }
 }

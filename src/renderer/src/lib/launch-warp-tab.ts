@@ -1,6 +1,7 @@
 import { readRuntimeStatuses } from '@/store/slices/runtime-status/views/runtime-status-owner'
 import { useAppStore } from '@/store'
 import { toast } from 'sonner'
+import { translate } from '@/i18n/i18n'
 import { parseExecutionHostId } from '../../../shared/execution-host/execution-host'
 import { resolveTerminalInputHostPlatform } from '@/components/terminal-pane/input/terminal-input-host-platform'
 import {
@@ -36,7 +37,9 @@ export function launchWarpTab(
     (host?.kind === 'runtime' && !statuses.get(host.environmentId)?.status?.hostPlatform) ||
     (host?.kind === 'ssh' && !sshStates?.get(host.targetId)?.remotePlatform)
   ) {
-    toast.error('Connect to the workspace host before opening a Warp tab.')
+    toast.error(
+      translate('tabs.warpConnectHost', 'Connect to the workspace host before opening a Warp tab.')
+    )
     return
   }
   const platform = resolveTerminalInputHostPlatform({
@@ -62,7 +65,7 @@ export function launchWarpTab(
     groupId,
     command: {
       id: 'warp',
-      label: 'Warp',
+      label: translate('tabs.warp', 'Warp'),
       action: 'terminal-command',
       command: useWindowsCli ? WINDOWS_WARP_AGENT_COMMAND : 'warp',
       appendEnter: true

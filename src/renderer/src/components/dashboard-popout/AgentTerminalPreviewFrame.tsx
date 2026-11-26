@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/class-names'
 import { terminalPreviewUnavailableMessage } from '../dashboard/terminal-preview/terminal-preview-unavailable-message'
 import type { usePreviewTerminalTextMode } from './use-preview-terminal-text-mode'
+import { useTranslate } from '@/i18n/use-translate'
 
 export function AgentTerminalPreviewFrame({
   className,
@@ -27,6 +28,7 @@ export function AgentTerminalPreviewFrame({
   contextMenu?: ReactNode
   textPreview?: ReturnType<typeof usePreviewTerminalTextMode>
 }): React.JSX.Element {
+  const t = useTranslate()
   const { frameRef, textRef, focused, text } = textPreview ?? {}
   return (
     <div
@@ -56,7 +58,7 @@ export function AgentTerminalPreviewFrame({
           className="absolute inset-0 flex items-center justify-center px-2.5 py-8 text-center text-[11px] text-muted-foreground transition-colors hover:bg-accent/35 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
           onClick={onClosedActivate}
         >
-          {terminalPreviewUnavailableMessage({ ptyId })}
+          {terminalPreviewUnavailableMessage({ ptyId }, t)}
         </button>
       ) : null}
       {textPreview && !focused && !ptyGone ? (

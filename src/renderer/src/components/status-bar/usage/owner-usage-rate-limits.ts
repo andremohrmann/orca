@@ -40,7 +40,7 @@ type UsageProviderKey = {
 }[keyof RateLimitState]
 
 // Why a Record: a new provider is a compile error here, not a silent leak of local numbers.
-const USAGE_PROVIDER_IDS: Record<UsageProviderKey, ProviderRateLimits['provider']> = {
+export const USAGE_PROVIDER_IDS: Record<UsageProviderKey, ProviderRateLimits['provider']> = {
   claude: 'claude',
   codex: 'codex',
   opencodeGo: 'opencode-go',

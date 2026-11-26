@@ -45,11 +45,17 @@ export type TabCreateMenuOptionsContext = {
   windowsShellEntries?: readonly { label: string; shell: BuiltInWindowsTerminalShell }[]
 }
 
-export const WARP_TAB_CREATE_OPTION: TabCreateMenuOption = {
-  id: 'new-warp',
-  kind: 'new-warp',
-  label: 'Warp',
-  keywords: ['warp', 'warp cli', 'warp.dev']
+export function warpTabCreateOption(t: Translate): TabCreateMenuOption {
+  return {
+    id: 'new-warp',
+    kind: 'new-warp',
+    label: t('tabs.warp', 'Warp'),
+    keywords: [
+      t('tabs.warp', 'Warp'),
+      t('tabs.warpCli', 'Warp CLI'),
+      t('tabs.warpSite', 'warp.dev')
+    ]
+  }
 }
 
 export const TAB_CREATE_MENU_QUERY_MAX_BYTES = 2 * 1024
@@ -122,7 +128,7 @@ export function buildTabCreateMenuOptions(
     })
   }
 
-  options.push(WARP_TAB_CREATE_OPTION)
+  options.push(warpTabCreateOption(t))
 
   if (context.hasNewBrowser) {
     const label = t('auto.components.tab.bar.TabBar.4833fb2cbe', 'New Browser Tab')

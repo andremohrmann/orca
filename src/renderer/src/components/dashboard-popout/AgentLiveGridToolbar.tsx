@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import type {
   AgentDashboardLiveDensity,
   AgentDashboardLiveLayout,
@@ -31,30 +32,30 @@ type AgentLiveGridToolbarProps = {
   onToggleChildAgents: () => void
 }
 
-function labelForDensity(density: AgentDashboardLiveDensity): string {
+function labelForDensity(density: AgentDashboardLiveDensity, t: Translate = translate): string {
   if (density === 'compact') {
-    return translate('dashboardPopout.live.densityCompact', 'Compact')
+    return t('dashboardPopout.live.densityCompact', 'Compact')
   }
   if (density === 'comfortable') {
-    return translate('dashboardPopout.live.densityComfortable', 'Comfortable')
+    return t('dashboardPopout.live.densityComfortable', 'Comfortable')
   }
   if (density === 'large') {
-    return translate('dashboardPopout.live.densityLarge', 'Large')
+    return t('dashboardPopout.live.densityLarge', 'Large')
   }
-  return translate('dashboardPopout.live.densityAuto', 'Auto')
+  return t('dashboardPopout.live.densityAuto', 'Auto')
 }
 
-function labelForSort(sort: AgentDashboardLiveSort): string {
+function labelForSort(sort: AgentDashboardLiveSort, t: Translate = translate): string {
   if (sort === 'attention') {
-    return translate('dashboardPopout.live.sortAttention', 'Needs attention')
+    return t('dashboardPopout.live.sortAttention', 'Needs attention')
   }
   if (sort === 'workspace') {
-    return translate('dashboardPopout.live.sortWorkspace', 'Workspace')
+    return t('dashboardPopout.live.sortWorkspace', 'Workspace')
   }
   if (sort === 'recent') {
-    return translate('dashboardPopout.live.sortRecent', 'Recent activity')
+    return t('dashboardPopout.live.sortRecent', 'Recent activity')
   }
-  return translate('dashboardPopout.live.sortManual', 'Manual')
+  return t('dashboardPopout.live.sortManual', 'Manual')
 }
 
 export function AgentLiveGridToolbar({
@@ -68,49 +69,46 @@ export function AgentLiveGridToolbar({
   onToggleClosed,
   onToggleChildAgents
 }: AgentLiveGridToolbarProps): React.JSX.Element {
+  const t = useTranslate()
   return (
     <div className="flex h-7 shrink-0 items-center gap-1">
       <Button type="button" variant="ghost" size="xs" onClick={onReset}>
         <RotateCcw className="size-3" />
-        {translate('dashboardPopout.live.resetLayout', 'Reset layout')}
+        {t('dashboardPopout.live.resetLayout', 'Reset layout')}
       </Button>
       {hiddenCount > 0 ? (
         <Button type="button" variant="ghost" size="xs" onClick={onShowHidden}>
           <Eye className="size-3" />
-          {translate('dashboardPopout.live.showHidden', 'Show hidden')}
+          {t('dashboardPopout.live.showHidden', 'Show hidden')}
         </Button>
       ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="ghost" size="xs" className="ml-auto">
             <MoreHorizontal className="size-3" />
-            {translate('dashboardPopout.live.options', 'Live options')}
+            {t('dashboardPopout.live.options', 'Live options')}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>
-            {translate('dashboardPopout.live.sortBy', 'Sort by')}
-          </DropdownMenuLabel>
+          <DropdownMenuLabel>{t('dashboardPopout.live.sortBy', 'Sort by')}</DropdownMenuLabel>
           {SORTS.map((sort) => (
             <DropdownMenuCheckboxItem
               key={sort}
               checked={(layout.sort ?? 'manual') === sort}
               onCheckedChange={() => onApplySort(sort)}
             >
-              {labelForSort(sort)}
+              {labelForSort(sort, t)}
             </DropdownMenuCheckboxItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuLabel>
-            {translate('dashboardPopout.live.density', 'Density')}
-          </DropdownMenuLabel>
+          <DropdownMenuLabel>{t('dashboardPopout.live.density', 'Density')}</DropdownMenuLabel>
           {DENSITIES.map((nextDensity) => (
             <DropdownMenuCheckboxItem
               key={nextDensity}
               checked={density === nextDensity}
               onCheckedChange={() => onSetDensity(nextDensity)}
             >
-              {labelForDensity(nextDensity)}
+              {labelForDensity(nextDensity, t)}
             </DropdownMenuCheckboxItem>
           ))}
           <DropdownMenuSeparator />
@@ -118,12 +116,12 @@ export function AgentLiveGridToolbar({
             checked={layout.hideChildAgents === true}
             onCheckedChange={onToggleChildAgents}
           >
-            {translate('dashboardPopout.live.hideChildAgents', 'Hide child-agent terminals')}
+            {t('dashboardPopout.live.hideChildAgents', 'Hide child-agent terminals')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuItem onClick={onToggleClosed}>
             {layout.hideClosed
-              ? translate('dashboardPopout.live.showClosed', 'Show closed panes')
-              : translate('dashboardPopout.live.hideClosed', 'Hide closed panes')}
+              ? t('dashboardPopout.live.showClosed', 'Show closed panes')
+              : t('dashboardPopout.live.hideClosed', 'Hide closed panes')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

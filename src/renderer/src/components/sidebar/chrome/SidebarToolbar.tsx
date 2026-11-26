@@ -117,8 +117,8 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
             {boardLabelSuppressed ? null : (
               <TooltipContent side="top" sideOffset={4}>
                 {workspaceBoardOpen
-                  ? t('auto.components.sidebar.SidebarToolbar.a30e34eb5c', 'Close workspace board')
-                  : t('auto.components.sidebar.SidebarToolbar.49f62c5665', 'Workspace board')}
+                  ? t('dashboardPopout.workspaceBoard.close', 'Close workspace board')
+                  : t('dashboardPopout.workspaceBoard.open', 'Workspace board')}
               </TooltipContent>
             )}
           </Tooltip>

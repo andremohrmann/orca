@@ -7,7 +7,8 @@ import type {
   DashboardFilterOption
 } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { WorkspaceStatus } from '../../../../shared/worktree/types'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 import { cn } from '@/lib/class-names'
 import { getAgentLiveGridColumns, getInitialLiveGridSize } from './agent-live-grid-layout'
 import {
@@ -50,6 +51,7 @@ export function AgentLiveGrid({
   onRenameWorkspace,
   statusOptions
 }: AgentLiveGridProps): React.JSX.Element {
+  const translate = useTranslate()
   const containerRef = useRef<HTMLDivElement>(null)
   const tileRefs = useRef(new Map<string, HTMLElement>())
   const draggedPaneKeyRef = useRef<string | null>(null)
@@ -139,6 +141,9 @@ export function AgentLiveGrid({
   }, [autoMinimizeAfterMinutes, hiddenPaneKeys, minimizedPaneKeys, visibleOrderedCards])
 
   useEffect(() => {
+    if (autoMinimizeAfterMinutes <= 0 || visibleOrderedCards.length === 0) {
+      return
+    }
     const minimizeInactivePanes = (): void => {
       const current = autoMinimizeStateRef.current
       if (current.afterMinutes <= 0) {
@@ -163,9 +168,8 @@ export function AgentLiveGrid({
         return { ...current, minimized: [...next] }
       })
     }
-    const interval = window.setInterval(minimizeInactivePanes, 30_000)
-    return () => window.clearInterval(interval)
-  }, [saveLayout])
+    return installWindowVisibilityInterval({ run: minimizeInactivePanes, intervalMs: 30_000 })
+  }, [autoMinimizeAfterMinutes, saveLayout, visibleOrderedCards.length])
 
   const windowTitle = (card: DashboardCard): string =>
     layout.names?.[card.paneKey] ||

@@ -1,4 +1,5 @@
 import React from 'react'
+import { launchWarpTab } from '@/lib/launch-warp-tab'
 import { WarpIcon } from '../../icons/WarpIcon'
 import { FilePlus, FileText, Globe, Smartphone, TerminalSquare } from 'lucide-react'
 import { useTranslate } from '@/i18n/use-translate'
@@ -37,7 +38,6 @@ export function TabBarStaticCreateMenu({
   windowsShellEntries,
   defaultWindowsPowerShellImplementation,
   pwshAvailable,
-  onNewWarpTab,
   queueNewActiveTerminalFocusAfterNewTabMenuClose
 }: {
   props: TabBarProps
@@ -53,7 +53,6 @@ export function TabBarStaticCreateMenu({
     typeof resolveWindowsPowerShellImplementationSetting
   >
   pwshAvailable: boolean
-  onNewWarpTab: () => void
   queueNewActiveTerminalFocusAfterNewTabMenuClose: () => void
 }): React.ReactNode {
   const t = useTranslate()
@@ -191,7 +190,10 @@ export function TabBarStaticCreateMenu({
           id: 'warp',
           label: t('tabs.warp', 'Warp'),
           icon: <WarpIcon className={ICON_CLASS} />,
-          run: onNewWarpTab
+          run: () => {
+            queueNewActiveTerminalFocusAfterNewTabMenuClose()
+            launchWarpTab(props.worktreeId, groupId)
+          }
         }
       ]
     : []

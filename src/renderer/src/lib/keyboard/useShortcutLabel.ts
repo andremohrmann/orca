@@ -5,6 +5,7 @@ import { isDoubleTapBinding } from '../../../../shared/keybindings/normalization
 import type { KeybindingActionId, KeybindingOverrides } from '../../../../shared/keybindings/types'
 import { getShortcutPlatform } from './shortcut-platform'
 import { localizeUnassignedDisplay } from '@/i18n/unassigned-label'
+import type { Translate } from '@/i18n/use-translate'
 
 export type ShortcutKeyComboDetails = {
   keys: string[]
@@ -61,14 +62,16 @@ export function formatShortcutLabel(
 
 export function formatPrimaryShortcutLabel(
   actionId: KeybindingActionId,
-  overrides?: KeybindingOverrides
+  overrides?: KeybindingOverrides,
+  t?: Translate
 ): string {
   const platform = getShortcutPlatform()
   return localizeUnassignedDisplay(
     memoizeShortcut('primary', actionId, platform, overrides, () => {
       const [binding] = getEffectiveKeybindingsForAction(actionId, platform, overrides)
       return binding ? formatKeybindingList([binding], platform) : 'Unassigned'
-    })
+    }),
+    t
   )
 }
 

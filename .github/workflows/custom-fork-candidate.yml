@@ -1,0 +1,78 @@
+name: Custom fork candidate
+
+on:
+  push:
+    branches: [custom/orca-conflict-reduction]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: custom-fork-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'andremohrmann/orca'
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      ORCA_BACKGROUND_LAUNCH: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Enable pinned pnpm
+        run: |
+          npm install --global corepack@0.34.6
+          corepack enable
+      - name: Cache Windows installer tools
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tools = @(
+            @{ Tag = '7zip@1.0.0'; File = '7zip-win-x64.tar.gz'; Sha256 = 'be071f15bd6da2f78fe81c6ddef2009b0c4d8a51f36b780cb806c7e6df95e1b3' },
+            @{ Tag = 'nsis-resources-3.4.1'; File = 'nsis-resources-3.4.1.7z'; Sha256 = '593a9a92ef958321293ac6a2ee61e64bf1bd543142a5bd6b3d310709cc924103' }
+          )
+          foreach ($tool in $tools) {
+            $cacheDir = Join-Path $env:LOCALAPPDATA "electron-builder/Cache/$($tool.Tag)"
+            New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+            gh release download $tool.Tag `
+              --repo electron-userland/electron-builder-binaries `
+              --pattern $tool.File `
+              --dir $cacheDir `
+              --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "Could not download $($tool.File) through the GitHub release API."
+            }
+            $archive = Join-Path $cacheDir $tool.File
+            if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $tool.Sha256) {
+              throw "$($tool.File) checksum does not match electron-builder."
+            }
+          }
+
+      - name: Validate and build candidate without publishing
+        shell: pwsh
+        run: |
+          ./config/scripts/build-custom-orca-update.ps1 `
+            -Branch custom/orca-conflict-reduction `
+            -SkipUpstreamMerge `
+            -StampCustomVersion `
+            -UpdateOwner andremohrmann `
+            -UpdateRepo orca `
+            -OutputDir "$env:RUNNER_TEMP/orca-candidate"
+      - name: Save candidate installer
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-conflict-reduction-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/orca-candidate/orca-windows-setup.exe
+            ${{ runner.temp }}/orca-candidate/orca-windows-setup.exe.blockmap
+            ${{ runner.temp }}/orca-candidate/latest.yml

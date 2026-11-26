@@ -2,10 +2,7 @@
 import { Terminal, type ITerminalInitOnlyOptions, type ITerminalOptions } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
-import type {
-  DashboardCardTerminalInput,
-  DashboardCardTerminalLinks
-} from '../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { DashboardCardTerminalInput } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
 import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
 import { useAppStore } from '@/store/index'
@@ -14,7 +11,6 @@ import { subscribeToTerminalUserInput } from '@/components/terminal-pane/input/t
 import { noteTerminalWebglAtlasTyping } from '@/lib/pane-manager/terminal-rendering/terminal-webgl-atlas-rebuild-interaction'
 import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/clipboard/terminal-native-copy-gutter'
 import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
-import type { DashboardPreviewLinkSource } from '../dashboard/terminal-preview/links/dashboard-preview-http-actions'
 import type { PreviewTerminalLinkHandlers } from './rendering/preview-terminal-links'
 import { installPreviewTerminalCompatibility } from './rendering/preview-terminal-compatibility'
 import { createPreviewClipboardPaster } from './input/preview-terminal-paste'
@@ -37,9 +33,6 @@ export type StandaloneTerminalArgs = {
   getSettings: () => GlobalSettings | null
   getMacOptionAsAlt: () => MacOptionAsAlt
   getTerminalInput: () => DashboardCardTerminalInput | null
-  getTerminalLinks?: () => DashboardCardTerminalLinks | null
-  getLinkSource?: () => DashboardPreviewLinkSource | null | undefined
-  onBrowserForeground?: () => void
   linkHandlers?: PreviewTerminalLinkHandlers
   requestClose?: () => void
 }
@@ -66,10 +59,7 @@ export function openStandaloneTerminal(args: StandaloneTerminalArgs): Standalone
 
   const disposeCompatibility = installPreviewTerminalCompatibility(terminal, {
     getSettings: args.getSettings,
-    getTerminalLinks: args.getTerminalLinks,
-    getLinkSource: args.getLinkSource,
-    onBrowserForeground: args.onBrowserForeground,
-    linkHandlers: args.linkHandlers
+    ...(args.linkHandlers ? { linkHandlers: args.linkHandlers } : {})
   })
   const disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
 
@@ -101,7 +91,6 @@ export function openStandaloneTerminal(args: StandaloneTerminalArgs): Standalone
     container,
     getTerminal: () => (disposed ? null : terminal),
     getTerminalInput: args.getTerminalInput,
-    getTerminalLinks: args.getTerminalLinks ?? (() => null),
     isDisposed: () => disposed
   })
   const disposeKeyHandler = installPreviewTerminalKeyHandler({

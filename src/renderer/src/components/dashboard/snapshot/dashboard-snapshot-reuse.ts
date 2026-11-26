@@ -10,7 +10,7 @@ import type {
 import type { AgentStatusEntry } from '../../../../../shared/agent-status/contracts/agent-status-types'
 import type { AgentStatusProjection } from '@/store/slices/agent-status/projection/agent-status-projection'
 import type { DashboardAgentRow } from '../rows/dashboard-agent-row'
-import type { DashboardSnapshotInput } from './dashboard-snapshot-state'
+import type { DashboardSnapshotInput } from './build-dashboard-snapshot'
 import type { DashboardCardContext } from './dashboard-card-context'
 import { getTranslationScope } from '@/i18n/i18n'
 import type { ActiveDashboardWorkspace } from './dashboard-snapshot-workspaces'

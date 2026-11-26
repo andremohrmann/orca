@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { cn } from '@/lib/class-names'
 import { getWorkspaceStatusVisualMeta } from '@/components/sidebar/workspace-status/presentation/workspace-status'
 
@@ -24,16 +24,20 @@ export function DashboardWorkspaceStatusButton({
   onAssign: (status: WorkspaceStatus) => void
   variant?: 'icon' | 'pill'
 }): React.JSX.Element | null {
+  const t = useTranslate()
   if (!statuses || statuses.length === 0) {
     return null
   }
   const current = statuses.find((status) => status.id === currentStatusId) ?? statuses[0]
-  const meta = getWorkspaceStatusVisualMeta({
-    id: current.id,
-    label: current.label,
-    color: current.color
-  })
-  const label = translate('dashboardPopout.status.set', 'Set workspace status')
+  const meta = getWorkspaceStatusVisualMeta(
+    {
+      id: current.id,
+      label: current.label,
+      color: current.color
+    },
+    t
+  )
+  const label = t('dashboardPopout.status.set', 'Set workspace status')
 
   return (
     <DropdownMenu>
@@ -60,11 +64,14 @@ export function DashboardWorkspaceStatusButton({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-44">
         {statuses.map((status) => {
-          const statusMeta = getWorkspaceStatusVisualMeta({
-            id: status.id,
-            label: status.label,
-            color: status.color
-          })
+          const statusMeta = getWorkspaceStatusVisualMeta(
+            {
+              id: status.id,
+              label: status.label,
+              color: status.color
+            },
+            t
+          )
           return (
             <DropdownMenuCheckboxItem
               key={status.id}

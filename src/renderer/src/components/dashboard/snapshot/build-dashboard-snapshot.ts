@@ -1,4 +1,5 @@
-import type { DashboardSnapshotInput } from './dashboard-snapshot-state'
+import type { StructuredChatTabNames } from '@/runtime/native-chat/naming/structured-chat-tab-name'
+import type { AppState } from '@/store/types'
 import {
   DASHBOARD_MAX_MAP_WORKSPACES,
   type DashboardCard,
@@ -6,10 +7,14 @@ import {
   type DashboardWorkspace
 } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { RepoIcon } from '../../../../../shared/repository/appearance/repo-icon'
+import type { DashboardCardTerminalInputState } from './dashboard-card-terminal-input'
 import { readDashboardClientHost } from './dashboard-client-host'
 import { selectTerminalLayoutsForWorktree } from '../../sidebar/workspace-card/activity/worktree-agent-row-selectors'
 import { selectRuntimePaneTitlesForWorktree } from '../../sidebar/workspace-card/activity/worktree-card-status-inputs'
-import { resolveDashboardCardContext } from './dashboard-card-context'
+import {
+  resolveDashboardCardContext,
+  type DashboardCardContextState
+} from './dashboard-card-context'
 import {
   collectActiveDashboardWorkspaces,
   dashboardCardMapWorkspaceMetadata,
@@ -20,7 +25,6 @@ import { buildDashboardSnapshotCard } from './dashboard-snapshot-card'
 import { replaceDashboardCards } from './dashboard-card-changes'
 import { buildDashboardSnapshotFilterOptions } from './dashboard-snapshot-filter-options'
 import { groupSubagentsByParentPaneKey } from './dashboard-subagent-cards'
-import { buildDashboardUsageSnapshot } from '../dashboard-usage-snapshot'
 import type { Translate } from '@/i18n/use-translate'
 import { structuralValuesEqualIgnoringUndefined as equal } from '../../../../../shared/collections/structural-value-equality'
 import {
@@ -28,6 +32,36 @@ import {
   type DashboardSnapshotReuse,
   type DashboardWorkspaceBuild
 } from './dashboard-snapshot-reuse'
+
+/** Keep builder inputs as a Pick so tests need only construct the store slices read here. */
+export type DashboardSnapshotState = Pick<
+  AppState,
+  | 'repos'
+  | 'worktreesByRepo'
+  | 'tabsByWorktree'
+  | 'agentStatusByPaneKey'
+  | 'migrationUnsupportedByPtyId'
+  | 'terminalLayoutsByTabId'
+  | 'ptyIdsByTabId'
+  | 'runtimePaneTitlesByTabId'
+  | 'acknowledgedAgentsByPaneKey'
+  | 'settings'
+> &
+  Pick<AppState, 'runtimeAgentOrchestrationByPaneKey' | 'remoteAgentOrchestrationByHost'> &
+  DashboardCardContextState &
+  Partial<
+    DashboardCardTerminalInputState &
+      Pick<
+        AppState,
+        | 'runtimeEnvironments'
+        | 'sshTargetLabels'
+        | 'unifiedTabsByWorktree'
+        | 'activeWorktreeId'
+        | 'activeWorkspaceExecutionHostId'
+      >
+  >
+
+export type DashboardSnapshotInput = DashboardSnapshotState & { chatNames: StructuredChatTabNames }
 
 /** Reuse sidebar row/index derivation for serializable cards; fold terminal-less subagents into their spawning card. */
 export function buildDashboardSnapshot(
@@ -267,8 +301,7 @@ export function buildDashboardSnapshot(
       : {}),
     showIdle,
     filterOptions,
-    repoIconsByRepoId,
-    usage: buildDashboardUsageSnapshot(state)
+    repoIconsByRepoId
   }
   if (reuse) {
     reuse.snapshot = snapshot

@@ -158,7 +158,7 @@ function getWindowSectionLabel(
     case 'session':
       // Why: name the window by its length ("5h") when known, matching the roster and status bar.
       return section.window && section.window.windowMinutes > 0
-        ? formatWindowLabel(section.window.windowMinutes)
+        ? formatWindowLabel(section.window.windowMinutes, t)
         : t('auto.components.status.bar.tooltip.94038ad2fa', 'Session')
     case 'weekly':
       return t('auto.components.status.bar.tooltip.252c096536', 'Weekly')

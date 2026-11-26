@@ -1,6 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
-import type { DashboardCardTerminalLinks } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { GlobalSettings } from '../../../../../shared/settings/global-settings-types'
 import { activateOrcaTerminalUnicodeProvider } from '../../../../../shared/terminal/appearance/terminal-unicode-provider'
 import { installWindowsCtrlAltChordRepair } from '@/lib/pane-manager/terminal-protocol/terminal-windows-ctrl-alt-chord-classification'
@@ -12,7 +11,6 @@ import {
   installPreviewTerminalLinks,
   type PreviewTerminalLinkHandlers
 } from './preview-terminal-links'
-import type { DashboardPreviewLinkSource } from '../../dashboard/terminal-preview/links/dashboard-preview-http-actions'
 import { syncPreviewTerminalLigatures } from './preview-terminal-ligatures'
 
 /** Match pane compatibility; dispose DOM bindings before replacing or disposing the terminal. */
@@ -20,22 +18,17 @@ export function installPreviewTerminalCompatibility(
   terminal: Terminal,
   deps: {
     getSettings: () => GlobalSettings | null
-    getTerminalLinks?: () => DashboardCardTerminalLinks | null | undefined
-    getLinkSource?: () => DashboardPreviewLinkSource | null | undefined
-    onBrowserForeground?: () => void
     linkHandlers?: PreviewTerminalLinkHandlers
+    installLinks?: (terminal: Terminal) => () => void
   }
 ): () => void {
   // Load Unicode 11 before its width shim and any replay; earlier writes bake wide characters into default v6 widths.
   terminal.loadAddon(new Unicode11Addon())
   activateOrcaTerminalUnicodeProvider(terminal)
   installWindowsCtrlAltChordRepair(terminal)
-  const disposeLinks = installPreviewTerminalLinks(terminal, {
-    getTerminalLinks: deps.getTerminalLinks ?? (() => null),
-    getLinkSource: deps.getLinkSource,
-    onBrowserForeground: deps.onBrowserForeground,
-    linkHandlers: deps.linkHandlers
-  })
+  const disposeLinks = deps.installLinks
+    ? deps.installLinks(terminal)
+    : installPreviewTerminalLinks(terminal, deps.linkHandlers)
   syncPreviewTerminalLigatures(terminal, deps.getSettings())
   attachTerminalMouseWheelMultiplier(terminal, {
     getTuiMouseWheelMultiplier: () =>
@@ -46,8 +39,8 @@ export function installPreviewTerminalCompatibility(
   const disposeImeCandidateAnchor = installTerminalImeCandidateAnchor(terminal)
 
   return () => {
+    disposeLinks?.()
     disposeImeCandidateAnchor?.()
-    disposeLinks()
     disposeArabicShapingJoiner()
   }
 }

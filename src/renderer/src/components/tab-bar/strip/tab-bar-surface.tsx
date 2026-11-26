@@ -1,4 +1,3 @@
-import { WARP_TAB_CREATE_OPTION } from '../create-menu/tab-create-menu-options'
 import React from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
@@ -335,7 +334,6 @@ export function renderTabBarSurface(
               windowsShellEntries={windowsShellEntries}
               defaultWindowsPowerShellImplementation={defaultWindowsPowerShellImplementation}
               pwshAvailable={windowsTerminalCapabilities.pwshAvailable}
-              onNewWarpTab={() => handleSelectCreateMenuOption(WARP_TAB_CREATE_OPTION)}
               queueNewActiveTerminalFocusAfterNewTabMenuClose={
                 queueNewActiveTerminalFocusAfterNewTabMenuClose
               }

@@ -1,5 +1,6 @@
 import { GitHistoryRefName } from '../source-control/git-params'
 import * as z from 'zod'
+import { dashboardNativeUiFields } from '../../dashboard-native-ui-fields'
 import { lazyZodSchema } from '../../schema/lazy-zod-schema'
 import { StatusBarItems } from './client-ui-status-bar-params'
 import { isFeatureTipSeenId } from '../../feature-education/feature-tips'
@@ -271,7 +272,6 @@ export const UiUpdateFields = lazyZodSchema(() =>
         .nullable()
         .optional(),
       windowMaximized: z.boolean().optional(),
-      dashboardPopoutMaximized: z.boolean().optional(),
       _sortBySmartMigrated: z.boolean().optional(),
       _inlineAgentsDefaultedForExperiment: z.boolean().optional(),
       _inlineAgentsDefaultedForAllUsers: z.boolean().optional(),
@@ -309,7 +309,8 @@ export const UiUpdateFields = lazyZodSchema(() =>
       featureTipsSeenIds: FeatureTipIds.optional(),
       featureInteractions: FeatureInteractions.optional(),
       contextualToursSeenIds: StringArray.optional(),
-      contextualToursAutoEligible: z.boolean().optional()
+      contextualToursAutoEligible: z.boolean().optional(),
+      ...dashboardNativeUiFields()
     })
     .strict()
 )

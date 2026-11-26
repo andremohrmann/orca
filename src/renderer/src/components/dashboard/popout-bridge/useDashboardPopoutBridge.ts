@@ -11,7 +11,7 @@ import {
 } from '@/runtime/native-chat/naming/structured-chat-name-observation'
 import { revealDashboardAgent } from '../navigation/reveal-dashboard-agent'
 import type { RepoIcon } from '../../../../../shared/repository/appearance/repo-icon'
-import { buildDashboardSnapshot } from '../snapshot/build-dashboard-snapshot'
+import { buildCustomDashboardSnapshot } from '../snapshot/build-custom-dashboard-snapshot'
 import type { DashboardSnapshotState } from '../snapshot/dashboard-snapshot-state'
 import { createDashboardSnapshotReuse } from '../snapshot/dashboard-snapshot-reuse'
 import { selectWorktreesByRepo } from '@/store/workspaces/catalog/workspace-record-fields'
@@ -160,7 +160,7 @@ export function useDashboardPopoutBridge(enabled: boolean): void {
     const publishNow = (withIcons: boolean): void => {
       lastPublishAt = Date.now()
       const state = useAppStore.getState()
-      const snapshot = buildDashboardSnapshot(
+      const snapshot = buildCustomDashboardSnapshot(
         {
           ...state,
           runtimeStatusByEnvironmentId: readRuntimeStatuses(),

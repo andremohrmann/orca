@@ -17,7 +17,7 @@ import {
 } from '../../../../shared/agent-usage/rate-limits/rate-limit-window-label'
 import { getProviderDisplayName } from '../../../../shared/agent-usage/display/usage-provider-windows'
 import { cn } from '@/lib/class-names'
-import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { getWindowSections, ProviderIcon } from '@/components/status-bar/usage/provider-usage-panel'
 import { getProviderUsageStatusLabel } from '../../../../shared/agent-usage/status-copy/usage-error-copy'
 import { usageBarClass } from '@/components/status-bar/usage/usage-health-tone'
@@ -25,14 +25,14 @@ import { formatUsagePercentageLabel } from '@/components/status-bar/usage/usage-
 
 type UsageSection = { label: string; window: RateLimitWindow }
 
-function usageSections(provider: ProviderRateLimits): UsageSection[] {
-  return getWindowSections(provider).filter(
+function usageSections(provider: ProviderRateLimits, t?: Translate): UsageSection[] {
+  return getWindowSections(provider, t).filter(
     (section): section is UsageSection => section.window !== null && section.window !== undefined
   )
 }
 
-function dashboardUsageSection(provider: ProviderRateLimits): UsageSection | null {
-  const sections = usageSections(provider)
+function dashboardUsageSection(provider: ProviderRateLimits, t: Translate): UsageSection | null {
+  const sections = usageSections(provider, t)
   if (sections.length === 0) {
     return null
   }
@@ -45,17 +45,17 @@ function dashboardUsageSection(provider: ProviderRateLimits): UsageSection | nul
     return tightest
   }
   if (tightest.window === provider.fableWeekly) {
-    return { ...tightest, label: 'Fable' }
+    return { ...tightest, label: t('dashboardPopout.usage.fable', 'Fable') }
   }
   return { ...tightest, label: formatRateLimitWindowChipLabel(tightest.window) }
 }
 
-function windowLabel(provider: ProviderRateLimits, section: UsageSection): string {
+function windowLabel(provider: ProviderRateLimits, section: UsageSection, t: Translate): string {
   if (provider.buckets?.some((bucket) => bucket.name === section.label)) {
     return section.label
   }
   if (section.window === provider.fableWeekly) {
-    return 'Fable'
+    return t('dashboardPopout.usage.fable', 'Fable')
   }
   return formatWindowLabel(section.window.windowMinutes)
 }
@@ -69,8 +69,9 @@ function UsageProviderMeter({
   compact: boolean
   display: UsagePercentageDisplay
 }): React.JSX.Element {
-  const section = dashboardUsageSection(provider)
-  const statusLabel = getProviderUsageStatusLabel(provider, translate)
+  const t = useTranslate()
+  const section = dashboardUsageSection(provider, t)
+  const statusLabel = getProviderUsageStatusLabel(provider, t)
 
   if (provider.status === 'idle' || (provider.status === 'fetching' && !section)) {
     return (
@@ -105,14 +106,14 @@ function UsageProviderMeter({
   return (
     <span
       className="inline-flex items-center gap-1.5"
-      title={`${getProviderDisplayName(provider.provider)} · ${formatUsagePercentageLabel(used, display)}`}
+      title={`${getProviderDisplayName(provider.provider)} · ${formatUsagePercentageLabel(used, display, t)}`}
     >
       <ProviderIcon provider={provider.provider} />
       {!compact ? (
         <span className="text-muted-foreground">{getProviderDisplayName(provider.provider)}</span>
       ) : null}
       {!compact ? (
-        <span className="text-muted-foreground/70">{windowLabel(provider, section)}</span>
+        <span className="text-muted-foreground/70">{windowLabel(provider, section, t)}</span>
       ) : null}
       <span className="h-[5px] w-8 overflow-hidden rounded-full bg-muted">
         <span
@@ -120,7 +121,7 @@ function UsageProviderMeter({
           style={{ width: `${shown}%` }}
         />
       </span>
-      <span className="tabular-nums">{formatUsagePercentageLabel(used, display)}</span>
+      <span className="tabular-nums">{formatUsagePercentageLabel(used, display, t)}</span>
       {provider.status === 'error' ? (
         <AlertTriangle className="size-3 text-muted-foreground/80" />
       ) : null}
@@ -133,6 +134,7 @@ export function DashboardUsageBar({
 }: {
   usage: DashboardUsageSnapshot | undefined
 }): React.JSX.Element | null {
+  const t = useTranslate()
   if (!usage || usage.providers.length === 0) {
     return null
   }
@@ -143,7 +145,7 @@ export function DashboardUsageBar({
   return (
     <div className="scrollbar-sleek flex h-6 min-h-[24px] shrink-0 items-center gap-3 overflow-x-auto border-t border-border bg-[var(--bg-titlebar,var(--card))] px-3 text-xs text-muted-foreground select-none">
       <span className="shrink-0 text-[11px] font-medium">
-        {translate('dashboardPopout.usage.label', 'Usage')}
+        {t('dashboardPopout.usage.label', 'Usage')}
       </span>
       <div className="flex min-w-0 items-center gap-3">
         {usage.providers.map((provider) => (

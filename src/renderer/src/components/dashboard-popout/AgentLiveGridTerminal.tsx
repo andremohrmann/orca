@@ -1,5 +1,5 @@
 import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
-import { AgentTerminalPreview } from '../dashboard/terminal-preview/AgentTerminalPreview'
+import { LiveViewTerminalPreview } from './LiveViewTerminalPreview'
 import type { DashboardRevealAgentArgs as AgentRevealArgs } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 
 type LiveDashboardCard = DashboardCard & { ptyId: string }
@@ -12,7 +12,7 @@ export function AgentLiveGridTerminal({
   onRevealAgent: (args: AgentRevealArgs) => void
 }): React.JSX.Element {
   return (
-    <AgentTerminalPreview
+    <LiveViewTerminalPreview
       ptyId={card.ptyId}
       terminalInput={card.terminalInput ?? null}
       terminalLinks={card.terminalLinks ?? null}

@@ -3,10 +3,11 @@ import { Blend } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { DashboardPopoutOpacityState } from '../../../../shared/dashboard-popout-opacity'
 
 export function DashboardPopoutOpacityControl(): React.JSX.Element {
+  const t = useTranslate()
   const [state, setState] = useState<DashboardPopoutOpacityState | null>(null)
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export function DashboardPopoutOpacityControl(): React.JSX.Element {
 
   const opacityPercent = Math.round((state?.opacity ?? 1) * 100)
   const supported = state?.supported === true
-  const label = translate('dashboardPopout.opacity.label', 'Window opacity')
+  const label = t('dashboardPopout.opacity.label', 'Window opacity')
 
   return (
     <Popover>
@@ -39,22 +40,16 @@ export function DashboardPopoutOpacityControl(): React.JSX.Element {
           disabled={!supported}
           title={
             state && !supported
-              ? translate(
-                  'dashboardPopout.opacity.unsupported',
-                  'Window opacity is unavailable on Linux'
-                )
+              ? t('dashboardPopout.opacity.unsupported', 'Window opacity is unavailable on Linux')
               : undefined
           }
           aria-label={
             supported
-              ? translate('dashboardPopout.opacity.current', '{{label}}: {{value}}%', {
+              ? t('dashboardPopout.opacity.current', '{{label}}: {{value}}%', {
                   label,
                   value: opacityPercent
                 })
-              : translate(
-                  'dashboardPopout.opacity.unsupported',
-                  'Window opacity is unavailable on Linux'
-                )
+              : t('dashboardPopout.opacity.unsupported', 'Window opacity is unavailable on Linux')
           }
         >
           <Blend className="size-3.5" />
@@ -83,7 +78,7 @@ export function DashboardPopoutOpacityControl(): React.JSX.Element {
           }}
         />
         <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-          {translate(
+          {t(
             'dashboardPopout.opacity.description',
             'Lower this to see windows behind the dashboard.'
           )}

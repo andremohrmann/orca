@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { formatPrimaryShortcutLabel } from '@/lib/keyboard/useShortcutLabel'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { KeybindingOverrides } from '../../../../shared/keybindings/types'
 
 export function PreviewTerminalContextMenu({
@@ -27,6 +27,7 @@ export function PreviewTerminalContextMenu({
   onSelectAll: () => void
   onPaste: () => void
 }): React.JSX.Element {
+  const t = useTranslate()
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
       <DropdownMenuTrigger asChild>
@@ -46,23 +47,23 @@ export function PreviewTerminalContextMenu({
       >
         <DropdownMenuItem onSelect={onCopy}>
           <Copy />
-          {translate('auto.components.terminal.pane.TerminalContextMenu.f3eeb1de13', 'Copy')}
+          {t('auto.components.terminal.pane.TerminalContextMenu.f3eeb1de13', 'Copy')}
           <DropdownMenuShortcut>
-            {formatPrimaryShortcutLabel('terminal.copySelection', keybindings)}
+            {formatPrimaryShortcutLabel('terminal.copySelection', keybindings, t)}
           </DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onSelectAll}>
           <TextSelect />
-          {translate('auto.components.terminal.pane.TerminalContextMenu.selectAll', 'Select All')}
+          {t('auto.components.terminal.pane.TerminalContextMenu.selectAll', 'Select All')}
           <DropdownMenuShortcut>
-            {formatPrimaryShortcutLabel('terminal.selectAll', keybindings)}
+            {formatPrimaryShortcutLabel('terminal.selectAll', keybindings, t)}
           </DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onPaste}>
           <Clipboard />
-          {translate('auto.components.terminal.pane.TerminalContextMenu.0a917b591a', 'Paste')}
+          {t('auto.components.terminal.pane.TerminalContextMenu.0a917b591a', 'Paste')}
           <DropdownMenuShortcut>
-            {formatPrimaryShortcutLabel('terminal.paste', keybindings)}
+            {formatPrimaryShortcutLabel('terminal.paste', keybindings, t)}
           </DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

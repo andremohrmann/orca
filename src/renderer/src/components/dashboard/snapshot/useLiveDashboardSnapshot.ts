@@ -3,7 +3,7 @@ import { useRuntimeStatusByEnvironmentId } from '@/store/slices/runtime-status/v
 import { useAppStore } from '@/store/index'
 import { useStructuredChatTabNames } from '@/runtime/native-chat/naming/structured-chat-name-observation'
 import type { DashboardSnapshot } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
-import { buildDashboardSnapshot } from './build-dashboard-snapshot'
+import { buildCustomDashboardSnapshot } from './build-custom-dashboard-snapshot'
 import { createDashboardSnapshotReuse } from './dashboard-snapshot-reuse'
 import {
   selectDetectedWorktreesByRepo,
@@ -66,7 +66,7 @@ export function useLiveDashboardSnapshot(): DashboardSnapshot {
   return useMemo(
     // Read the clock when the freshness epoch invalidates this memo, matching row derivation.
     () =>
-      buildDashboardSnapshot(
+      buildCustomDashboardSnapshot(
         {
           chatNames,
           activeWorktreeId,

@@ -24,7 +24,6 @@ import {
   type DashboardFilters
 } from './agent-board-filtering'
 import './agent-board-transitions.css'
-import { translate } from '@/i18n/i18n'
 import { useTranslate } from '@/i18n/use-translate'
 import { Button } from '@/components/ui/button'
 import { AgentLiveGrid } from '../../dashboard-popout/AgentLiveGrid'
@@ -207,14 +206,14 @@ export function AgentKanbanBoard({
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2.5">
           <h1 className="text-[13px] font-semibold">{t('dashboardPopout.title', 'Agents')}</h1>
           <span className="text-[11px] text-muted-foreground">
-            {translate('dashboardPopout.total', '{{count}} total', {
+            {t('dashboardPopout.total', '{{count}} total', {
               count: view === 'live' ? snapshot.cards.length : visibleCards.length
             })}
           </span>
           <div
             className="flex items-center gap-0.5 rounded-md border border-border p-0.5"
             role="group"
-            aria-label={translate('dashboardPopout.view.label', 'Dashboard view')}
+            aria-label={t('dashboardPopout.view.label', 'Dashboard view')}
           >
             <Button
               type="button"
@@ -225,7 +224,7 @@ export function AgentKanbanBoard({
               onClick={() => handleViewChange('board')}
             >
               <Columns3 className="size-3" />
-              {translate('dashboardPopout.view.board', 'Dashboard')}
+              {t('dashboardPopout.view.board', 'Dashboard')}
             </Button>
             <Button
               type="button"
@@ -236,7 +235,7 @@ export function AgentKanbanBoard({
               onClick={() => handleViewChange('live')}
             >
               <Grid2X2 className="size-3" />
-              {translate('dashboardPopout.view.live', 'Live view')}
+              {t('dashboardPopout.view.live', 'Live view')}
             </Button>
           </div>
           {headerActions || onClose ? (

@@ -7782,7 +7782,6 @@
         },
         "SidebarToolbar": {
           "87d0064026": "Workspace board moved to the bottom bar",
-          "a30e34eb5c": "Close all worktrees",
           "49f62c5665": "All worktrees"
         },
         "SidebarWorkspaceFilterSection": {
@@ -9500,7 +9499,15 @@
             "modeCopy": "Show the dashboard as an in-window board beside the sidebar or a separate pop-out window.",
             "modeAriaLabel": "Agent Dashboard open mode",
             "modeInWindow": "In-window",
-            "modePopout": "Pop-out"
+            "modePopout": "Pop-out",
+            "autoMinimizeLiveAfterCopy": "Minimize Live view windows after this many minutes without agent activity. Use 0 to keep every window visible.",
+            "autoMinimizeLiveAfterLabel": "Auto-minimize inactive Live windows",
+            "autoMinimizeLiveAfterSuffix": "min",
+            "defaultViewAriaLabel": "Default Agent Dashboard view",
+            "defaultViewCopy": "Choose which Agent Dashboard view opens when you use the sidebar entry.",
+            "defaultViewLabel": "Default view",
+            "openLiveOnStartupCopy": "Open the Agent Dashboard directly to Live view when Orca starts.",
+            "openLiveOnStartupLabel": "Open Live view on startup"
           },
           "worktreeCardStyle": {
             "title": "Card style",
@@ -9629,7 +9636,8 @@
           "externallyManagedVersionAvailable": "Version {{version}} is available. Update Orca through your system package manager — Orca cannot install this release itself.",
           "versionReadyToInstall": "Version {{version}} is ready to install.",
           "versionInstalling": "Version {{version}} is being installed.",
-          "downloadingVersion": "Downloading version {{version}} ({{percent}}%)…"
+          "downloadingVersion": "Downloading version {{version}} ({{percent}}%)…",
+          "d91ebfb87e": "Current version: {{value0}} · Update source: {{value1}}"
         },
         "GeneralWorkspaceSettingsSection": {
           "3d538a98f7": "Choose apps available from a workspace's Open in menu.",
@@ -11721,7 +11729,10 @@
               "board": "board",
               "inWindow": "in-window",
               "worktrees": "worktrees",
-              "eaf17a7214": "Agent dashboard"
+              "eaf17a7214": "Agent dashboard",
+              "autoMinimize": "auto minimize",
+              "hideChildAgents": "hide child agents spawned terminals",
+              "live": "live view"
             },
             "worktreeCardStyle": {
               "title": "Card style",
@@ -24595,7 +24606,50 @@
       "empty": "No matching terminals or chats.",
       "expand": "Expand terminal",
       "pin": "Pin window to this position",
-      "unpin": "Unpin window"
+      "unpin": "Unpin window",
+      "close": "Close from Live view",
+      "closedPanes": "Closed panes",
+      "density": "Density",
+      "densityAuto": "Auto",
+      "densityComfortable": "Comfortable",
+      "densityCompact": "Compact",
+      "densityLarge": "Large",
+      "hideChildAgents": "Hide child-agent terminals",
+      "hideChildAgentsDescription": "Hide terminals of agents spawned by another agent from Live view. The agents keep running.",
+      "hideClosed": "Hide closed panes",
+      "minimize": "Minimize terminal",
+      "minimizedPanes": "Minimized",
+      "noLiveTerminals": "No live terminals.",
+      "openWorkspace": "Open workspace",
+      "options": "Live options",
+      "projectIcon": "Project: {{name}}",
+      "rename": "Rename window",
+      "resetLayout": "Reset layout",
+      "showClosed": "Show closed panes",
+      "showHidden": "Show hidden",
+      "sortAttention": "Needs attention",
+      "sortBy": "Sort by",
+      "sortManual": "Manual",
+      "sortRecent": "Recent activity",
+      "sortWorkspace": "Workspace",
+      "windowName": "Window name"
+    },
+    "opacity": {
+      "current": "{{label}}: {{value}}%",
+      "description": "Lower this to see windows behind the dashboard.",
+      "label": "Window opacity",
+      "unsupported": "Window opacity is unavailable on Linux"
+    },
+    "status": {
+      "set": "Set workspace status"
+    },
+    "usage": {
+      "fable": "Fable",
+      "label": "Usage"
+    },
+    "workspaceBoard": {
+      "close": "Close workspace board",
+      "open": "Workspace board"
     }
   },
   "dashboard": {
@@ -31370,5 +31424,11 @@
       "badJson": "Check the pasted JSON: it doesn’t parse.",
       "none": "Orca found no server it can add. SSE servers, servers with their own OAuth client or tool filters, and values read from the environment (${VAR}) aren’t supported."
     }
+  },
+  "tabs": {
+    "warp": "Warp",
+    "warpCli": "Warp CLI",
+    "warpSite": "warp.dev",
+    "warpConnectHost": "Connect to the workspace host before opening a Warp tab."
   }
 }

@@ -96,12 +96,13 @@ const DEDICATED_UNIT_FILES = UNIT_EXCLUDE.filter((glob) => !defaultExclude.inclu
 export const TEST_RUNNERS = [
   { name: 'unit (config/vitest.config.ts)', include: UNIT_INCLUDE, exclude: UNIT_EXCLUDE },
   {
-    // Why mirrors: an UNIT_EXCLUDE entry no workflow names would otherwise leave CI silently.
-    name: 'dedicated unit jobs (UNIT_EXCLUDE)',
+    // Keep excluded contracts explicitly runnable after removing the stock workflows.
+    name: 'wire contracts (pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/)',
+    manual: true,
     include: DEDICATED_UNIT_FILES,
-    // Those jobs run config/vitest.config.ts, so a file there still needs a UNIT_INCLUDE name.
+    // The manual command uses the standard config with unbalanced local selection.
     within: UNIT_INCLUDE,
-    sources: ['.github/workflows/pr.yml', '.github/workflows/unit-tests.yml'],
+    sources: ['docs/agents-md-refs/custom-fork-maintenance.md'],
     mirrors: DEDICATED_UNIT_FILES.map((glob) => glob.replace(/\*\*$/, ''))
   },
   ...NON_UNIT_TEST_RUNNERS

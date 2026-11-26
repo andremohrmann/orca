@@ -8,6 +8,7 @@ import type { StatusBarUsageMode } from '../../../../shared/status-bar/status-ba
 import type { UsagePercentageDisplay } from '../../../../shared/agent-usage/display/usage-percentage-display'
 import { isStatusBarItemAvailable } from '../status-bar/composition/status-bar-agent-gating'
 import { getVisibleUsageProvider } from '../status-bar/composition/status-bar-provider-visibility'
+import { mapProviders, USAGE_PROVIDER_IDS } from '../status-bar/usage/owner-usage-rate-limits'
 
 export type DashboardUsageSnapshotState = {
   rateLimits: RateLimitState
@@ -33,22 +34,20 @@ export function buildDashboardUsageSnapshot(
     ...state.settings,
     antigravityUsageConfigured,
     minimaxCookieConfigured: rateLimits.minimaxCookieConfigured,
+    minimaxApiKeyConfigured: rateLimits.minimaxApiKeyConfigured,
+    opencodeGoApiKeyConfigured: rateLimits.opencodeGoApiKeyConfigured,
+    zcodePlanApiKeyConfigured: rateLimits.zcodePlanApiKeyConfigured,
+    cursorAuthConfigured: rateLimits.cursorAuthConfigured,
     grokAuthConfigured: rateLimits.grokAuthConfigured
   }
-  const providerEntries: [ProviderRateLimits['provider'], ProviderRateLimits | null | undefined][] =
-    [
-      ['claude', rateLimits.claude],
-      ['codex', rateLimits.codex],
-      ['antigravity', rateLimits.antigravity],
-      ['opencode-go', rateLimits.opencodeGo],
-      ['kimi', rateLimits.kimi],
-      ['minimax', rateLimits.minimax],
-      ['grok', rateLimits.grok]
-    ]
-  const providers = providerEntries
-    .filter(([id]) => statusBarItems.includes(id) && isStatusBarItemAvailable(id, detectedAgentIds))
-    .map(([id, provider]) => getVisibleUsageProvider(id, provider, usageSettings))
-    .filter((provider): provider is ProviderRateLimits => provider !== null)
+  const providers = Object.values(
+    mapProviders((key) => {
+      const id = USAGE_PROVIDER_IDS[key]
+      return statusBarItems.includes(id) && isStatusBarItemAvailable(id, detectedAgentIds)
+        ? getVisibleUsageProvider(id, rateLimits[key], usageSettings)
+        : null
+    })
+  ).filter((provider): provider is ProviderRateLimits => provider !== null)
 
   if (providers.length === 0) {
     return undefined

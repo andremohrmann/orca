@@ -1,87 +1,106 @@
-import { useEffect, useRef, useState } from 'react'
-import type { Terminal } from '@xterm/xterm'
-import '@xterm/xterm/css/xterm.css'
-import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { composeActiveTerminalTheme } from '@/components/terminal-pane/appearance/terminal-appearance'
+import { useSystemPrefersDark } from '@/hooks/theme/use-system-prefers-dark'
 import { TerminalKittyKeyboardModeTracker } from '../../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-mode-tracker'
+import { replayPreviewConnectionSnapshot } from './transport/preview-terminal-snapshot-replay'
+import { useEffectiveMacOptionAsAlt } from '@/lib/keyboard-layout/use-effective-mac-option-as-alt'
 import {
-  createPreviewReplayWriter,
-  writePreviewLivePayload,
-  replayPreviewConnectionSnapshot,
-  type PendingLivePayload
-} from './transport/preview-terminal-snapshot-replay'
-import { previewAdvertisesKittyKeyboard } from '../../standalone-terminal/rendering/preview-terminal-options'
-import { installPreviewTerminalCompatibility } from '../../standalone-terminal/rendering/preview-terminal-compatibility'
-import { createPreviewClipboardPaster } from '../../standalone-terminal/input/preview-terminal-paste'
-import {
-  installPreviewImeBridge,
-  type PreviewImeBridge
-} from '../../standalone-terminal/input/preview-terminal-ime-bridge'
-import { useAppStore } from '@/store'
-import { installPreviewTerminalKeyHandler } from '../../standalone-terminal/input/preview-terminal-key-handler'
-import { createPreviewGridFocusHandoff } from '../../dashboard-popout/preview-grid-focus-handoff'
-import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/clipboard/terminal-native-copy-gutter'
-import {
-  PREVIEW_SCROLLBACK_ROWS,
-  clearPreviewTerminalTimer,
-  ensurePreviewTerminal
-} from '../../dashboard-popout/preview-terminal-session'
-import { usePreviewTerminalTheme } from '../../dashboard-popout/usePreviewTerminalTheme'
-import { AgentTerminalPreviewFrame } from '../../dashboard-popout/AgentTerminalPreviewFrame'
-import type { AgentTerminalPreviewProps } from '../../dashboard-popout/agent-terminal-preview-props'
-import { createPreviewTerminalFitScheduler } from '../../dashboard-popout/preview-terminal-fit'
-import { createPreviewTerminalHorizontalScrollReset } from '../../dashboard-popout/preview-terminal-horizontal-scroll'
-import { installPreviewTerminalInputRouting } from '../../dashboard-popout/preview-terminal-input-routing'
-import { usePreviewTerminalAppearance } from '../../dashboard-popout/usePreviewTerminalAppearance'
-import { usePreviewTerminalRuntimeRefs } from '../../dashboard-popout/usePreviewTerminalRuntimeRefs'
-import { installPreviewTerminalInteractions } from '../../dashboard-popout/preview-terminal-interaction-installers'
-import { createPreviewGonePtyRetry } from '../../dashboard-popout/preview-terminal-gone-retry'
-import { createPreviewRemoteTerminalSession } from '../../dashboard-popout/preview-remote-terminal-session'
-import { isWindowsUserAgent } from '@/app-shell/platform/user-agent-platform'
-import { usePreviewTerminalTextMode } from '../../dashboard-popout/use-preview-terminal-text-mode'
+  buildPreviewAppearanceOptions,
+  buildPreviewTerminalOptions,
+  previewAdvertisesKittyKeyboard
+} from '../../standalone-terminal/rendering/preview-terminal-options'
+import { syncPreviewTerminalLigatures } from '../../standalone-terminal/rendering/preview-terminal-ligatures'
+import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
+import { resolveEffectiveTerminalAppearance } from '@/lib/terminal/appearance/terminal-theme'
+import { cn } from '@/lib/class-names'
+import { useAppStore } from '@/store/index'
+import { usePluginFontLoadKey } from '@/store/plugins/appearance/plugin-fonts'
+import { createPreviewGridClaim } from './geometry/preview-grid-claim'
+import { createPreviewBoxFit } from './geometry/preview-terminal-box-fit'
+import { openStandaloneTerminal } from '../../standalone-terminal/open-standalone-terminal'
+import type { StandaloneTerminal } from '../../standalone-terminal/open-standalone-terminal'
+import { terminalPreviewApiFor } from './transport/terminal-preview-api'
+import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
+import { closeLinkActionRequest } from '@/components/link-actions/link-action-request'
+import type { LinkActionRequest } from '@/components/link-actions/link-action-request'
+import { installDashboardPreviewLinkInteraction } from './links/dashboard-preview-link-interaction'
+import { useTranslate } from '@/i18n/use-translate'
+import type { PreviewTerminalLinkHandler } from '../../standalone-terminal/rendering/preview-terminal-links'
+import type { ITheme, Terminal } from '@xterm/xterm'
+import type { DashboardCardTerminalInput } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
+import type { TerminalPreviewDataPayload } from '../../../../../shared/terminal/replay/terminal-preview'
+import type { DashboardPreviewLinkSource } from './links/dashboard-preview-http-actions'
+
+const PREVIEW_SCROLLBACK_ROWS = 24
+// Preview snapshots bound history; pane scrollback would only cost memory.
+const PREVIEW_SCROLLBACK_BUFFER_ROWS = 1000
+const FALLBACK_COLS = 80
+const FALLBACK_ROWS = 24
 const RESYNC_RETRY_DELAY_MS = 150
-export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JSX.Element {
-  const {
-    ptyId,
-    terminalInput = null,
-    terminalLinks = null,
-    claimGrid = true,
-    releaseGridOnWindowBlur = false,
-    refreshAfterInput = true,
-    scaleToFit = true,
-    autoFocus = true,
-    textWhenUnfocused = false,
-    onClosedActivate,
-    onRequestClose,
-    linkSource,
-    onBrowserForeground,
-    className
-  } = props
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/** Claim the dialog’s grid, retaining real PTY dimensions when another owner requires scaling; stream input/output through a DOM renderer without WebGL. */
+export function AgentTerminalPreview({
+  ptyId,
+  terminalInput = null,
+  className,
+  onRequestClose,
+  linkSource,
+  onBrowserForeground
+}: {
+  ptyId: string
+  /** Host-input facts relayed with the card; null routes bytes by client OS. */
+  terminalInput?: DashboardCardTerminalInput | null
+  className?: string
+  onRequestClose?: () => void
+  linkSource?: DashboardPreviewLinkSource
+  onBrowserForeground?: () => void
+}): React.JSX.Element {
+  const t = useTranslate()
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
-  const { settings, macOptionAsAlt, terminalTheme, terminalMode } = usePreviewTerminalTheme()
-  const {
-    settingsRef,
-    macOptionAsAltRef,
-    terminalInputRef,
-    terminalLinksRef,
-    linkSourceRef,
-    onBrowserForegroundRef,
-    onRequestCloseRef
-  } = usePreviewTerminalRuntimeRefs({
-    settings,
-    macOptionAsAlt,
-    terminalInput,
-    terminalLinks,
-    linkSource,
-    onBrowserForeground,
-    onRequestClose
-  })
-  const [ptyGone, setPtyGone] = useState(false),
-    retryGonePtyRef = useRef<() => void>(() => undefined),
-    reclaimGridRef = useRef<() => void>(() => undefined)
-  const textPreview = usePreviewTerminalTextMode(textWhenUnfocused, terminalRef, reclaimGridRef)
-  const { interactiveRef, refreshText } = textPreview
-  usePreviewTerminalAppearance({ terminalRef, settings, macOptionAsAlt })
+  const [linkRequest, setLinkRequest] = useState<LinkActionRequest | null>(null)
+  const linkSourceRef = useRef(linkSource)
+  const browserForegroundRef = useRef(onBrowserForeground)
+  const settings = useAppStore((state) => state.settings)
+  const terminalFontLoadKey = usePluginFontLoadKey(settings?.terminalFontFamily)
+  const systemPrefersDark = useSystemPrefersDark()
+  const macOptionAsAlt = useEffectiveMacOptionAsAlt(settings?.terminalMacOptionAsAlt)
+  // Read live settings without terminal remount, PTY reconnect or snapshot repaint.
+  const settingsRef = useRef(settings)
+  const macOptionAsAltRef = useRef(macOptionAsAlt)
+  const terminalInputRef = useRef(terminalInput)
+  const onRequestCloseRef = useRef(onRequestClose)
+  const { terminalTheme: composedTheme, terminalMode } = useMemo(() => {
+    if (!settings) {
+      return { terminalTheme: null, terminalMode: 'dark' as const }
+    }
+    const appearance = resolveEffectiveTerminalAppearance(settings, systemPrefersDark)
+    const theme = composeActiveTerminalTheme(appearance.theme, settings)
+    return { terminalTheme: theme, terminalMode: appearance.mode }
+  }, [settings, systemPrefersDark])
+  // Settings arrive as cloned snapshots; compare theme values before reconnecting.
+  const retainTheme = useShallow((theme: ITheme | null) => theme)
+  const terminalTheme = retainTheme(composedTheme)
+  const terminalMinimumContrastRatio = settings?.terminalMinimumContrastRatio
+  // A null snapshot means the serializer cannot find the PTY; show unavailable instead of a blank terminal.
+  const [ptyGone, setPtyGone] = useState(false)
+
+  // Refresh committed refs in layout before xterm’s next native keydown; passive effects can miss a newly relayed input profile.
+  useLayoutEffect(() => {
+    linkSourceRef.current = linkSource
+    browserForegroundRef.current = onBrowserForeground
+    settingsRef.current = settings
+    macOptionAsAltRef.current = macOptionAsAlt
+    terminalInputRef.current = terminalInput
+    onRequestCloseRef.current = onRequestClose
+  }, [settings, macOptionAsAlt, terminalInput, onRequestClose, linkSource, onBrowserForeground])
+
+  // Font changes retain the replay-driven fit, grid claim and input-owner reset.
   useEffect(() => {
     setPtyGone(false)
     const container = containerRef.current
@@ -89,157 +108,137 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       return
     }
     let disposed = false
+    let standalone: StandaloneTerminal | null = null
     let terminal: Terminal | null = null
-    let userInputDisposable: { dispose: () => void } | null = null
-    let imeBridge: PreviewImeBridge | null = null
-    let disposeKeyHandler: (() => void) | null = null
-    let disposeNativeCopyGutterTrim: (() => void) | null = null
-    let disposeTerminalCompatibility: (() => void) | null = null
+    let offData: (() => void) | null = null
+    const previewApi = terminalPreviewApiFor(ptyId)
+    let linkDefaults: PreviewTerminalLinkHandler | undefined
+    let linkInteraction: ReturnType<typeof installDashboardPreviewLinkInteraction> | null = null
+    const sendInput = (data: string): boolean | Promise<boolean> => previewApi.input(ptyId, data)
+    const installLinks = (): void => {
+      if (!terminal || !linkSourceRef.current) {
+        return
+      }
+      linkInteraction = installDashboardPreviewLinkInteraction(terminal, {
+        getSettings: () => settingsRef.current,
+        getSource: () => linkSourceRef.current,
+        onForegroundOpen: () => browserForegroundRef.current,
+        request: setLinkRequest,
+        sendInput,
+        defaultHandlers: linkDefaults
+      })
+    }
+    const linkHandlers = (defaults: PreviewTerminalLinkHandler): PreviewTerminalLinkHandler => {
+      linkDefaults = defaults
+      return {
+        activate: (event, uri, range) => linkInteraction?.handlers.activate(event, uri, range),
+        hover: (event, uri, range) => linkInteraction?.handlers.hover?.(event, uri, range),
+        leave: (event, uri, range) => linkInteraction?.handlers.leave?.(event, uri, range)
+      }
+    }
+    // Why one read: the xterm's advertisement and its mirror must never disagree.
     const mountTerminalInput = terminalInputRef.current
+    // Parse the same output as the pane so input policy sees the TUI’s negotiated kitty flags.
     const kittyKeyboardModes = new TerminalKittyKeyboardModeTracker({
       kittyKeyboard: previewAdvertisesKittyKeyboard(mountTerminalInput)
     })
     let refreshInFlight = false
     let refreshAgain = false
     let retryTimer: ReturnType<typeof setTimeout> | null = null
-    let inputRefreshTimer: ReturnType<typeof setTimeout> | null = null
-    let requestInputRefresh = (): void => undefined,
-      scheduleGridClaim = (): void => undefined
-    const pendingLivePayloads: PendingLivePayload[] = []
-    const horizontalReset = createPreviewTerminalHorizontalScrollReset(container)
-    const boxFit = createPreviewTerminalFitScheduler({
-      container,
-      getTerminal: () => (interactiveRef.current ? terminal : null),
-      scaleToFit,
-      localResizeToFit: !scaleToFit,
-      onUnscaledOverflow: () => scheduleGridClaim(),
-      onBoxResize: () => scheduleGridClaim()
-    })
-    const goneRetry = createPreviewGonePtyRetry({
-      retryDelayMs: 1_000,
-      requestReconnect: () => void setup(true),
-      isDisposed: () => disposed
-    })
-    const remoteSession = createPreviewRemoteTerminalSession({
-      ptyId,
-      onSnapshot: (snapshot) => {
-        setPtyGone(false)
-        replayConnection({ snapshot, replay: [] }, terminal !== null, () => undefined)
-      },
-      onData: (data) => writeLive({ type: 'data', ptyId, data, bytes: 0 }, false),
-      onResize: ({ cols, rows }) => terminal?.resize(cols, rows),
-      onUnavailable: () => setPtyGone(true)
-    })
-    const gridClaim = createPreviewGridFocusHandoff({
-      claimGrid,
-      releaseOnWindowBlur: releaseGridOnWindowBlur,
+    const pendingLivePayloads: Extract<TerminalPreviewDataPayload, { type: 'data' }>[] = []
+
+    const boxFit = createPreviewBoxFit({ container, getTerminal: () => terminal })
+
+    const gridClaim = createPreviewGridClaim({
       ptyId,
       container,
-      getTerminal: () => (interactiveRef.current ? terminal : null),
-      transport: remoteSession ?? undefined
+      getTerminal: () => terminal
     })
-    scheduleGridClaim = gridClaim.schedule
-    reclaimGridRef.current = gridClaim.reclaim
-    const replayWriter = createPreviewReplayWriter({
-      getTerminal: () => terminal,
-      kittyKeyboardModes,
-      onParsed: () => refreshText(boxFit.schedule)
-    })
-    const writeReplayed = replayWriter.write
-    const writeLive = (payload: PendingLivePayload['payload'], acknowledge = true): void => {
-      clearPreviewTerminalTimer(inputRefreshTimer)
-      writePreviewLivePayload({
-        payload,
-        acknowledge,
-        terminal,
-        pending: pendingLivePayloads,
-        write: writeReplayed,
-        isDisposed: () => disposed
+    // Box growth/shrink (window resize) changes the reachable grid.
+    const boxResizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => {
+            boxFit.schedule()
+            gridClaim.schedule()
+          })
+    if (container.parentElement) {
+      boxResizeObserver?.observe(container.parentElement)
+    }
+    boxResizeObserver?.observe(container)
+
+    const writeReplayed = (chunk: string, onDone?: () => void, live = false): void => {
+      standalone?.write(chunk, {
+        live,
+        onDone: () => {
+          boxFit.schedule()
+          onDone?.()
+        }
       })
     }
-    const sendInput = (data: string): boolean | Promise<boolean> =>
-      remoteSession ? remoteSession.input(data) : window.api.terminalPreview.input(ptyId, data)
-    const pasteClipboardText = createPreviewClipboardPaster({
-      ptyId,
-      container,
-      getTerminal: () => terminal,
-      getTerminalInput: () => terminalInputRef.current,
-      getTerminalLinks: () => terminalLinksRef.current,
-      writeInput: sendInput,
-      isDisposed: () => disposed
-    })
 
-    const disposeImeNativeTextBridge = (): void => {
-      imeBridge?.dispose()
-      imeBridge = null
+    const writeLive = (payload: Extract<TerminalPreviewDataPayload, { type: 'data' }>): void => {
+      if (!terminal) {
+        pendingLivePayloads.push(payload)
+        return
+      }
+      writeReplayed(
+        payload.data,
+        () => {
+          if (!disposed) {
+            void previewApi.ack(ptyId, payload.bytes)
+          }
+        },
+        true
+      )
     }
-    const disposeInteractions = installPreviewTerminalInteractions({
-      container,
-      getTerminal: () => terminal,
-      sendInput,
-      requestInputRefresh,
-      isRightClickToPasteEnabled: () =>
-        settingsRef.current?.terminalRightClickToPaste ?? isWindowsUserAgent(),
-      pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source)
-    })
 
     const replayConnection = (
-      connection: Awaited<ReturnType<typeof window.api.terminalPreview.connect>>,
+      connection: Awaited<ReturnType<typeof previewApi.connect>>,
       replaceExisting: boolean,
       requestRefresh: () => void
     ): void => {
       const snap = connection.snapshot!
-      const resolved = ensurePreviewTerminal({
-        terminal,
-        container,
-        snap,
-        replaceExisting,
-        settings: settingsRef.current,
-        terminalInput: mountTerminalInput,
-        macOptionIsMeta: macOptionAsAltRef.current === 'true',
-        theme: terminalTheme,
-        themeMode: terminalMode
-      })
-      terminal = resolved.terminal
       if (!terminal) {
-        return
-      }
-      if (resolved.created) {
-        terminalRef.current = terminal
-        disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
+        standalone = openStandaloneTerminal({
+          container,
+          options: buildPreviewTerminalOptions({
+            settings: settingsRef.current,
+            terminalInput: mountTerminalInput,
+            macOptionIsMeta: macOptionAsAltRef.current === 'true',
+            theme: terminalTheme,
+            themeMode: terminalMode,
+            cols: clamp(snap.cols ?? FALLBACK_COLS, 2, 500),
+            rows: clamp(snap.rows ?? FALLBACK_ROWS, 2, 200),
+            scrollback: PREVIEW_SCROLLBACK_BUFFER_ROWS
+          }),
+          kittyKeyboardModes,
+          sessionKey: ptyId,
+          sendInput: (data) =>
+            linkInteraction ? linkInteraction.sendInput(data) : sendInput(data),
+          ...(linkSourceRef.current ? { linkHandlers } : {}),
+          answersQueries: false,
           getSettings: () => settingsRef.current,
-          getTerminalLinks: () => terminalLinksRef.current,
-          getLinkSource: () => linkSourceRef.current,
-          onBrowserForeground: () => onBrowserForegroundRef.current?.()
+          getMacOptionAsAlt: () => macOptionAsAltRef.current,
+          getTerminalInput: () => terminalInputRef.current,
+          requestClose: () => onRequestCloseRef.current?.()
         })
-        disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
-        userInputDisposable = installPreviewTerminalInputRouting({
-          terminal,
-          sendInput,
-          requestInputRefresh:
-            refreshAfterInput && !remoteSession ? requestInputRefresh : () => undefined,
-          scheduleHorizontalReset: horizontalReset.schedule,
-          isReplaying: replayWriter.isReplaying
-        })
-        imeBridge = installPreviewImeBridge(terminal, {
-          getKittyKeyboardFlags: () => kittyKeyboardModes.flags
-        })
-        disposeKeyHandler = installPreviewTerminalKeyHandler({
-          terminal,
-          claimImeKeyEvent: (event) => imeBridge?.claimKeyEvent(event) ?? false,
-          pasteClipboardText: (activeElement, source) =>
-            void pasteClipboardText(activeElement, source),
-          sendInput: (data) => terminal?.input(data),
-          requestClose: () => onRequestCloseRef.current?.(),
-          getShortcutContext: () => ({
-            clientPlatform: getShortcutPlatform(),
-            macOptionAsAlt: macOptionAsAltRef.current,
-            keybindings: useAppStore.getState().keybindings,
-            terminalInput: terminalInputRef.current,
-            getKittyKeyboardFlags: () => kittyKeyboardModes.flags,
-            terminalShortcutPolicy: settingsRef.current?.terminalShortcutPolicy
-          })
-        })
+        if (!standalone) {
+          return
+        }
+        terminal = standalone.terminal
+        terminalRef.current = terminal
+        installLinks()
+      } else if (replaceExisting) {
+        // Why: keep the old frame visible during capture, then atomically replace it once the authoritative snapshot arrives.
+        terminal.resize(
+          clamp(snap.cols ?? FALLBACK_COLS, 2, 500),
+          clamp(snap.rows ?? FALLBACK_ROWS, 2, 200)
+        )
+        linkInteraction?.dispose()
+        linkInteraction = null
+        terminal.reset()
+        installLinks()
       }
       replayPreviewConnectionSnapshot({
         snapshot: snap,
@@ -247,11 +246,12 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         kittyKeyboardModes,
         write: (chunk, live) => writeReplayed(chunk, undefined, live)
       })
-      for (const pending of pendingLivePayloads.splice(0)) {
-        writeLive(pending.payload, pending.acknowledge)
+      for (const payload of pendingLivePayloads.splice(0)) {
+        writeLive(payload)
       }
       if (connection.resyncRequired) {
         refreshAgain = false
+        // Why: sustained output can overflow every capture; delay retries so recovery cannot spin two serializations per event-loop turn.
         writeReplayed('', () => {
           if (disposed || retryTimer) {
             return
@@ -263,14 +263,24 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
         })
       } else if (refreshAgain) {
         refreshAgain = false
+        // Queue behind every replay write so replacement never clears a half-parsed frame.
         writeReplayed('', requestRefresh)
       }
       boxFit.schedule()
-      gridClaim.requestNow()
       gridClaim.schedule()
-      if (autoFocus) {
-        terminal.focus()
-      }
+      terminal.focus()
+    }
+
+    const releaseTerminal = (): void => {
+      offData?.()
+      offData = null
+      linkInteraction?.dispose()
+      linkInteraction = null
+      standalone?.dispose()
+      standalone = null
+      terminal = null
+      terminalRef.current = null
+      void previewApi.unsubscribe(ptyId)
     }
 
     const setup = async (replaceExisting = false): Promise<void> => {
@@ -280,7 +290,7 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       }
       refreshInFlight = true
       // Why: a failed or absent transport must show the unavailable message, not a blank dialog.
-      const connection = await window.api.terminalPreview
+      const connection = await previewApi
         .connect(ptyId, { scrollbackRows: PREVIEW_SCROLLBACK_ROWS })
         .catch(() => null)
       if (disposed) {
@@ -289,25 +299,10 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       if (!connection?.snapshot) {
         refreshInFlight = false
         setPtyGone(true)
-        userInputDisposable?.dispose()
-        userInputDisposable = null
-        disposeImeNativeTextBridge()
-        disposeTerminalCompatibility?.()
-        disposeTerminalCompatibility = null
-        disposeKeyHandler?.()
-        disposeKeyHandler = null
-        disposeNativeCopyGutterTrim?.()
-        disposeNativeCopyGutterTrim = null
-        terminal?.dispose()
-        terminal = null
-        terminalRef.current = null
-        void window.api.terminalPreview.unsubscribe(ptyId)
-        goneRetry.schedule()
+        releaseTerminal()
         return
       }
       refreshInFlight = false
-      setPtyGone(false)
-      goneRetry.dispose()
       if (!connection.resyncRequired && retryTimer) {
         clearTimeout(retryTimer)
         retryTimer = null
@@ -315,72 +310,34 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
       replayConnection(connection, replaceExisting, () => void setup(true))
     }
 
-    requestInputRefresh = (): void => {
-      clearPreviewTerminalTimer(inputRefreshTimer)
-      inputRefreshTimer = setTimeout(() => {
+    offData = previewApi.onData((payload) => {
+      if (payload.ptyId !== ptyId) {
+        return
+      }
+      if (payload.type === 'resync') {
         void setup(true)
-      }, 180)
-    }
-    retryGonePtyRef.current = remoteSession ? () => void remoteSession.start() : goneRetry.retryNow
+        return
+      }
+      writeLive(payload)
+    })
 
-    const offData = remoteSession
-      ? null
-      : window.api.terminalPreview.onData((payload) => {
-          if (payload.ptyId !== ptyId) {
-            return
-          }
-          if (payload.type === 'resync') {
-            void setup(true)
-            return
-          }
-          writeLive(payload)
-        })
+    void setup()
 
-    void (remoteSession ? remoteSession.start() : setup())
     return () => {
       disposed = true
       boxFit.dispose()
-      clearPreviewTerminalTimer(retryTimer)
-      clearPreviewTerminalTimer(inputRefreshTimer)
-      goneRetry.dispose()
-      retryGonePtyRef.current = () => undefined
-      reclaimGridRef.current = () => undefined
-      horizontalReset.dispose()
-      gridClaim.dispose()
-      offData?.()
-      userInputDisposable?.dispose()
-      disposeImeNativeTextBridge()
-      disposeTerminalCompatibility?.()
-      disposeKeyHandler?.()
-      disposeInteractions()
-      disposeNativeCopyGutterTrim?.()
-      if (remoteSession) {
-        remoteSession.dispose()
-      } else {
-        void window.api.terminalPreview.unsubscribe(ptyId)
+      if (retryTimer) {
+        clearTimeout(retryTimer)
       }
-      terminal?.dispose()
-      terminalRef.current = null
+      gridClaim.dispose()
+      boxResizeObserver?.disconnect()
+      releaseTerminal()
     }
   }, [
-    autoFocus,
-    interactiveRef,
-    refreshText,
-    claimGrid,
-    macOptionAsAltRef,
-    linkSourceRef,
-    onBrowserForegroundRef,
-    onRequestCloseRef,
     ptyId,
-    releaseGridOnWindowBlur,
-    refreshAfterInput,
-    scaleToFit,
-    settingsRef,
-    terminalInputRef,
-    terminalLinksRef,
     terminalTheme,
     terminalMode,
-    settings?.terminalMinimumContrastRatio,
+    terminalMinimumContrastRatio,
     settings?.terminalFontSize,
     settings?.terminalFontFamily,
     settings?.terminalFontWeight,
@@ -389,20 +346,49 @@ export function AgentTerminalPreview(props: AgentTerminalPreviewProps): React.JS
     settings?.terminalLigatures
   ])
 
+  // Apply appearance and OS Option-as-Alt changes without reconnecting the PTY or repainting its snapshot.
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+    Object.assign(
+      terminal.options,
+      buildPreviewAppearanceOptions(settings, macOptionAsAlt === 'true')
+    )
+    syncPreviewTerminalLigatures(terminal, settings)
+  }, [settings, terminalFontLoadKey, macOptionAsAlt])
+
   return (
-    <AgentTerminalPreviewFrame
-      className={className}
-      containerRef={containerRef}
-      terminalRef={terminalRef}
-      ptyId={ptyId}
-      ptyGone={ptyGone}
-      onActivate={() => reclaimGridRef.current()}
-      onClosedActivate={() => {
-        onClosedActivate?.()
-        retryGonePtyRef.current()
-      }}
-      terminalTheme={terminalTheme}
-      textPreview={textWhenUnfocused ? textPreview : undefined}
-    />
+    // Fix the box to the viewport so snapshot geometry cannot resize the dialog; fit/clip the true PTY frame at its cursor end.
+    <div
+      data-agent-terminal-preview
+      className={cn(
+        'relative h-[calc(100vh-140px)] w-full overflow-hidden bg-background p-1.5',
+        className
+      )}
+      style={terminalTheme?.background ? { backgroundColor: terminalTheme.background } : undefined}
+    >
+      {linkRequest ? (
+        <LinkActionPopover
+          request={linkRequest}
+          onClose={(dismissed) =>
+            setLinkRequest((current) => closeLinkActionRequest(current, dismissed))
+          }
+          onOpenSettings={onBrowserForeground ?? null}
+        />
+      ) : null}
+      {ptyGone ? (
+        <div className="absolute inset-0 flex items-center justify-center px-2.5 py-8 text-center text-[11px] text-muted-foreground">
+          {terminalPreviewUnavailableMessage({ ptyId }, t)}
+        </div>
+      ) : null}
+      <div
+        aria-hidden={ptyGone || undefined}
+        className={cn('flex h-full w-full items-end overflow-hidden', ptyGone && 'invisible')}
+      >
+        <div ref={containerRef} className="origin-bottom-left" />
+      </div>
+    </div>
   )
 }

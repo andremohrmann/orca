@@ -10,7 +10,7 @@ import {
   type DashboardCard,
   type DashboardRevealAgentArgs as AgentRevealArgs
 } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
-import { AgentTerminalPreview } from './AgentTerminalPreview'
+import { LiveViewTerminalPreview } from '../../dashboard-popout/LiveViewTerminalPreview'
 import { AgentCardLastMessages, hasAgentCardLastMessages } from '../board/AgentCardLastMessages'
 import { terminalPreviewUnavailableMessage } from './terminal-preview-unavailable-message'
 import { useTranslate } from '@/i18n/use-translate'
@@ -74,7 +74,7 @@ function AgentTerminalFrame({
         </Button>
       </div>
       {card.ptyId ? (
-        <AgentTerminalPreview
+        <LiveViewTerminalPreview
           ptyId={card.ptyId}
           terminalInput={card.terminalInput ?? null}
           terminalLinks={card.terminalLinks ?? null}

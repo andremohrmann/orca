@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { AgentIcon } from '@/components/agent/icons/AgentIcon'
 import { agentTypeToIconAgent } from '../../../../shared/agent-status/presentation/agent-type-icon-agent'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 
 type AgentLiveCompactPaneRowProps = {
@@ -15,6 +15,7 @@ type AgentLiveCompactPaneRowProps = {
 export function AgentLiveCompactPaneRow(
   props: AgentLiveCompactPaneRowProps
 ): React.JSX.Element | null {
+  const t = useTranslate()
   if (props.cards.length === 0) {
     return null
   }
@@ -31,7 +32,7 @@ export function AgentLiveCompactPaneRow(
             type="button"
             className="min-w-0 truncate text-left"
             onClick={() => props.onRevealAgent(card)}
-            aria-label={translate('dashboardPopout.live.openWorkspace', 'Open workspace')}
+            aria-label={t('dashboardPopout.live.openWorkspace', 'Open workspace')}
           >
             {props.titleForCard(card)}
           </button>
@@ -39,7 +40,7 @@ export function AgentLiveCompactPaneRow(
             type="button"
             className="ml-1 rounded-sm text-muted-foreground hover:text-foreground"
             onClick={() => props.onClose(card)}
-            aria-label={translate('dashboardPopout.live.close', 'Close from Live view')}
+            aria-label={t('dashboardPopout.live.close', 'Close from Live view')}
           >
             <X className="size-3" />
           </button>

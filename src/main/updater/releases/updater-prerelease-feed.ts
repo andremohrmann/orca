@@ -1,4 +1,4 @@
-import { escapeRegex } from '../../../shared/text/regex-escaping'
+import { updateFeedPolicy } from './updater-feed-policy'
 import { net } from 'electron'
 import { compareVersions, isPrereleaseVersion, isValidVersion } from './updater-fallback'
 import {
@@ -6,29 +6,25 @@ import {
   getPlatformManifestReadiness,
   requestReleaseHead
 } from './updater-release-readiness'
+
 import {
   applyReleaseDelay,
   isReleaseOldEnough,
   type DatedReleaseTag,
   type ReleaseDelayResult
 } from './updater-release-delay'
-import { getUpdateFeedInfo } from '../../../shared/update-feed-info'
 import { fetchOlderReleaseTags, mergeReleaseTags } from './updater-release-history'
-import {
-  normalizeTagToVersion,
-  isCustomVersion as isCustomReleaseTag
-} from '../../../shared/updater/release-channel'
-export { normalizeTagToVersion, isCustomReleaseTag }
 
-const updateFeedInfo = getUpdateFeedInfo()
-const ATOM_FEED_URL = updateFeedInfo.atomUrl
+const ATOM_FEED_URL = updateFeedPolicy.atomUrl
 const MAX_MANIFEST_PROBE_CANDIDATES = 6
 // Atom includes stable and prerelease tags without channel filtering.
 const ENTRY_RE = /<entry>([\s\S]*?)<\/entry>/g
-const TAG_HREF_RE = new RegExp(
-  `href="${escapeRegex(`https://github.com/${updateFeedInfo.repo}/releases/tag/`)}([^"]+)"`
-)
+const TAG_HREF_RE = updateFeedPolicy.tagHrefPattern
 const ENTRY_UPDATED_RE = /<updated>([^<]+)<\/updated>/
+
+export function normalizeTagToVersion(tag: string): string {
+  return updateFeedPolicy.normalizeTag(tag)
+}
 
 type ReleaseFeedTag = DatedReleaseTag
 
@@ -75,15 +71,13 @@ async function fetchReleaseFeedTags(): Promise<ReleaseFeedTag[] | null> {
 export async function fetchLatestStableReleaseTag(): Promise<string | null> {
   try {
     // Resolve only the release-page redirect; installer redirects continue on to signed storage URLs.
-    const latestUrl = `https://github.com/${updateFeedInfo.repo}/releases/latest`
+    const latestUrl = updateFeedPolicy.latestUrl
     const response = await requestReleaseHead(latestUrl)
     if (!response?.redirectUrl || response.statusCode < 300 || response.statusCode >= 400) {
       return null
     }
     const target = new URL(response.redirectUrl, latestUrl)
-    const match = target.pathname.match(
-      new RegExp(`^/${escapeRegex(updateFeedInfo.repo)}/releases/tag/([^/]+)$`)
-    )
+    const match = target.pathname.match(updateFeedPolicy.tagPathPattern)
     if (target.origin !== 'https://github.com' || !match) {
       return null
     }
@@ -147,14 +141,12 @@ export async function fetchNewerReleaseTagsWithReadiness(
     return { tags: [], state: 'unavailable', unavailableReason: 'feed' }
   }
 
-  const customChannel = updateFeedInfo.isCustom || isCustomReleaseTag(currentVersion)
   const minimum = options.minimumVersion
   const candidates = (list: ReleaseFeedTag[]): ReleaseFeedTag[] => {
     const channel = selectChannelCandidates(
-      list,
+      updateFeedPolicy.selectTags(list, currentVersion),
       includePrerelease,
-      options.releaseFilter,
-      customChannel
+      options.releaseFilter
     )
     return minimum
       ? channel.filter(({ version }) => compareVersions(version, minimum) >= 0)
@@ -214,12 +206,8 @@ export async function fetchNewerReleaseTagsWithReadiness(
 function selectChannelCandidates(
   tags: ReleaseFeedTag[],
   includePrerelease: boolean,
-  releaseFilter: FetchNewerReleaseTagOptions['releaseFilter'],
-  customChannel: boolean
+  releaseFilter: FetchNewerReleaseTagOptions['releaseFilter']
 ): ReleaseFeedTag[] {
-  if (customChannel) {
-    tags = tags.filter(({ tag }) => isCustomReleaseTag(tag))
-  }
   if (releaseFilter === 'perf') {
     return tags.filter(({ tag }) => isPerfPrereleaseTag(tag))
   }

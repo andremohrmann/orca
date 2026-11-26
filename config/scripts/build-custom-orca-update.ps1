@@ -15,30 +15,19 @@ $ErrorActionPreference = 'Stop'
 $env:ORCA_BACKGROUND_LAUNCH = '1'
 $customWorkflowAllowlist = @(
   '.github/workflows/custom-windows-update.yml',
-  '.github/workflows/pr-test-loc.yml'
+  '.github/workflows/pr-test-loc.yml',
+  '.github/workflows/custom-fork-candidate.yml'
 )
 # Only these take --ours when they genuinely conflict with upstream (not merely differ from it —
 # see the incident note on Merge-CustomBranch below). Everything else stays off this list on
 # purpose: upstream edits these files too, and silently discarding an upstream fix is worse than a
 # merge that stops and asks a human to reconcile it by hand.
 #
-# The four dashboard-popout entries are an exception to that caution, not a relaxation of it:
-# upstream rebuilt AgentTerminalPreview on a simpler, non-shared architecture (no grid-focus
-# handoff, no remote-session support, no SSH/worktree link resolution) that our Live View grid
-# needs and upstream's own popout does not. Every conflict between the two versions since this
-# fork started has resolved to "keep ours" — never once "take theirs" — so taking --ours here
-# removes a daily guaranteed-same-answer conflict rather than skipping real reconciliation. If
-# upstream ever ships a fix inside these specific files (not just alongside them), it will not
-# surface here; recheck this list if that file's upstream history starts looking unusually active.
 $customContentConflictAllowlist = @(
   'config/update-feed-defaults.json',
   'config/dev-app-update.yml',
   'src/shared/update-feed-info.ts',
-  'src/shared/update-feed-info.test.ts',
-  'src/renderer/src/components/dashboard/terminal-preview/AgentTerminalPreview.tsx',
-  'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
-  'src/renderer/src/components/standalone-terminal/rendering/preview-terminal-links.ts',
-  'src/renderer/src/components/standalone-terminal/input/preview-terminal-paste.ts'
+  'src/shared/update-feed-info.test.ts'
 )
 
 function Invoke-Native {
@@ -48,6 +37,10 @@ function Invoke-Native {
     [string[]]$Arguments
   )
   Write-Host "`n==> $Label"
+  if ($FilePath -eq 'pnpm') {
+    $FilePath = 'corepack'
+    $Arguments = @('pnpm') + $Arguments
+  }
   & $FilePath @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "$Label failed with exit code $LASTEXITCODE."
@@ -347,9 +340,6 @@ if (!$SkipValidation) {
     'src/main/ipc/dashboard-popout.test.ts',
     'src/main/window/dashboard-popout-window.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentLiveGrid.child-agents.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentTerminalPreview.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentTerminalPreviewRemote.test.tsx',
-    'src/renderer/src/components/dashboard-popout/AgentTerminalPreviewFitResync.test.tsx',
     'src/renderer/src/components/dashboard-popout/preview-remote-terminal-session.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-claim.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-terminal-fit.test.ts',
@@ -362,6 +352,9 @@ if (!$SkipValidation) {
     'config/scripts/verify-custom-windows-packaging.test.mjs',
     'src/shared/custom-windows-release-channel.test.ts',
     'src/shared/agent-dashboard-live-layout.test.ts',
+    'src/shared/dashboard-native-ui-fields.test.ts',
+    'src/main/updater/releases/updater-feed-policy.test.ts',
+    'config/scripts/custom-fork/merge-comparison.test.mjs',
     'src/shared/update-feed-info.test.ts'
   )
 }
