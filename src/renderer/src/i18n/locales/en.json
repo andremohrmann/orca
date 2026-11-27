@@ -11766,7 +11766,8 @@
               "board": "board",
               "inWindow": "in-window",
               "worktrees": "worktrees",
-              "eaf17a7214": "Agent dashboard"
+              "eaf17a7214": "Agent dashboard",
+              "borderColors": "border colors colours input needed working done errors failures"
             },
             "worktreeCardStyle": {
               "title": "Card style",
@@ -24644,7 +24645,20 @@
       "empty": "No matching terminals or chats.",
       "expand": "Expand terminal",
       "pin": "Pin window to this position",
-      "unpin": "Unpin window"
+      "unpin": "Unpin window",
+      "borderColors": {
+        "picker": "{{state}} border color",
+        "default": "Default",
+        "resetOne": "Reset {{state}} border color",
+        "reset": "Reset",
+        "attention": "Input needed",
+        "working": "Working",
+        "done": "Done",
+        "failed": "Errors and failures",
+        "title": "Live view border colors",
+        "description": "Choose a color for each state. Defaults follow the theme; working borders stay subtle.",
+        "resetAll": "Reset colors"
+      }
     }
   },
   "dashboard": {

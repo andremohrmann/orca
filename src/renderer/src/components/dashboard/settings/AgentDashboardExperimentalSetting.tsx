@@ -11,6 +11,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { getExperimentalSearchEntry } from '../../settings/advanced/experimental-search'
 import { canOpenAgentDashboardPopout } from './agent-dashboard-open-mode'
+import { LiveViewBorderColorsSetting } from './LiveViewBorderColorsSetting'
 import {
   normalizeAgentDashboardLiveLayout,
   type AgentDashboardLiveLayout
@@ -197,6 +198,10 @@ export function AgentDashboardExperimentalSetting({
               'min'
             )}
             onChange={(autoMinimizeAfterMinutes) => updateLiveLayout({ autoMinimizeAfterMinutes })}
+          />
+          <LiveViewBorderColorsSetting
+            colors={liveLayout.borderColors}
+            onChange={(borderColors) => updateLiveLayout({ borderColors })}
           />
         </div>
       ) : null}

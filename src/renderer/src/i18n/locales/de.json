@@ -11432,7 +11432,8 @@
               "board": "Board",
               "inWindow": "im Fenster",
               "worktrees": "Worktrees",
-              "eaf17a7214": "Agenten-Dashboard"
+              "eaf17a7214": "Agenten-Dashboard",
+              "borderColors": "Rahmenfarben Farben Eingabe erforderlich in Arbeit fertig Fehler Fehlschläge"
             },
             "worktreeCardStyle": {
               "title": "Kartenstil",
@@ -24227,7 +24228,20 @@
     },
     "live": {
       "pin": "Fenster an dieser Position anheften",
-      "unpin": "Fenster lösen"
+      "unpin": "Fenster lösen",
+      "borderColors": {
+        "picker": "Rahmenfarbe: {{state}}",
+        "default": "Standard",
+        "resetOne": "Rahmenfarbe für {{state}} zurücksetzen",
+        "reset": "Zurücksetzen",
+        "attention": "Eingabe erforderlich",
+        "working": "In Arbeit",
+        "done": "Fertig",
+        "failed": "Fehler und Fehlschläge",
+        "title": "Rahmenfarben der Live-Ansicht",
+        "description": "Wähle für jeden Status eine Farbe. Standardfarben folgen dem Design; Rahmen laufender Aufgaben bleiben dezent.",
+        "resetAll": "Farben zurücksetzen"
+      }
     }
   },
   "dashboard": {

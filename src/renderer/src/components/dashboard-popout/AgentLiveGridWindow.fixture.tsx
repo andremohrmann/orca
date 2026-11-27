@@ -3,11 +3,14 @@ import { defineFixture } from '../../component-fixtures/component-fixture'
 import type { DashboardCard } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridStateOutline } from './AgentLiveGridStateOutline'
+import type { AgentDashboardLiveBorderColors } from '../../../../shared/agent-dashboard-live-layout'
 
 function Window({
-  state
+  state,
+  colors
 }: {
   state: 'attention' | 'failed' | 'done' | 'working' | 'idle'
+  colors?: AgentDashboardLiveBorderColors
 }): React.JSX.Element {
   const [pinned, setPinned] = useState(false)
   const card: DashboardCard = {
@@ -31,7 +34,7 @@ function Window({
   }
   return (
     <section className="relative flex h-64 min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card">
-      <AgentLiveGridStateOutline card={card} />
+      <AgentLiveGridStateOutline card={card} colors={colors} />
       <AgentLiveGridHeader
         card={card}
         pinned={pinned}
@@ -96,3 +99,18 @@ export const states = defineFixture({
 export const narrow = defineFixture({ width: 360, render: () => <Window state="done" /> })
 export const narrowWorking = defineFixture({ width: 360, render: () => <Window state="working" /> })
 export const narrowFailed = defineFixture({ width: 360, render: () => <Window state="failed" /> })
+export const customColors = defineFixture({
+  width: 1800,
+  render: () => {
+    const colors = { attention: '#3377cc', working: '#cc88ee', done: '#00aa88', failed: '#dd4488' }
+    return (
+      <div className="grid grid-cols-5 gap-2 p-2">
+        <Window state="attention" colors={colors} />
+        <Window state="failed" colors={colors} />
+        <Window state="done" colors={colors} />
+        <Window state="working" colors={colors} />
+        <Window state="idle" colors={colors} />
+      </div>
+    )
+  }
+})

@@ -110,6 +110,10 @@ export const getExperimentalSearchEntry = createLocalizedCatalog(
             'auto minimize'
           ),
           ...translateSearchKeyword(
+            'auto.components.settings.experimental.search.agentDashboard.borderColors',
+            'border colors colours input needed working done errors failures'
+          ),
+          ...translateSearchKeyword(
             'auto.components.settings.experimental.search.agentDashboard.worktrees',
             'worktrees'
           )
