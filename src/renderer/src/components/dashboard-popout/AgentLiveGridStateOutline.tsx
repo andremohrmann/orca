@@ -16,6 +16,14 @@ export function AgentLiveGridStateOutline({
   const state = dashboardCardDisplayState(card)
   const failed = state === 'failed'
   const working = state === 'working' || state === 'monitoring'
+  if (!attention && state === 'idle') {
+    return (
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-10 rounded-[inherit] bg-background/35 group-hover/live-window:opacity-0 group-focus-within/live-window:opacity-0 motion-safe:transition-opacity"
+      />
+    )
+  }
   if (!attention && !failed && state !== 'done' && !working) {
     return null
   }
@@ -27,6 +35,9 @@ export function AgentLiveGridStateOutline({
         ? 'done'
         : 'working'
   const color = colors?.[borderState]
+  if (borderState === 'working' && !color) {
+    return null
+  }
   return (
     <div
       aria-hidden="true"
@@ -45,7 +56,7 @@ export function AgentLiveGridStateOutline({
             ? 'border-agent-question/70'
             : state === 'done'
               ? 'border-status-success/70'
-              : 'border-agent-working/25'
+              : 'border-transparent'
       )}
     />
   )

@@ -33,7 +33,7 @@ function Window({
     unseen: true
   }
   return (
-    <section className="relative flex h-64 min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card">
+    <section className="group/live-window relative flex h-64 min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card">
       <AgentLiveGridStateOutline card={card} colors={colors} />
       <AgentLiveGridHeader
         card={card}

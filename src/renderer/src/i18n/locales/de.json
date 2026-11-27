@@ -24238,8 +24238,9 @@
         "done": "Fertig",
         "failed": "Fehler und Fehlschläge",
         "title": "Rahmenfarben der Live-Ansicht",
-        "description": "Wähle für jeden Status eine Farbe. Standardfarben folgen dem Design; Rahmen laufender Aufgaben bleiben dezent.",
-        "resetAll": "Farben zurücksetzen"
+        "description": "Wähle für jeden Zustand eine Farbe. Laufende Aufgaben haben standardmäßig keine Rahmenfarbe; die anderen Standardfarben folgen dem Design.",
+        "resetAll": "Farben zurücksetzen",
+        "none": "Keine"
       }
     }
   },

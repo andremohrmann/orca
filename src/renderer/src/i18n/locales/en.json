@@ -24693,8 +24693,9 @@
         "done": "Done",
         "failed": "Errors and failures",
         "title": "Live view border colors",
-        "description": "Choose a color for each state. Defaults follow the theme; working borders stay subtle.",
-        "resetAll": "Reset colors"
+        "description": "Choose a color for each state. Working has no border color by default; other defaults follow the theme.",
+        "resetAll": "Reset colors",
+        "none": "None"
       }
     },
     "opacity": {

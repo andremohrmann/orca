@@ -14,7 +14,7 @@ import { SettingsGroupSubsection } from '../../settings/section-layout/SettingsG
 
 const BORDER_TOKENS: Record<AgentDashboardLiveBorderState, string> = {
   attention: '--agent-question',
-  working: '--agent-working',
+  working: '--border',
   done: '--status-success',
   failed: '--destructive'
 }
@@ -58,7 +58,12 @@ function BorderColorRow({
                 onClick={() => {
                   const swatch = swatchRef.current
                   const painted =
-                    swatch && browserColorProbe(getComputedStyle(swatch).backgroundColor)
+                    swatch &&
+                    browserColorProbe(
+                      getComputedStyle(swatch)[
+                        state === 'working' && !color ? 'borderColor' : 'backgroundColor'
+                      ]
+                    )
                   if (painted) {
                     setThemeColor(rgbaToHex(painted))
                   }
@@ -68,10 +73,17 @@ function BorderColorRow({
                   ref={swatchRef}
                   aria-hidden="true"
                   className="size-4 rounded-md border border-border/70"
-                  style={{ backgroundColor: color ?? `var(${BORDER_TOKENS[state]})` }}
+                  style={{
+                    backgroundColor:
+                      color ??
+                      (state === 'working' ? 'transparent' : `var(${BORDER_TOKENS[state]})`)
+                  }}
                 />
                 <span className={color ? 'font-mono text-xs uppercase' : 'text-xs'}>
-                  {color ?? t('dashboardPopout.live.borderColors.default', 'Default')}
+                  {color ??
+                    (state === 'working'
+                      ? t('dashboardPopout.live.borderColors.none', 'None')
+                      : t('dashboardPopout.live.borderColors.default', 'Default'))}
                 </span>
               </Button>
             }
@@ -115,7 +127,7 @@ export function LiveViewBorderColorsSetting({
       title={t('dashboardPopout.live.borderColors.title', 'Live view border colors')}
       description={t(
         'dashboardPopout.live.borderColors.description',
-        'Choose a color for each state. Defaults follow the theme; working borders stay subtle.'
+        'Choose a color for each state. Working has no border color by default; other defaults follow the theme.'
       )}
       action={
         <Button
