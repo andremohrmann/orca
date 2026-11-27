@@ -64,7 +64,7 @@ jobs:
     env:
       CUSTOM_BRANCH: ${{ matrix.branch }}
       PINNED_UPSTREAM: ${{ needs.inputs.outputs.upstream }}
-      MERGE_REPORT: ${{ runner.temp }}/merge-observation.json
+      MERGE_REPORT: ${{ github.workspace }}/../merge-observation.json
       ORCA_BACKGROUND_LAUNCH: '1'
       UPSTREAM_REPO: https://github.com/stablyai/orca.git
       OUTPUT_DIR: ${{ github.workspace }}\custom-output
