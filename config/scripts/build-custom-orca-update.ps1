@@ -382,6 +382,7 @@ if (!$SkipValidation) {
     '120000',
     'src/main/ipc/dashboard-popout.test.ts',
     'src/main/window/dashboard-popout-window.test.ts',
+    'src/main/window/clipboard/clipboard-ipc-sender-trust.test.ts',
     'src/renderer/src/components/dashboard-popout/AgentLiveGrid.child-agents.test.tsx',
     'src/renderer/src/components/dashboard-popout/preview-remote-terminal-session.test.ts',
     'src/renderer/src/components/dashboard-popout/preview-grid-claim.test.ts',
