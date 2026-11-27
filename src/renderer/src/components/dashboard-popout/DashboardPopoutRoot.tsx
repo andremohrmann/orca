@@ -9,6 +9,7 @@ import {
   type AgentDashboardView
 } from '../../../../shared/agent-dashboard-view'
 import { useAgentDashboardTelemetry } from '../dashboard/board/use-agent-dashboard-telemetry'
+import { useDashboardPopoutCloseShortcut } from './use-dashboard-popout-close-shortcut'
 
 type DashboardPopoutRootProps = {
   /** The layout requested via popout.html?view=<name>. */
@@ -24,6 +25,7 @@ export function DashboardPopoutRoot(_props: DashboardPopoutRootProps): React.JSX
   // Edit-menu IPC into the ownership events the terminal preview claims.
   useAppMenuPaste()
   useAppMenuSelectionActions()
+  useDashboardPopoutCloseShortcut()
   useAgentDashboardTelemetry('popout')
   const snapshot = useDashboardSnapshot()
   const [view, setView] = useState<AgentDashboardView>(() =>
