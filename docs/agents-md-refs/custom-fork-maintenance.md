@@ -53,30 +53,9 @@ on CI or an isolated display. No agent test may take desktop focus.
 
 ## Seven-day comparison
 
-Freeze the verified production and experiment SHAs in an external trial manifest.
-`config/scripts/custom-fork/merge-comparison.mjs` compares both frozen heads with the
-same upstream SHA at each of seven daily cutoffs. `git merge-tree --write-tree`
-writes temporary Git objects but never checks out, commits or advances either branch.
-The initial pair and each observation are immutable; source changes after freezing
-need a new trial rather than silently changing the treatment.
-
-Measure conflicts remaining after each branch's explicit automatic policy, raw source
-conflict paths, policy-allowlisted conflicts and intentional workflow conflicts separately.
-Policy classification uses Git's actual stage entries, including rename/delete cases.
-Report daily results plus unique upstream snapshots
-and unique conflicting paths. Repeated days exposing the same conflict are not
-independent regressions. Network, tool or parser errors are missing observations,
-never clean merges. The collector can backfill missed cutoffs from upstream history
-when the PC is available again; that reconstruction uses commit timestamps and is
-not proof of exactly what GitHub's ref pointed to during an outage or force push.
-
-This trial measures cumulative merge friction from a fixed starting pair. It does
-not measure human repair time or prove runtime compatibility of unbuilt merge trees.
-The production branch keeps its existing repair automation; experiment merge probes
-do not invoke it or cherry-pick its repairs. Count candidate build failures separately.
-Promote only after reviewing both merge evidence and behavior/build validation.
-
-Daily collection and the final report run through a separate Orca automation. Evidence
-and the final comparison are saved outside worktrees under Codex automation support.
-The PC and Orca scheduler must run, or the report is delayed until the next run.
-The final report must state missing/repeated samples and disable its own schedule.
+The former frozen-head trial was superseded on 2026-11-27 at Andre's request.
+Both maintained branches now use the same scheduled merge workflow and pinned
+upstream snapshot. See [paired upstream merges](paired-upstream-merges.md) for the
+current schedule, evidence and reporting rules. Preserve the original external
+manifest as archived evidence; do not mix its simulated observations into the
+rolling trial.
