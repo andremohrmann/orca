@@ -4,14 +4,19 @@ import type { DashboardCard } from '../../../../shared/agent-status/presentation
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridStateOutline } from './AgentLiveGridStateOutline'
 
-function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.JSX.Element {
+function Window({
+  state
+}: {
+  state: 'attention' | 'failed' | 'done' | 'working' | 'idle'
+}): React.JSX.Element {
   const [pinned, setPinned] = useState(false)
   const card: DashboardCard = {
     paneKey: state,
     ptyId: state,
     agentType: 'codex',
-    bucket: state,
-    dotState: state === 'attention' ? 'waiting' : state,
+    bucket: state === 'failed' ? 'done' : state,
+    dotState: state === 'attention' ? 'waiting' : state === 'failed' ? 'done' : state,
+    verdict: state === 'failed' ? 'failed' : undefined,
     task: state,
     repoId: 'repo',
     worktreeId: state,
@@ -20,7 +25,7 @@ function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.J
     repoName: 'Orca',
     worktreeName: state,
     startedAt: 1,
-    finishedAt: state === 'done' ? 2 : null,
+    finishedAt: state === 'done' || state === 'failed' ? 2 : null,
     stateChangedAt: 2,
     unseen: true
   }
@@ -32,11 +37,15 @@ function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.J
         pinned={pinned}
         onTogglePin={() => setPinned(!pinned)}
         title={
-          state === 'done'
-            ? 'Completed build'
-            : state === 'attention'
-              ? 'Waiting for input'
-              : 'Updating upstream'
+          state === 'failed'
+            ? 'Failed build'
+            : state === 'done'
+              ? 'Completed build'
+              : state === 'attention'
+                ? 'Waiting for input'
+                : state === 'working'
+                  ? 'Updating upstream'
+                  : 'Idle terminal'
         }
         subtitle=""
         editingPaneKey={null}
@@ -53,22 +62,28 @@ function Window({ state }: { state: 'attention' | 'done' | 'working' }): React.J
         onClose={() => {}}
       />
       <pre className="flex-1 overflow-hidden bg-background p-3 font-mono text-xs text-foreground">
-        {state === 'done'
-          ? '$ pnpm build\nBuild complete.\n$'
-          : state === 'attention'
-            ? '$ deploy\nContinue? [y/N]'
-            : '$ git fetch stablyai\nReceiving objects…'}
+        {state === 'failed'
+          ? '$ pnpm build\nError: build failed.\n$'
+          : state === 'done'
+            ? '$ pnpm build\nBuild complete.\n$'
+            : state === 'attention'
+              ? '$ deploy\nContinue? [y/N]'
+              : state === 'working'
+                ? '$ git fetch stablyai\nReceiving objects…'
+                : '$\nReady for a task.'}
       </pre>
     </section>
   )
 }
 export const states = defineFixture({
-  width: 1140,
+  width: 1800,
   render: () => (
-    <div className="grid grid-cols-3 gap-2 p-2">
+    <div className="grid grid-cols-5 gap-2 p-2">
       <Window state="attention" />
+      <Window state="failed" />
       <Window state="done" />
       <Window state="working" />
+      <Window state="idle" />
     </div>
   ),
   interact: (frame) => {
@@ -79,3 +94,5 @@ export const states = defineFixture({
   }
 })
 export const narrow = defineFixture({ width: 360, render: () => <Window state="done" /> })
+export const narrowWorking = defineFixture({ width: 360, render: () => <Window state="working" /> })
+export const narrowFailed = defineFixture({ width: 360, render: () => <Window state="failed" /> })

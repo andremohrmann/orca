@@ -1,6 +1,8 @@
 param(
   [string]$Branch = 'custom/orca-dashboard-live-view',
   [string]$Upstream = 'stablyai/main',
+  [string]$UpstreamCommit = '',
+  [string]$MergeReportPath = '',
   [string]$OutputDir = (Join-Path $env:TEMP 'orca-installer-build-custom-latest'),
   [string]$UpdateOwner = '',
   [string]$UpdateRepo = '',
@@ -81,6 +83,12 @@ function Assert-CleanWorktree {
   }
 }
 
+function Write-MergeReport {
+  if ($MergeReportPath.Length -gt 0) {
+    $script:mergeReport | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $MergeReportPath -Encoding utf8
+  }
+}
+
 function Merge-CustomBranch {
   param(
     [string]$BranchName,
@@ -103,6 +111,29 @@ function Merge-CustomBranch {
   } else {
     Invoke-Native "Fetch $remoteName updates" git @('fetch', '--no-tags', $remoteName)
   }
+  if ($UpstreamCommit.Length -gt 0) {
+    if ($UpstreamCommit -notmatch '^[0-9a-f]{40}$') { throw 'Expected a full upstream commit SHA.' }
+    Invoke-Native 'Verify pinned upstream commit belongs to fetched main' git @(
+      'merge-base', '--is-ancestor', $UpstreamCommit, $UpstreamRef
+    )
+    $UpstreamRef = $UpstreamCommit
+  }
+  $script:mergeReport = [ordered]@{
+    schema = 2
+    branch = $BranchName
+    inputHead = Invoke-NativeOutput git @('rev-parse', 'HEAD')
+    upstream = Invoke-NativeOutput git @('rev-parse', $UpstreamRef)
+    runId = $env:GITHUB_RUN_ID
+    runAttempt = $env:GITHUB_RUN_ATTEMPT
+    event = $env:GITHUB_EVENT_NAME
+    recordedAt = [DateTimeOffset]::UtcNow.ToString('o')
+    state = 'started'
+    rawConflicts = @()
+    rawStages = @()
+    remainingConflicts = @()
+    contentPolicy = @($customContentConflictAllowlist)
+  }
+  Write-MergeReport
   $currentBranch = Invoke-NativeOutput git @('branch', '--show-current')
   if ($currentBranch -ne $BranchName) {
     Invoke-Native "Switch to $BranchName" git @('switch', $BranchName)
@@ -111,6 +142,8 @@ function Merge-CustomBranch {
   & git merge-base --is-ancestor $UpstreamRef HEAD
   if ($LASTEXITCODE -eq 0) {
     Write-Host "`n==> Custom branch already contains $UpstreamRef"
+    $script:mergeReport.state = 'already-contained'
+    Write-MergeReport
     Remove-InheritedWorkflows
     if (@(git diff --cached --name-only).Count -gt 0) {
       Invoke-Native 'Commit inherited workflow cleanup' git @(
@@ -136,11 +169,22 @@ function Merge-CustomBranch {
   # them — and a real conflict should stop the build and ask a human, not get silently resolved in
   # either direction. Never reintroduce a step that treats "differs from upstream" as "needs fixing".
   & git merge --no-ff --no-commit $UpstreamRef
-  if ($LASTEXITCODE -ne 0) {
-    if (!(Resolve-DeletedWorkflowMergeConflicts)) {
+  $mergeExit = $LASTEXITCODE
+  $script:mergeReport.rawConflicts = @(git diff --name-only --diff-filter=U)
+  $script:mergeReport.rawStages = @(git ls-files --unmerged)
+  $script:mergeReport.state = 'merge-error'
+  Write-MergeReport
+  if ($mergeExit -ne 0) {
+    $resolved = Resolve-DeletedWorkflowMergeConflicts
+    $script:mergeReport.remainingConflicts = @(git diff --name-only --diff-filter=U)
+    $script:mergeReport.state = if ($script:mergeReport.remainingConflicts.Count -gt 0) { 'conflicted' } else { 'merge-error' }
+    Write-MergeReport
+    if (!$resolved -or $script:mergeReport.rawConflicts.Count -eq 0) {
       throw 'Merge stopped. Resolve the reported conflicts, commit the merge, then rerun this script.'
     }
   }
+  $script:mergeReport.state = 'merged'
+  Write-MergeReport
   Remove-InheritedWorkflows
   Invoke-Native 'Commit upstream merge' git @(
     '-c',

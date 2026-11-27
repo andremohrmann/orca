@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - custom/orca-dashboard-live-view
+      - custom/orca-conflict-reduction
   workflow_dispatch:
   schedule:
     - cron: '17 3 * * *'
@@ -17,13 +18,54 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  inputs:
+    if: github.repository == 'andremohrmann/orca'
+    runs-on: ubuntu-latest
+    outputs:
+      upstream: ${{ steps.snapshot.outputs.upstream }}
+      matrix: ${{ steps.snapshot.outputs.matrix }}
+    steps:
+      - name: Pin one upstream snapshot and both branch heads
+        id: snapshot
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const upstream = await github.rest.git.getRef({ owner: 'stablyai', repo: 'orca', ref: 'heads/main' });
+            const branches = [
+              { branch: 'custom/orca-dashboard-live-view', label: 'production', publish: true },
+              { branch: 'custom/orca-conflict-reduction', label: 'experiment', publish: false }
+            ];
+            const selected = context.eventName === 'push'
+              ? branches.filter(item => `refs/heads/${item.branch}` === context.ref)
+              : branches;
+            for (const item of selected) {
+              const ref = await github.rest.git.getRef({ ...context.repo, ref: `heads/${item.branch}` });
+              item.head = context.eventName === 'push' ? context.sha : ref.data.object.sha;
+            }
+            core.setOutput('upstream', upstream.data.object.sha);
+            core.setOutput('matrix', JSON.stringify({ include: selected }));
+            await core.summary.addHeading('Paired upstream merge inputs')
+              .addRaw(`Upstream: ${upstream.data.object.sha}\n`)
+              .addTable([
+                [{ data: 'Branch', header: true }, { data: 'Input commit', header: true }],
+                ...selected.map(item => [item.branch, item.head])
+              ]).write();
+
   build:
+    name: ${{ matrix.label }}
+    needs: inputs
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.inputs.outputs.matrix) }}
     if: github.repository != 'stablyai/orca'
     runs-on: windows-latest
     timeout-minutes: 180
 
     env:
-      CUSTOM_BRANCH: custom/orca-dashboard-live-view
+      CUSTOM_BRANCH: ${{ matrix.branch }}
+      PINNED_UPSTREAM: ${{ needs.inputs.outputs.upstream }}
+      MERGE_REPORT: ${{ runner.temp }}/merge-observation.json
+      ORCA_BACKGROUND_LAUNCH: '1'
       UPSTREAM_REPO: https://github.com/stablyai/orca.git
       OUTPUT_DIR: ${{ github.workspace }}\custom-output
 
@@ -31,7 +73,7 @@ jobs:
       - name: Check out custom branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event_name == 'push' && github.sha || env.CUSTOM_BRANCH }}
+          ref: ${{ matrix.head }}
           fetch-depth: 0
           token: ${{ github.token }}
 
@@ -40,19 +82,19 @@ jobs:
         run: |
           git remote remove upstream 2>$null || $true
           git remote add upstream "$env:UPSTREAM_REPO"
+          git switch -c "$env:CUSTOM_BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Set up pnpm
-        uses: pnpm/setup@v2
-        with:
-          install: false
 
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
+
+      - name: Enable pinned pnpm
+        run: |
+          npm install --global corepack@0.34.6
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -95,6 +137,8 @@ jobs:
           powershell -ExecutionPolicy Bypass -File config/scripts/build-custom-orca-update.ps1 @mergeOptions `
             -Branch "$env:CUSTOM_BRANCH" `
             -Upstream upstream/main `
+            -UpstreamCommit "$env:PINNED_UPSTREAM" `
+            -MergeReportPath "$env:MERGE_REPORT" `
             -OutputDir "$env:OUTPUT_DIR" `
             -UpdateOwner "${{ github.repository_owner }}" `
             -UpdateRepo "${{ github.event.repository.name }}" `
@@ -111,6 +155,7 @@ jobs:
           }
 
       - name: Compute release metadata
+        if: matrix.publish
         id: release
         shell: pwsh
         run: |
@@ -122,6 +167,7 @@ jobs:
           "title=Custom Orca Windows $version ($shortSha)" >> $env:GITHUB_OUTPUT
 
       - name: Publish GitHub release
+        if: matrix.publish
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -143,6 +189,7 @@ jobs:
             --latest
 
       - name: Verify published release assets
+        if: matrix.publish
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -162,12 +209,40 @@ jobs:
             }
           }
 
+      - name: Record build and advancement outcome
+        if: always()
+        shell: pwsh
+        env:
+          JOB_STATUS: ${{ job.status }}
+          INPUT_HEAD: ${{ matrix.head }}
+        run: |
+          $report = if (Test-Path -LiteralPath $env:MERGE_REPORT) {
+            Get-Content -Raw -LiteralPath $env:MERGE_REPORT | ConvertFrom-Json -AsHashtable
+          } else {
+            @{ schema = 2; state = 'not-attempted'; branch = $env:CUSTOM_BRANCH; inputHead = $env:INPUT_HEAD; upstream = $env:PINNED_UPSTREAM }
+          }
+          $report['jobStatus'] = $env:JOB_STATUS
+          $report['resultHead'] = git rev-parse HEAD
+          $report['runId'] = $env:GITHUB_RUN_ID
+          $report['runAttempt'] = $env:GITHUB_RUN_ATTEMPT
+          $report['event'] = $env:GITHUB_EVENT_NAME
+          $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $env:MERGE_REPORT -Encoding utf8
+
+      - name: Save merge comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merge-observation-${{ matrix.label }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.MERGE_REPORT }}
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload optional CI copy of installer
         continue-on-error: true
         timeout-minutes: 3
         uses: actions/upload-artifact@v4
         with:
-          name: custom-orca-windows-${{ steps.release.outputs.version }}
+          name: custom-orca-windows-${{ matrix.label }}-${{ github.sha }}
           path: |
             ${{ env.OUTPUT_DIR }}\orca-windows-setup.exe
             ${{ env.OUTPUT_DIR }}\orca-windows-setup.exe.blockmap

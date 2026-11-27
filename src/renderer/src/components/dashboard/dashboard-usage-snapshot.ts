@@ -27,12 +27,8 @@ export function buildDashboardUsageSnapshot(
     return undefined
   }
   const detectedAgentIds = state.detectedAgentIds ?? null
-  const antigravityUsageConfigured =
-    statusBarItems.includes('antigravity') &&
-    isStatusBarItemAvailable('antigravity', detectedAgentIds)
   const usageSettings = {
     ...state.settings,
-    antigravityUsageConfigured,
     minimaxCookieConfigured: rateLimits.minimaxCookieConfigured,
     minimaxApiKeyConfigured: rateLimits.minimaxApiKeyConfigured,
     opencodeGoApiKeyConfigured: rateLimits.opencodeGoApiKeyConfigured,

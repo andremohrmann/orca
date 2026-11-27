@@ -1,8 +1,6 @@
 name: Custom fork candidate
 
 on:
-  push:
-    branches: [custom/orca-conflict-reduction]
   workflow_dispatch:
 
 permissions:

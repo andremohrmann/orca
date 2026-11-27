@@ -10,7 +10,10 @@ export function AgentLiveGridStateOutline({
   card: DashboardCard
 }): React.JSX.Element | null {
   const attention = card.bucket === 'attention'
-  if (!attention && dashboardCardDisplayState(card) !== 'done') {
+  const state = dashboardCardDisplayState(card)
+  const failed = state === 'failed'
+  const working = state === 'working' || state === 'monitoring'
+  if (!attention && !failed && state !== 'done' && !working) {
     return null
   }
   return (
@@ -18,7 +21,13 @@ export function AgentLiveGridStateOutline({
       aria-hidden="true"
       className={cn(
         'pointer-events-none absolute inset-0 z-10 rounded-[inherit] border-2',
-        attention ? 'border-agent-question/70' : 'border-status-success/70'
+        failed
+          ? 'border-destructive/70'
+          : attention
+            ? 'border-agent-question/70'
+            : state === 'done'
+              ? 'border-status-success/70'
+              : 'border-agent-working/25'
       )}
     />
   )

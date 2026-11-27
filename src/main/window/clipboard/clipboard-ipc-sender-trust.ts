@@ -15,8 +15,30 @@ export function assertTrustedClipboardSender(event: IpcMainInvokeEvent): void {
 }
 
 export function assertTrustedClipboardTextSender(event: IpcMainInvokeEvent): void {
-  // Dashboard popouts need text clipboard authority only; never extend it to images, files or remote operations.
   if (!isTrustedClipboardRenderer(event.sender) && !isDashboardPopoutRenderer(event.sender)) {
+    throw new Error('Unauthorized clipboard IPC sender')
+  }
+}
+
+export function assertTrustedClipboardImagePasteSender(
+  event: IpcMainInvokeEvent,
+  args: unknown
+): void {
+  if (isTrustedClipboardRenderer(event.sender)) {
+    return
+  }
+  // Popouts may stage terminal images, but cannot name files or write chat attachments/drafts.
+  const terminalTargetOnly =
+    args === undefined ||
+    (args !== null &&
+      typeof args === 'object' &&
+      !Array.isArray(args) &&
+      Object.entries(args).every(
+        ([key, value]) =>
+          (key === 'connectionId' || key === 'runtimeEnvironmentId') &&
+          (value == null || (typeof value === 'string' && value.length <= 4096))
+      ))
+  if (!isDashboardPopoutRenderer(event.sender) || !terminalTargetOnly) {
     throw new Error('Unauthorized clipboard IPC sender')
   }
 }
