@@ -6,6 +6,11 @@ on:
       - custom/orca-dashboard-live-view
       - custom/orca-conflict-reduction
   workflow_dispatch:
+    inputs:
+      upstream_commit:
+        description: Optional full upstream SHA for a paired repair verification
+        required: false
+        type: string
   schedule:
     - cron: '17 3 * * *'
 
@@ -31,6 +36,11 @@ jobs:
         with:
           script: |
             const upstream = await github.rest.git.getRef({ owner: 'stablyai', repo: 'orca', ref: 'heads/main' });
+            const requested = context.payload.inputs?.upstream_commit || '';
+            if (requested && !/^[0-9a-f]{40}$/.test(requested)) {
+              throw new Error('Expected a full upstream commit SHA.');
+            }
+            const upstreamSha = requested || upstream.data.object.sha;
             const branches = [
               { branch: 'custom/orca-dashboard-live-view', label: 'production', publish: true },
               { branch: 'custom/orca-conflict-reduction', label: 'experiment', publish: false }
@@ -42,10 +52,10 @@ jobs:
               const ref = await github.rest.git.getRef({ ...context.repo, ref: `heads/${item.branch}` });
               item.head = context.eventName === 'push' ? context.sha : ref.data.object.sha;
             }
-            core.setOutput('upstream', upstream.data.object.sha);
+            core.setOutput('upstream', upstreamSha);
             core.setOutput('matrix', JSON.stringify({ include: selected }));
             await core.summary.addHeading('Paired upstream merge inputs')
-              .addRaw(`Upstream: ${upstream.data.object.sha}\n`)
+              .addRaw(`Upstream: ${upstreamSha}\n`)
               .addTable([
                 [{ data: 'Branch', header: true }, { data: 'Input commit', header: true }],
                 ...selected.map(item => [item.branch, item.head])
@@ -64,7 +74,6 @@ jobs:
     env:
       CUSTOM_BRANCH: ${{ matrix.branch }}
       PINNED_UPSTREAM: ${{ needs.inputs.outputs.upstream }}
-      MERGE_REPORT: ${{ github.workspace }}/../merge-observation.json
       ORCA_BACKGROUND_LAUNCH: '1'
       UPSTREAM_REPO: https://github.com/stablyai/orca.git
       OUTPUT_DIR: ${{ github.workspace }}\custom-output
@@ -128,6 +137,7 @@ jobs:
       - name: Validate and build installer
         shell: pwsh
         env:
+          MERGE_REPORT: ${{ runner.temp }}/merge-observation.json
           GH_TOKEN: ${{ github.token }}
         run: |
           $mergeOptions = @()
@@ -213,6 +223,7 @@ jobs:
         if: always()
         shell: pwsh
         env:
+          MERGE_REPORT: ${{ runner.temp }}/merge-observation.json
           JOB_STATUS: ${{ job.status }}
           INPUT_HEAD: ${{ matrix.head }}
         run: |
@@ -233,7 +244,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: merge-observation-${{ matrix.label }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ env.MERGE_REPORT }}
+          path: ${{ runner.temp }}/merge-observation.json
           if-no-files-found: error
           retention-days: 30
 
