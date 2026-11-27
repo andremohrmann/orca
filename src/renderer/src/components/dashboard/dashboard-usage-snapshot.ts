@@ -26,12 +26,8 @@ export function buildDashboardUsageSnapshot(
     return undefined
   }
   const detectedAgentIds = state.detectedAgentIds ?? null
-  const antigravityUsageConfigured =
-    statusBarItems.includes('antigravity') &&
-    isStatusBarItemAvailable('antigravity', detectedAgentIds)
   const usageSettings = {
     ...state.settings,
-    antigravityUsageConfigured,
     minimaxCookieConfigured: rateLimits.minimaxCookieConfigured,
     grokAuthConfigured: rateLimits.grokAuthConfigured
   }
@@ -39,7 +35,6 @@ export function buildDashboardUsageSnapshot(
     [
       ['claude', rateLimits.claude],
       ['codex', rateLimits.codex],
-      ['antigravity', rateLimits.antigravity],
       ['opencode-go', rateLimits.opencodeGo],
       ['kimi', rateLimits.kimi],
       ['minimax', rateLimits.minimax],
