@@ -11777,7 +11777,8 @@
               "eaf17a7214": "Agent dashboard",
               "autoMinimize": "auto minimize",
               "hideChildAgents": "hide child agents spawned terminals",
-              "live": "live view"
+              "live": "live view",
+              "borderColors": "border colors colours input needed working done errors failures"
             },
             "worktreeCardStyle": {
               "title": "Card style",
@@ -24681,7 +24682,20 @@
       "sortManual": "Manual",
       "sortRecent": "Recent activity",
       "sortWorkspace": "Workspace",
-      "windowName": "Window name"
+      "windowName": "Window name",
+      "borderColors": {
+        "picker": "{{state}} border color",
+        "default": "Default",
+        "resetOne": "Reset {{state}} border color",
+        "reset": "Reset",
+        "attention": "Input needed",
+        "working": "Working",
+        "done": "Done",
+        "failed": "Errors and failures",
+        "title": "Live view border colors",
+        "description": "Choose a color for each state. Defaults follow the theme; working borders stay subtle.",
+        "resetAll": "Reset colors"
+      }
     },
     "opacity": {
       "current": "{{label}}: {{value}}%",

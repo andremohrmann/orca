@@ -21,6 +21,7 @@ import {
 import type { DashboardRevealAgentArgs as AgentRevealArgs } from '../../../../shared/agent-status/presentation/dashboard-snapshot'
 import { useAgentLiveGridLayout } from './useAgentLiveGridLayout'
 import type { AgentDashboardLiveSort } from '../../../../shared/agent-dashboard-live-layout'
+import { resetAgentDashboardLiveLayout } from '../../../../shared/agent-dashboard-live-layout'
 import { AgentLiveCompactPaneRow } from './AgentLiveCompactPaneRow'
 import { AgentLiveGridHeader } from './AgentLiveGridHeader'
 import { AgentLiveGridToolbar } from './AgentLiveGridToolbar'
@@ -295,7 +296,7 @@ export function AgentLiveGrid({
         layout={layout}
         density={density}
         hiddenCount={layout.hidden?.length ?? 0}
-        onReset={() => saveLayout(() => ({ density: 'auto', sort: 'manual', hideClosed: false }))}
+        onReset={() => saveLayout(resetAgentDashboardLiveLayout)}
         onShowHidden={() => saveLayout((current) => ({ ...current, hidden: [] }))}
         onApplySort={applySort}
         onSetDensity={(nextDensity) =>
@@ -350,7 +351,7 @@ export function AgentLiveGrid({
                   moveCard(card.paneKey, event)
                 }}
               >
-                <AgentLiveGridStateOutline card={card} />
+                <AgentLiveGridStateOutline card={card} colors={layout.borderColors} />
                 <AgentLiveGridHeader
                   card={card}
                   pinned={layout.pinned?.[card.paneKey] !== undefined}

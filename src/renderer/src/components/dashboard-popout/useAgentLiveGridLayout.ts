@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
+import { useCallback, useMemo } from 'react'
+import { useAppStore } from '@/store'
 import {
   normalizeAgentDashboardLiveLayout,
   type AgentDashboardLiveLayout
@@ -9,39 +9,21 @@ export function useAgentLiveGridLayout(): [
   AgentDashboardLiveLayout,
   (update: (current: AgentDashboardLiveLayout) => AgentDashboardLiveLayout) => void
 ] {
-  const [layout, setLayout] = useState<AgentDashboardLiveLayout>(() =>
-    normalizeAgentDashboardLiveLayout(null)
-  )
-
-  useEffect(() => {
-    let disposed = false
-    void window.api.settings.get().then((settings) => {
-      if (!disposed) {
-        setLayout(
-          normalizeAgentDashboardLiveLayout(
-            (settings as GlobalSettings).experimentalAgentDashboardLiveLayout
-          )
-        )
-      }
-    })
-    const dispose = window.api.settings.onChanged((updates) => {
-      if ('experimentalAgentDashboardLiveLayout' in updates) {
-        setLayout(normalizeAgentDashboardLiveLayout(updates.experimentalAgentDashboardLiveLayout))
-      }
-    })
-    return () => {
-      disposed = true
-      dispose()
-    }
-  }, [])
+  const storedLayout = useAppStore((state) => state.settings?.experimentalAgentDashboardLiveLayout)
+  const layout = useMemo(() => normalizeAgentDashboardLiveLayout(storedLayout), [storedLayout])
 
   const saveLayout = useCallback(
     (update: (current: AgentDashboardLiveLayout) => AgentDashboardLiveLayout): void => {
-      setLayout((current) => {
-        const next = normalizeAgentDashboardLiveLayout(update(current))
-        void window.api.settings.set({ experimentalAgentDashboardLiveLayout: next })
-        return next
-      })
+      const { settings, updateSettings } = useAppStore.getState()
+      const next = normalizeAgentDashboardLiveLayout(
+        update(normalizeAgentDashboardLiveLayout(settings?.experimentalAgentDashboardLiveLayout))
+      )
+      if (settings) {
+        useAppStore.setState({
+          settings: { ...settings, experimentalAgentDashboardLiveLayout: next }
+        })
+      }
+      void updateSettings({ experimentalAgentDashboardLiveLayout: next })
     },
     []
   )
