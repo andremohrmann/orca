@@ -326,7 +326,7 @@ export function AgentLiveGrid({
                 }}
                 tabIndex={-1}
                 className={cn(
-                  'relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-card outline-none',
+                  'group/live-window relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-card outline-none',
                   focusedPaneKey === card.paneKey
                     ? 'border-ring ring-[2px] ring-ring/35'
                     : 'border-border'
